@@ -35,6 +35,9 @@ func handler(conn *pt.SocksConn) error {
 		return err
 	}
 
+	// For now, the Go client is always the offerer.
+	// TODO: Copy paste signaling
+
 	pc.OnNegotiationNeeded = func() {
 		// log.Println("OnNegotiationNeeded")
 		go func() {
