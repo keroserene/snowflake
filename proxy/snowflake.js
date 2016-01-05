@@ -19,7 +19,9 @@ window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
 window.RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
 
 var pc;  // PeerConnection
-var answer;
+var offer, answer;
+var channel;
+
 // Janky state machine
 var MODE = {
   INIT:       0,
@@ -65,7 +67,6 @@ function welcome() {
 }
 
 function start(initiator) {
-      username + ": " + msg;
   log("Starting up RTCPeerConnection...");
   pc = new PeerConnection(config, {
     optional: [
@@ -209,6 +210,12 @@ function prepareDataChannel(channel) {
     line = line.trim();
     log(line);
   }
+}
+
+function startChat() {
+  currentMode = MODE.CHAT;
+  $chatlog.className = "active";
+  log("------- chat enabled! -------");
 }
 
 // Get DOM elements and setup interactions.

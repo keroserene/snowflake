@@ -254,7 +254,7 @@ func readSignalingMessages(f *os.File) {
 func main() {
 	var err error
 
-	logFile, err = os.OpenFile("webrtc-client.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	logFile, err = os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -292,7 +292,7 @@ func main() {
 	listeners := make([]net.Listener, 0)
 	for _, methodName := range ptInfo.MethodNames {
 		switch methodName {
-		case "webrtc":
+		case "snowflake":
 			ln, err := pt.ListenSocks("tcp", "127.0.0.1:0")
 			if err != nil {
 				pt.CmethodError(methodName, err.Error())
