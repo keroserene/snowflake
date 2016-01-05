@@ -1,4 +1,5 @@
 UseBridges 1
-ClientTransportPlugin webrtc exec ./webrtc-client
+DataDirectory datadir
 
+ClientTransportPlugin webrtc exec ./webrtc-client
 Bridge webrtc 0.0.3.0:1
