@@ -1,5 +1,5 @@
 UseBridges 1
 DataDirectory datadir
 
-ClientTransportPlugin webrtc exec ./webrtc-client
+ClientTransportPlugin webrtc exec ./snowflake
 Bridge webrtc 0.0.3.0:1

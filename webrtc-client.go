@@ -57,11 +57,8 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 
 func (c *webRTCConn) Write(b []byte) (int, error) {
 	log.Printf("webrtc Write %d %q", len(b), string(b))
-	err := c.dc.Send(b)
-	if err != nil {
-		return 0, err
-	}
-	return len(b), err
+	c.dc.Send(b)
+	return len(b), nil
 }
 
 func (c *webRTCConn) Close() error {

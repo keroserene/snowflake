@@ -2,3 +2,6 @@
 *.swo
 *.swn
 ignore/
+datadir/
+snowflake
+webrtc-client.log
