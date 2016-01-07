@@ -1,7 +1,9 @@
 *.swp
 *.swo
 *.swn
-ignore/
+*.swm
+.DS_Store
 datadir/
-snowflake
+client/snowflake
+server/snowflake
 snowflake.log
