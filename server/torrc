@@ -1,0 +1,7 @@
+BridgeRelay 1
+ORPort 9001
+ExtORPort auto
+SocksPort 0
+ExitPolicy reject *:*
+
+ServerTransportPlugin snowflake exec ./snowflake
