@@ -5,5 +5,5 @@
 .DS_Store
 datadir/
 client/snowflake
-server/snowflake
+server/server
 snowflake.log

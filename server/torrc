@@ -3,5 +3,6 @@ ORPort 9001
 ExtORPort auto
 SocksPort 0
 ExitPolicy reject *:*
+DataDirectory datadir
 
-ServerTransportPlugin snowflake exec ./snowflake
+ServerTransportPlugin snowflake exec ./server
