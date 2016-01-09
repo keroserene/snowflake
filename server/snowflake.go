@@ -95,10 +95,15 @@ func datachannelHandler(conn *webRTCConn) {
 	conn.pr = pr
 
 	dc := conn.dc
+	dc.OnOpen = func() {
+		log.Println("OnOpen channel")
+	}
 	dc.OnClose = func() {
+		log.Println("OnClose channel")
 		pw.Close()
 	}
 	dc.OnMessage = func(msg []byte) {
+		log.Printf("OnMessage channel %d %q", len(msg), msg)
 		n, err := pw.Write(msg)
 		if err != nil {
 			pw.CloseWithError(err)
@@ -108,7 +113,7 @@ func datachannelHandler(conn *webRTCConn) {
 		}
 	}
 
-	copyLoop(conn, or)
+	go copyLoop(conn, or)
 }
 
 func makePeerConnection(config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
@@ -196,6 +201,7 @@ func listenWebRTC(config *webrtc.Configuration, signal string) (*os.File, error)
 	}()
 
 	go readSignalingMessages(signalChan, signalFile)
+	log.Printf("waiting for offer")
 	return signalFile, nil
 }
 
