@@ -125,6 +125,11 @@ func makePeerConnection(config *webrtc.Configuration) (*webrtc.PeerConnection, e
 		log.Println("OnDataChannel")
 		datachannelHandler(&webRTCConn{pc: pc, dc: dc})
 	}
+	pc.OnIceComplete = func() {
+		log.Printf("----------------")
+		fmt.Fprintln(logFile, pc.LocalDescription().Serialize())
+		log.Printf("----------------")
+	}
 	return pc, nil
 }
 
@@ -138,6 +143,7 @@ func readSignalingMessages(signalChan chan *webrtc.SessionDescription, f *os.Fil
 			continue
 		}
 		signalChan <- sdp
+		continue
 	}
 	if err := s.Err(); err != nil {
 		log.Printf("signal FIFO: %s", err)
@@ -165,14 +171,14 @@ func listenWebRTC(config *webrtc.Configuration, signal string) (*os.File, error)
 	if err != nil {
 		return nil, err
 	}
-	defer signalFile.Close()
+	//defer signalFile.Close()
 
 	var signalChan = make(chan *webrtc.SessionDescription)
 
 	go func() {
 		for {
 			select {
-			case sdp := <- signalChan:
+			case sdp := <-signalChan:
 				pc, err := makePeerConnection(config)
 				if err != nil {
 					log.Printf("makePeerConnection: %s", err)
@@ -222,7 +228,8 @@ func main() {
 				pt.SmethodError(bindaddr.MethodName, err.Error())
 				break
 			}
-			pt.Smethod(bindaddr.MethodName, nil)
+			bindaddr.Addr.Port = 12345 // lies!!!
+			pt.Smethod(bindaddr.MethodName, bindaddr.Addr)
 			listeners = append(listeners, ln)
 		default:
 			pt.SmethodError(bindaddr.MethodName, "no such method")

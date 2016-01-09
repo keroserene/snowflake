@@ -4,6 +4,6 @@
 *.swm
 .DS_Store
 datadir/
-client/snowflake
+client/client
 server/server
 snowflake.log
