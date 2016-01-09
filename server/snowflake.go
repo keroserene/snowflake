@@ -89,7 +89,7 @@ func datachannelHandler(conn *webRTCConn) {
 		log.Printf("Failed to connect to ORPort: " + err.Error())
 		return
 	}
-	defer or.Close()
+	//defer or.Close()
 
 	pr, pw := io.Pipe()
 	conn.pr = pr
