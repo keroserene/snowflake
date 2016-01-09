@@ -4,16 +4,33 @@ A Pluggable Transport using WebRTC
 
 ### Usage
 
-Open up four terminals:
+Open up six terminals:
+
+**client:**
+
+```
+cd client/
+go build
+```
 
 1. tor -f torrc SOCKSPort auto
-2. tail -F snowflake.log
-3. cat > signal
-4. open proxy/snowflake.html
+2. cat > signal
+3. tail -F snowflake.log
 
-Look for the offer in terminal 2; copy and paste it into the browser window
-opened from terminal 4. Copy and paste the browser to terminal 3.
-At this point you should see some TLS garbage in the chat window.
+**server:**
+
+```
+cd server/
+go build
+```
+
+4. tor -f torrc
+5. cat > signal
+6. tail -F snowflake.log
+
+Look for the offer in terminal 3; copy and paste it into terminal 5.
+Copy and paste the answer in terminal 6 to terminal 2.
+At this point the tor client should bootstrap to 100%.
 
 ### More
 
