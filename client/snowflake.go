@@ -56,7 +56,7 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 }
 
 func (c *webRTCConn) Write(b []byte) (int, error) {
-	log.Printf("webrtc Write %d %q", len(b), string(b))
+	log.Printf("webrtc Write %d %+q", len(b), string(b))
 	c.dc.Send(b)
 	return len(b), nil
 }
@@ -142,7 +142,7 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 		close(openChan)
 	}
 	dc.OnMessage = func(msg []byte) {
-		log.Printf("OnMessage channel %d %q", len(msg), msg)
+		log.Printf("OnMessage channel %d %+q", len(msg), msg)
 		n, err := pw.Write(msg)
 		if err != nil {
 			pw.CloseWithError(err)
@@ -236,10 +236,10 @@ func readSignalingMessages(f *os.File) {
 	s := bufio.NewScanner(f)
 	for s.Scan() {
 		msg := s.Text()
-		log.Printf("readSignalingMessages loop %q", msg)
+		log.Printf("readSignalingMessages loop %+q", msg)
 		sdp := webrtc.DeserializeSessionDescription(msg)
 		if sdp == nil {
-			log.Printf("ignoring invalid signal message %q", msg)
+			log.Printf("ignoring invalid signal message %+q", msg)
 			continue
 		}
 		signalChan <- sdp

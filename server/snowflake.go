@@ -103,7 +103,7 @@ func datachannelHandler(conn *webRTCConn) {
 		pw.Close()
 	}
 	dc.OnMessage = func(msg []byte) {
-		log.Printf("OnMessage channel %d %q", len(msg), msg)
+		log.Printf("OnMessage channel %d %+q", len(msg), msg)
 		n, err := pw.Write(msg)
 		if err != nil {
 			pw.CloseWithError(err)
@@ -144,7 +144,7 @@ func readSignalingMessages(signalChan chan *webrtc.SessionDescription, f *os.Fil
 		msg := s.Text()
 		sdp := webrtc.DeserializeSessionDescription(msg)
 		if sdp == nil {
-			log.Printf("ignoring invalid signal message %q", msg)
+			log.Printf("ignoring invalid signal message %+q", msg)
 			continue
 		}
 		signalChan <- sdp
