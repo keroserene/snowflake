@@ -51,14 +51,6 @@ query = Query.parse(window.location.search.substr(1))
 HEADLESS = "undefined" == typeof(document)
 DEBUG = Params.getBool(query, "debug", false)
 
-# Janky state machine
-MODE =
-  INIT:       0
-  CONNECTING: 1
-  CHAT:       2
-currentMode = MODE.INIT
-
-
 # TODO: Different ICE servers.
 config = {
   iceServers: [
@@ -81,14 +73,24 @@ window.RTCSessionDescription = window.RTCSessionDescription ||
 # TODO: Implement
 class Badge
 
+
+# Janky state machine
+MODE =
+  INIT:              0
+  WEBRTC_CONNECTING: 1
+  WEBRTC_READY:      2
+
 # Minimum viable snowflake for now - just 1 client.
 class Snowflake
 
+  # PeerConnection
+  pc: null
   rateLimit: 0
   proxyPairs: null
   badge: null
   $badge: null
   MAX_NUM_CLIENTS = 1
+  state: MODE.INIT
 
   constructor: ->
     if HEADLESS
@@ -101,11 +103,74 @@ class Snowflake
     if (@$badge)
       @$badge.setAttribute("id", "snowflake-badge")
 
-  start: ->
+  # Initialize WebRTC PeerConnection
+  beginWebRTC: ->
     log "Starting up Snowflake..."
+    @state = MODE.WEBRTC_CONNECTING
+
+    @pc = new PeerConnection(config, {
+      optional: [
+        { DtlsSrtpKeyAgreement: true }
+        { RtpDataChannels: false }
+      ]
+    })
+
+    @pc.onicecandidate = (evt) =>
+      # Browser sends a null candidate once the ICE gathering completes.
+      # In this case, it makes sense to send one copy-paste blob.
+      if null == evt.candidate
+        log "Finished gathering ICE candidates."
+        Signalling.send @pc.localDescription
+
+    # OnDataChannel triggered remotely from the client when connection succeeds.
+    @pc.ondatachannel = (dc) =>
+      console.log dc;
+      channel = dc.channel
+      log "Data Channel established..."
+      @prepareDataChannel channel
+
+  prepareDataChannel: (channel) ->
+    channel.onopen = =>
+      log "Data channel opened!"
+      @state = MODE.WEBRTC_READY
+      # TODO: Prepare ProxyPair onw.
+    channel.onclose = =>
+      log "Data channel closed."
+      @state = MODE.INIT;
+      $chatlog.className = ""
+    channel.onerror = =>
+      log "Data channel error!"
+    channel.onmessage = (msg) =>
+      line = recv = msg.data
+      console.log(msg);
+      # Go sends only raw bytes...
+      if "[object ArrayBuffer]" == recv.toString()
+        bytes = new Uint8Array recv
+        line = String.fromCharCode.apply(null, bytes)
+      line = line.trim()
+      log "data: " + line
+
+  # Receive an SDP offer from client plugin.
+  receiveOffer: (desc) =>
+    sdp = new RTCSessionDescription desc
+    try
+      err = @pc.setRemoteDescription sdp
+    catch e
+      log "Invalid SDP message."
+      return false
+    log("SDP " + sdp.type + " successfully received.")
+    @sendAnswer() if "offer" == sdp.type
+    true
+
+  sendAnswer: =>
+    next = (sdp) =>
+      log "webrtc: Answer ready."
+      @pc.setLocalDescription sdp
+    promise = @pc.createAnswer next
+    promise.then next if promise
 
   # Poll facilitator when this snowflake can support more clients.
-  proxyMain = ->
+  proxyMain: ->
     if @proxyPairs.length >= @MAX_NUM_CLIENTS * CONNECTIONS_PER_CLIENT
       setTimeout(@proxyMain, @facilitator_poll_interval * 1000)
       return
@@ -114,11 +179,11 @@ class Snowflake
     params.push ["transport", "websocket"]
     params.push ["transport", "webrtc"]
 
-  beginProxy = (client, relay) ->
+  beginProxy: (client, relay) ->
     for i in [0..CONNECTIONS_PER_CLIENT]
       makeProxyPair(client, relay)
 
-  makeProxyPair = (client, relay) ->
+  makeProxyPair: (client, relay) ->
     pair = new ProxyPair(client, relay, @rate_limit);
     @proxyPairs.push pair
     pair.onCleanup = (event) =>
@@ -132,19 +197,19 @@ class Snowflake
       return
     @badge.beginProxy if @badge
 
-  cease = ->
+  cease: ->
     # @start = null
     # @proxyMain = null
     # @make_proxy_pair = function(client_addr, relay_addr) { };
     while @proxyPairs.length > 0
       @proxyPairs.pop().close()
 
-  disable = ->
+  disable: ->
     log "Disabling Snowflake."
     @cease()
     @badge.disable() if @badge
 
-  die = ->
+  die: ->
     log "Snowflake died."
     @cease()
     @badge.die() if @badge
@@ -157,7 +222,7 @@ class ProxyPair
 #
 ## -- DOM & Input Functionality -- ##
 #
-snowflake = new Snowflake()
+snowflake = null
 
 welcome = ->
   log "== snowflake browser proxy =="
@@ -170,25 +235,22 @@ log = (msg) ->
   # Scroll to latest
   $chatlog.scrollTop = $chatlog.scrollHeight
 
-# Local input from keyboard into message window.
-acceptInput = () ->
-  msg = $input.value
-  switch currentMode
-    when MODE.INIT
-      if msg.startsWith("start")
-        start(true)
-      else
+Interface =
+  # Local input from keyboard into message window.
+  acceptInput: ->
+    msg = $input.value
+    switch snowflake.state
+      when MODE.WEBRTC_CONNECTING
         Signalling.receive msg
-    when MODE.CONNECTING
-      Signalling.receive msg
-    when MODE.CHAT
-      data = msg
-      log(data)
-      channel.send(data)
-    else
-      log("ERROR: " + msg)
-  $input.value = "";
-  $input.focus()
+      when MODE.WEBRTC_READY
+        log "No input expected - WebRTC connected."
+        # data = msg
+        # log(data)
+        # channel.send(data)
+      else
+        log "ERROR: " + msg
+    $input.value = ""
+    $input.focus()
 
 # Signalling channel - just tells user to copy paste to the peer.
 # Eventually this should go over the facilitator.
@@ -205,28 +267,26 @@ Signalling =
     catch e
       log "Invalid JSON."
       return
-    # Begin as answerer if peerconnection doesn't exist yet.
-    snowflake.start false if !pc
     desc = recv['sdp']
-    ice = recv['candidate']
-    if !desc && ! ice
+    if !desc
       log "Invalid SDP."
       return false
-    receiveDescription recv if desc
-    receiveICE recv         if ice
+    snowflake.receiveOffer recv if desc
 
 init = ->
   $chatlog = document.getElementById('chatlog')
   $chatlog.value = ""
 
   $send = document.getElementById('send')
-  $send.onclick = acceptInput
+  $send.onclick = Interface.acceptInput
 
   $input = document.getElementById('input')
   $input.focus()
   $input.onkeydown = (e) =>
     if 13 == e.keyCode  # enter
       $send.onclick()
+  snowflake = new Snowflake()
+  snowflake.beginWebRTC()
   welcome()
 
 window.onload = init
