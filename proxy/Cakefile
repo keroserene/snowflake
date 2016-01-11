@@ -1,0 +1,8 @@
+fs = require 'fs'
+
+{exec} = require 'child_process'
+
+task 'test', 'test snowflake.coffee', () ->
+  exec 'coffee snowflake_test.coffee -v', (err, stdout, stderr) ->
+    throw err if err
+    console.log stdout + stderr
