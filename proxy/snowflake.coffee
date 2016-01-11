@@ -10,6 +10,16 @@ this must always act as the answerer.
 TODO(keroserene): Complete the websocket + webrtc ProxyPair
 ###
 
+if 'undefined' == typeof module || 'undefined' != typeof module.exports
+  console.log 'not in browser.'
+else
+  window.PeerConnection = window.RTCPeerConnection ||
+                          window.mozRTCPeerConnection ||
+                          window.webkitRTCPeerConnection
+  window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
+  window.RTCSessionDescription = window.RTCSessionDescription ||
+                                 window.mozRTCSessionDescription
+
 Query =
   ###
   Parse a URL query string or application/x-www-form-urlencoded body. The
@@ -26,8 +36,7 @@ Query =
     strings = []
     strings = qs.split '&' if qs
     return result if 0 == strings.length
-    for i in [1..strings.length]
-      string = strings[i]
+    for string in strings
       j = string.indexOf '='
       if j == -1
         name = string
@@ -37,7 +46,7 @@ Query =
         value = string.substr(j + 1)
       name = decodeURIComponent(name.replace(/\+/g, ' '))
       value = decodeURIComponent(value.replace(/\+/g, ' '))
-      result[name] = value if !(name in result)
+      result[name] = value if name not of result
     result
 
   # params is a list of (key, value) 2-tuples.
@@ -56,6 +65,22 @@ Params =
     return false if "false" == val || "0" == val
     return null
 
+
+  # Parse a cookie data string (usually document.cookie). The return type is an
+  # object mapping cookies names to values. Returns null on error.
+  # http://www.w3.org/TR/DOM-Level-2-HTML/html.html#ID-8747038
+  parseCookie: (cookies) ->
+    result = {}
+    strings = []
+    strings = cookies.split ';' if cookies
+    for string in strings
+      j = string.indexOf '='
+      return null if -1 == j
+      name  = decodeURIComponent string.substr(0, j).trim()
+      value = decodeURIComponent string.substr(j + 1).trim()
+      result[name] = value if !(name in result)
+    result
+
 # repr = (x) ->
   # return 'null' if null == x
   # return 'undefined' if 'undefined' == typeof x
@@ -72,9 +97,11 @@ Params =
 safe_repr = (s) -> SAFE_LOGGING ? "[scrubbed]" : JSON.stringify(s)
 
 # HEADLESS is true if we are running not in a browser with a DOM.
-query = Query.parse(window.location.search.substr(1))
+DEBUG = false
+if window && window.location
+  query = Query.parse(window.location.search.substr(1))
+  DEBUG = Params.getBool(query, "debug", false)
 HEADLESS = "undefined" == typeof(document)
-DEBUG = Params.getBool(query, "debug", false)
 
 # TODO: Different ICE servers.
 config = {
@@ -88,12 +115,6 @@ $chatlog = null
 $send = null
 $input = null
 
-window.PeerConnection = window.RTCPeerConnection ||
-                        window.mozRTCPeerConnection ||
-                        window.webkitRTCPeerConnection
-window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
-window.RTCSessionDescription = window.RTCSessionDescription ||
-                               window.mozRTCSessionDescription
 
 # TODO: Implement
 class Badge
@@ -112,6 +133,7 @@ class Snowflake
   pc: null
   rateLimit: 0
   proxyPairs: []
+  relayAddr: null
   badge: null
   $badge: null
   MAX_NUM_CLIENTS = 1
@@ -126,8 +148,13 @@ class Snowflake
     else
       @badge = new Badge()
       @$badgem = @badge.elem
-    if (@$badge)
-      @$badge.setAttribute("id", "snowflake-badge")
+    @$badge.setAttribute("id", "snowflake-badge") if (@$badge)
+
+  setRelayAddr: (relayAddr) ->
+    # TODO: User-supplied for now, but should fetch from facilitator later.
+    @relayAddr = relayAddr
+    log "Input offer from the snowflake client:"
+    @beginWebRTC()
 
   # Initialize WebRTC PeerConnection
   beginWebRTC: ->
@@ -240,6 +267,9 @@ class Snowflake
     @badge.die() if @badge
 
 
+DEFAULT_PORTS =
+  http:  80
+  https: 443
 # Build an escaped URL string from unescaped components. Only scheme and host
 # are required. See RFC 3986, section 3.
 buildUrl = (scheme, host, port, path, params) ->
@@ -297,9 +327,6 @@ makeWebsocket = (addr) ->
 
 # TODO: Implement
 class ProxyPair
-
-  # TODO: Hardcoded for now, but should fetch from facilitator later.
-  relayAddr: null
 
   constructor: (@clientAddr, @relayAddr, @rateLimit) ->
 
@@ -405,7 +432,7 @@ snowflake = null
 
 welcome = ->
   log "== snowflake browser proxy =="
-  log "Input offer from the snowflake client:"
+  log "Input desired relay address:"
 
 # Log to the message window.
 log = (msg) ->
@@ -419,6 +446,9 @@ Interface =
   acceptInput: ->
     msg = $input.value
     switch snowflake.state
+      when MODE.INIT
+        # Set target relay.
+        snowflake.setRelayAddr msg
       when MODE.WEBRTC_CONNECTING
         Signalling.receive msg
       when MODE.WEBRTC_READY
@@ -453,6 +483,7 @@ Signalling =
     snowflake.receiveOffer recv if desc
 
 init = ->
+
   $chatlog = document.getElementById('chatlog')
   $chatlog.value = ""
 
@@ -465,7 +496,6 @@ init = ->
     if 13 == e.keyCode  # enter
       $send.onclick()
   snowflake = new Snowflake()
-  snowflake.beginWebRTC()
   welcome()
 
-window.onload = init
+window.onload = init if window
