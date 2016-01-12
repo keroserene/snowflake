@@ -6,11 +6,9 @@ Uses WebRTC from the client, and websocket to the server.
 
 Assume that the webrtc client plugin is always the offerer, in which case
 this must always act as the answerer.
-
-TODO(keroserene): Complete the websocket + webrtc ProxyPair
 ###
 
-DEFAULT_WEBSOCKET = '92.81.135.242:9901'
+DEFAULT_WEBSOCKET = '192.81.135.242:9901'
 
 if 'undefined' != typeof module && 'undefined' != typeof module.exports
   console.log 'not in browser.'
@@ -99,19 +97,6 @@ Params =
       return null
     { host: host, port: port }
 
-# repr = (x) ->
-  # return 'null' if null == x
-  # return 'undefined' if 'undefined' == typeof x
-  # if 'object' == typeof x
-    # elems = []
-    # for k in x
-      # elems.push(maybe_quote(k) + ': ' + repr(x[k]));
-    # return '{ ' + elems.join(', ') + ' }';
-  # } else if (typeof x === 'string') {
-    # return quote(x);
-  # } else {
-    # return x.toString();
-# safe_repr = (s) -> SAFE_LOGGING ? '[scrubbed]' : repr(s)
 safe_repr = (s) -> SAFE_LOGGING ? '[scrubbed]' : JSON.stringify(s)
 
 # HEADLESS is true if we are running not in a browser with a DOM.
@@ -120,6 +105,7 @@ if window && window.location
   query = Query.parse(window.location.search.substr(1))
   DEBUG = Params.getBool(query, 'debug', false)
 HEADLESS = 'undefined' == typeof(document)
+RATE_LIMIT_HISTORY = 5.0
 
 DEFAULT_PORTS =
   http:  80
@@ -177,6 +163,33 @@ makeWebsocket = (addr) ->
   ws.binaryType = 'arraybuffer'
   ws
 
+class BucketRateLimit
+  amount: 0.0
+  last_update: new Date()
+
+  constructor: (@capacity, @time) ->
+
+  age: ->
+    now = new Date()
+    delta = (now - @last_update) / 1000.0
+    @last_update = now
+    @amount -= delta * @capacity / @time
+    @amount = 0.0 if @amount < 0.0
+
+  update: (n) ->
+    @age()
+    @amount += n
+    @amount <= @capacity
+
+  # How many seconds in the future will the limit expire?
+  when: ->
+    age()
+    (@amount - @capacity) / (@capacity / @time)
+
+  is_limited: ->
+    @age()
+    @amount > @capacity
+
 # TODO: Different ICE servers.
 config = {
   iceServers: [
@@ -224,6 +237,8 @@ class Snowflake
       @badge = new Badge()
       @$badgem = @badge.elem
     @$badge.setAttribute('id', 'snowflake-badge') if (@$badge)
+    rateLimitBytes = 0
+    @rateLimit = new BucketRateLimit(rateLimitBytes * RATE_LIMIT_HISTORY, RATE_LIMIT_HISTORY);
 
   # TODO: User-supplied for now, but should fetch from facilitator later.
   setRelayAddr: (relayAddr) ->
@@ -302,7 +317,6 @@ class Snowflake
     @cease()
     @badge.die() if @badge
 
-
 ###
 Represents: client <-- webrtc --> snowflake <-- websocket --> relay
 ###
@@ -317,10 +331,8 @@ class ProxyPair
   flush_timeout_id: null
 
   constructor: (@clientAddr, @relayAddr, @rateLimit) ->
-    @c2rSchedule = []
-    @r2cSchedule = []
 
-  connectClient: ->
+  connectClient: =>
     @pc = new PeerConnection config, {
       optional: [
         { DtlsSrtpKeyAgreement: true }
@@ -342,7 +354,7 @@ class ProxyPair
       @prepareDataChannel channel
       @client = channel
 
-  prepareDataChannel: (channel) ->
+  prepareDataChannel: (channel) =>
     channel.onopen = =>
       log 'Data channel opened!'
       snowflake.state = MODE.WEBRTC_READY
@@ -358,12 +370,12 @@ class ProxyPair
     channel.onmessage = @onClientToRelayMessage
 
   # Assumes WebRTC datachannel is connected.
-  connectRelay: ->
+  connectRelay: =>
     log 'Connecting to relay...'
     @relay = makeWebsocket @relayAddr
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
-      log 'Relay ' + @relay.label + 'connected'
+      log '\nRelay ' + @relay.label + ' connected!'
     @relay.onclose = @onClose
     @relay.onerror = @onError
     @relay.onmessage = @onRelayToClientMessage
@@ -377,14 +389,14 @@ class ProxyPair
       bytes = new Uint8Array recv
       line = String.fromCharCode.apply(null, bytes)
     line = line.trim()
-    log 'WebRTC-->websocket data: ' + line
+    console.log 'WebRTC --> websocket data: ' + line
     @c2rSchedule.push recv
     @flush()
 
   # websocket --> WebRTC
   onRelayToClientMessage: (event) =>
     @r2cSchedule.push event.data
-    log 'websocket-->WebRTC data: ' + event.data
+    # log 'websocket-->WebRTC data: ' + event.data
     @flush()
 
   onClose: (event) =>
@@ -403,42 +415,43 @@ class ProxyPair
     @maybeCleanup()
 
   webrtcIsReady: -> null != @client && 'open' == @client.readyState
-  isOpen:   (ws) -> undefined != ws && WebSocket.OPEN   == ws.readyState
+  relayIsReady: -> (null != @relay) && (WebSocket.OPEN == @relay.readyState)
   isClosed: (ws) -> undefined == ws || WebSocket.CLOSED == ws.readyState
   close: ->
     @client.close() if !(isClosed @client)
     @relay.close() if !(isClosed @relay)
 
-  maybeCleanup: ->
-    if @running && @isClosed(client) && @isClosed @relay 
+  maybeCleanup: =>
+    if @running && @isClosed @relay
       @running = false
-      @cleanup_callback()
+      # TODO: Call external callback
       true
     false
 
   # Send as much data as the rate limit currently allows.
-  flush: ->
+  flush: =>
     clearTimeout @flush_timeout_id if @flush_timeout_id
     @flush_timeout_id = null
     busy = true
     checkChunks = =>
       busy = false
+      # WebRTC --> websocket
+      if @relayIsReady() && @relay.bufferedAmount < @MAX_BUFFER && @c2rSchedule.length > 0
+        chunk = @c2rSchedule.shift()
+        # @rate_limit.update chunk.length
+        @relay.send chunk
+        busy = true
       # websocket --> WebRTC
       if @webrtcIsReady() && @client.bufferedAmount < @MAX_BUFFER && @r2cSchedule.length > 0
         chunk = @r2cSchedule.shift()
         # this.rate_limit.update(chunk.length)
         @client.send chunk
         busy = true
-      # WebRTC --> websocket
-      if (@isOpen @relay) && (@relay.bufferedAmount < @MAX_BUFFER) && @c2rSchedule.length > 0
-        chunk = @c2rSchedule.shift()
-        # @rate_limit.update chunk.length
-        @relay.send chunk
-        busy = true
     checkChunks() while busy  # && !@rate_limit.is_limited()
 
-    # TODO: rate limiting stuff
-    # if @r2cSchedule.length > 0 || (@client) && @client.bufferedAmount > 0) || @c2rSchedule.length > 0 || (@isOpen(@relay) && @relay.bufferedAmount > 0)
+    # TODO: a more real rate limit
+    if @r2cSchedule.length > 0 || @c2rSchedule.length > 0 || (@relayIsReady() && @relay.bufferedAmount > 0) || (@webrtcIsReady() && @client.bufferedAmount > 0)
+      @flush_timeout_id = setTimeout @flush,  1000
       # @flush_timeout_id = setTimeout @flush, @rate_limit.when() * 1000
 
 #
@@ -472,9 +485,6 @@ Interface =
         Signalling.receive msg
       when MODE.WEBRTC_READY
         log 'No input expected - WebRTC connected.'
-        # data = msg
-        # log(data)
-        # channel.send(data)
       else
         log 'ERROR: ' + msg
     $input.value = ''
@@ -515,6 +525,7 @@ init = ->
     if 13 == e.keyCode  # enter
       $send.onclick()
   snowflake = new Snowflake()
+  window.snowflake = snowflake
   welcome()
 
 window.onload = init if window
