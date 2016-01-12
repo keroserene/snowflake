@@ -10,7 +10,7 @@ this must always act as the answerer.
 TODO(keroserene): Complete the websocket + webrtc ProxyPair
 ###
 
-if 'undefined' == typeof module || 'undefined' != typeof module.exports
+if 'undefined' != typeof module && 'undefined' != typeof module.exports
   console.log 'not in browser.'
 else
   window.PeerConnection = window.RTCPeerConnection ||
@@ -81,6 +81,22 @@ Params =
       result[name] = value if !(name in result)
     result
 
+  # Parse an address in the form "host:port". Returns an Object with keys "host"
+  # (String) and "port" (int). Returns null on error.
+  parseAddress: (spec) ->
+    m = null
+    # IPv6 syntax.
+    m = spec.match(/^\[([\0-9a-fA-F:.]+)\]:([0-9]+)$/) if !m
+    # IPv4 syntax.
+    m = spec.match(/^([0-9.]+):([0-9]+)$/) if !m
+    return null if !m
+
+    host = m[1]
+    port = parseInt(m[2], 10)
+    if isNaN(port) || port < 0 || port > 65535
+      return null
+    { host: host, port: port }
+
 # repr = (x) ->
   # return 'null' if null == x
   # return 'undefined' if 'undefined' == typeof x
@@ -150,11 +166,17 @@ class Snowflake
       @$badgem = @badge.elem
     @$badge.setAttribute("id", "snowflake-badge") if (@$badge)
 
+  # TODO: User-supplied for now, but should fetch from facilitator later.
   setRelayAddr: (relayAddr) ->
-    # TODO: User-supplied for now, but should fetch from facilitator later.
-    @relayAddr = relayAddr
+    addr = Params.parseAddress relayAddr
+    if !addr
+      log 'Invalid address spec. Try again.'
+      return false
+    @relayAddr = addr
+    log 'Using ' + relayAddr + ' as Relay.'
     log "Input offer from the snowflake client:"
     @beginWebRTC()
+    return true
 
   # Initialize WebRTC PeerConnection
   beginWebRTC: ->
@@ -186,8 +208,9 @@ class Snowflake
     channel.onopen = =>
       log "Data channel opened!"
       @state = MODE.WEBRTC_READY
-      # TODO: Prepare ProxyPair onw.
-      @beginProxy()
+      # This is the point when the WebRTC datachannel is done, so the next step
+      # is to establish websocket to the server.
+      @beginProxy(null, @relayAddr)
     channel.onclose = =>
       log "Data channel closed."
       @state = MODE.INIT;
@@ -311,10 +334,10 @@ buildUrl = (scheme, host, port, path, params) ->
 
 makeWebsocket = (addr) ->
   url = buildUrl 'ws', addr.host, addr.port, '/'
-  if have_websocket_binary_frames()
-    ws = new WebSocket url
-  else
-    ws = new WebSocket url 'base64'
+  # if have_websocket_binary_frames()
+  ws = new WebSocket url
+  # else
+    # ws = new WebSocket url 'base64'
   ###
   "User agents can use this as a hint for how to handle incoming binary data: if
   the attribute is set to 'blob', it is safe to spool it to disk, and if it is
@@ -370,7 +393,7 @@ class ProxyPair
   isOpen:   (ws) -> undefined != ws && WebSocket.OPEN   == ws.readyState
   isClosed: (ws) -> undefined == ws || WebSocket.CLOSED == ws.readyState
 
-  maybe_cleanup: ->
+  maybeCleanup: ->
     if @running && @isClosed(client) && @isClosed @relay 
       @running = false
       @cleanup_callback()
@@ -378,8 +401,8 @@ class ProxyPair
     false
 
   # Send as much data as the rate limit currently allows.
-  ###
   flush: ->
+  ###
     clearTimeout @flush_timeout_id if @flush_timeout_id
     @flush_timeout_id = null
     busy = true

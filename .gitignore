@@ -7,3 +7,4 @@ datadir/
 client/client
 server/server
 snowflake.log
+proxy/test
