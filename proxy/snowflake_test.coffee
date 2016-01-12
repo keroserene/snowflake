@@ -188,7 +188,14 @@ testParseQueryString = ->
     else
       fail test.qs, test.expected, actual
 
+testProxyPair = ->
+  announce 'testProxyPair'
+  addr = Params.parseAddress '0.0.0.0:35302'
+  console.log addr
+  pair = new ProxyPair(null, addr, 0)
+  pair.connectRelay()
 
 testBuildUrl()
 testParseCookieString()
 testParseQueryString()
+# testProxyPair()
