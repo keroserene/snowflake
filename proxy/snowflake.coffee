@@ -57,26 +57,11 @@ Query =
                  encodeURIComponent(param[1])
     parts.join '&'
 
-Params =
-  getBool: (query, param, defaultValue) ->
-    val = query[param]
-    return defaultValue if undefined == val
-    return true if 'true' == val || '1' == val || '' == val
-    return false if 'false' == val || '0' == val
-    return null
-
-  # Get an object value and parse it as a byte count. Example byte counts are
-  # "100" and "1.3m". Returns default_val if param is not a key. Return null on
-  # a parsing error.
-  getByteCount: (query, param, defaultValue) ->
-    spec = query[param]
-    return defaultValue if undefined == spec
-    parseByteCount spec
-
+Parse =
   # Parse a cookie data string (usually document.cookie). The return type is an
   # object mapping cookies names to values. Returns null on error.
   # http://www.w3.org/TR/DOM-Level-2-HTML/html.html#ID-8747038
-  parseCookie: (cookies) ->
+  cookie: (cookies) ->
     result = {}
     strings = []
     strings = cookies.split ';' if cookies
@@ -90,7 +75,7 @@ Params =
 
   # Parse an address in the form 'host:port'. Returns an Object with keys 'host'
   # (String) and 'port' (int). Returns null on error.
-  parseAddress: (spec) ->
+  address: (spec) ->
     m = null
     # IPv6 syntax.
     m = spec.match(/^\[([\0-9a-fA-F:.]+)\]:([0-9]+)$/) if !m
@@ -104,9 +89,9 @@ Params =
       return null
     { host: host, port: port }
 
-  # Parse a count of bytes. A suffix of "k", "m", or "g" (or uppercase)
+  # Parse a count of bytes. A suffix of 'k', 'm', or 'g' (or uppercase)
   # does what you would think. Returns null on error.
-  parseByteCount: (spec) ->
+  byteCount: (spec) ->
     UNITS = {
       k: 1024, m: 1024 * 1024, g: 1024 * 1024 * 1024
       K: 1024, M: 1024 * 1024, G: 1024 * 1024 * 1024
@@ -121,6 +106,30 @@ Params =
       units = UNITS[matches[2]]
       return null if null == units
     count * Number(units)
+
+Params =
+  getBool: (query, param, defaultValue) ->
+    val = query[param]
+    return defaultValue if undefined == val
+    return true if 'true' == val || '1' == val || '' == val
+    return false if 'false' == val || '0' == val
+    return null
+
+  # Get an object value and parse it as a byte count. Example byte counts are
+  # '100' and '1.3m'. Returns |defaultValue| if param is not a key. Return null on
+  # a parsing error.
+  getByteCount: (query, param, defaultValue) ->
+    spec = query[param]
+    return defaultValue if undefined == spec
+    Parse.byteCount spec
+
+  # Get an object value and parse it as an address spec. Returns |defaultValue|
+  # if param is not a key. Returns null on a parsing error.
+  getAddress: (query, param, defaultValue) ->
+    val = query[param]
+    return defaultValue if undefined == val
+    Parse.address val
+
 
 safe_repr = (s) -> SAFE_LOGGING ? '[scrubbed]' : JSON.stringify(s)
 
@@ -286,7 +295,7 @@ class Snowflake
 
   # TODO: User-supplied for now, but should fetch from facilitator later.
   setRelayAddr: (relayAddr) ->
-    addr = Params.parseAddress relayAddr
+    addr = Parse.address relayAddr
     if !addr
       log 'Invalid address spec.'
       return false

@@ -1,5 +1,3 @@
-# s = require './snowflake'
-
 window = {}
 
 VERBOSE = false
@@ -24,6 +22,10 @@ fail = (test, expected, actual) ->
     '  expected: ' + JSON.stringify(expected) +
     '  actual: ' + JSON.stringify(actual)
 
+# Stubs for browser functionality.
+class WebSocket
+  OPEN: 1
+  CLOSED: 0
 
 testBuildUrl = ->
   TESTS = [{
@@ -69,7 +71,6 @@ testBuildUrl = ->
       args: ['http', 'bog:u]s']
       expected: 'http://bog%3Au%5Ds'
     }]
-
   announce 'testBuildUrl'
   for test in TESTS
     actual = buildUrl.apply undefined, test.args
@@ -116,10 +117,9 @@ testParseCookieString = ->
       cs: 'a=\'\''
       expected: { a: '\'\'' }
     }]
-
   announce 'testParseCookieString'
   for test in TESTS
-    actual = Params.parseCookie test.cs
+    actual = Parse.cookie test.cs
     if JSON.stringify(actual) == JSON.stringify(test.expected)
       pass test.cs
     else
@@ -179,7 +179,6 @@ testParseQueryString = ->
       qs: 'a=b&&c=d'
       expected: { a: 'b', '':'', c: 'd' }
     }]
-
   announce 'testParseQueryString'
   for test in TESTS
     actual = Query.parse test.qs
@@ -188,14 +187,138 @@ testParseQueryString = ->
     else
       fail test.qs, test.expected, actual
 
+testGetParamBoolean = ->
+  TESTS = [{
+      qs: 'param=true'
+      expected: true
+    },{
+      qs: 'param',
+      expected: true
+    },{
+      qs: 'param='
+      expected: true
+    },{
+      qs: 'param=1'
+      expected: true
+    },{
+      qs: 'param=0'
+      expected: false
+    },{
+      qs: 'param=false'
+      expected: false
+    },{
+      qs: 'param=unexpected'
+      expected: null
+    },{
+      qs: 'pram=true'
+      expected: false
+    }]
+  announce 'testGetParamBoolean'
+  for test in TESTS
+    query = Query.parse test.qs
+    actual = Params.getBool(query, 'param', false)
+    if actual == test.expected
+      pass test.qs
+    else
+      fail test.qs, test.expected, actual
+
+testParseAddress = ->
+  TESTS = [{
+      spec: ''
+      expected: null
+    },{
+      spec: '3.3.3.3:4444'
+      expected: { host: '3.3.3.3', port: 4444 }
+    },{
+      spec: '3.3.3.3'
+      expected: null
+    },{
+      spec: '3.3.3.3:0x1111'
+      expected: null
+    },{
+      spec: '3.3.3.3:-4444'
+      expected: null
+    },{
+      spec: '3.3.3.3:65536'
+      expected: null
+    },{
+      spec: '[1:2::a:f]:4444'
+      expected: { host: '1:2::a:f', port: 4444 }
+    },{
+      spec: '[1:2::a:f]'
+      expected: null
+    },{
+      spec: '[1:2::a:f]:0x1111'
+      expected: null
+    },{
+      spec: '[1:2::a:f]:-4444'
+      expected: null
+    },{
+      spec: '[1:2::a:f]:65536'
+      expected: null
+    },{
+      spec: '[1:2::ffff:1.2.3.4]:4444'
+      expected: { host: '1:2::ffff:1.2.3.4', port: 4444 }
+    }]
+  announce 'testParseAddrSpec'
+  for test in TESTS
+    actual = Parse.address test.spec
+    if JSON.stringify(actual) == JSON.stringify(test.expected)
+      pass test.spec
+    else
+      fail test.spec, test.expected, actual
+
+testGetParamAddress = ->
+  DEFAULT = { host: '1.1.1.1', port: 2222 }
+  TESTS = [{
+      query: { }
+      expected: DEFAULT
+    },{
+      query: { addr: '3.3.3.3:4444' },
+      expected: { host: '3.3.3.3', port: 4444 }
+    },{
+      query: { x: '3.3.3.3:4444' }
+      expected: DEFAULT
+    },{
+      query: { addr: '---' }
+      expected: null
+    }]
+
+  announce 'testGetParamAddress'
+  for test in TESTS
+    actual = Params.getAddress test.query, 'addr', DEFAULT
+    if JSON.stringify(actual) == JSON.stringify(test.expected)
+      pass test.query
+    else
+      fail test.query, test.expected, actual
+
 testProxyPair = ->
   announce 'testProxyPair'
-  addr = Params.parseAddress '0.0.0.0:35302'
-  console.log addr
-  pair = new ProxyPair(null, addr, 0)
-  pair.connectRelay()
+  fakeRelay = Parse.address '0.0.0.0:12345'
+  rateLimit = new DummyRateLimit()
+  destination = []
+  fakeClient =
+    send: (d) -> destination.push d
+  pp = new ProxyPair(fakeClient, fakeRelay, rateLimit)
+  pp.connectRelay()
+  if null != pp.relay.onopen then pass 'relay.onopen'
+  else fail 'relay onopen must not be null.'
+  if null != pp.relay.onclose then pass 'relay.onclose'
+  else fail 'relay onclose must not be null.'
+  if null != pp.relay.onerror then pass 'relay.onerror'
+  else fail 'relay onerror must not be null.'
+  if null != pp.relay.onmessage then pass 'relay.onmessage'
+  else fail 'relay onmessage must not be null.'
+  # TODO: Test for flush
+  # pp.c2rSchedule.push { data: 'omg' }
+  # pp.flush()
+  # if destination == ['omg'] then pass 'flush'
+  # else fail 'flush', ['omg'], destination
 
 testBuildUrl()
 testParseCookieString()
 testParseQueryString()
-# testProxyPair()
+testGetParamBoolean()
+testParseAddress()
+testGetParamAddress()
+testProxyPair()
