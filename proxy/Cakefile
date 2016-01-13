@@ -2,11 +2,16 @@ fs = require 'fs'
 
 {exec} = require 'child_process'
 
-task 'test', 'snowflake unit tests', () ->
+task 'test', 'snowflake unit tests', ->
   testFile = 'test/snowflake.bundle.coffee'
   exec 'cat snowflake.coffee snowflake_test.coffee | cat > ' + testFile, (err, stdout, stderr) ->
     throw err if err
     console.log stdout + stderr
   exec 'coffee ' + testFile + ' -v', (err, stdout, stderr) ->
+    throw err if err
+    console.log stdout + stderr
+
+task 'build', 'build the snowflake proxy', ->
+  exec 'coffee -o build -c snowflake.coffee', (err, stdout, stderr) ->
     throw err if err
     console.log stdout + stderr
