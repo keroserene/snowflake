@@ -65,6 +65,13 @@ Params =
     return false if 'false' == val || '0' == val
     return null
 
+  # Get an object value and parse it as a byte count. Example byte counts are
+  # "100" and "1.3m". Returns default_val if param is not a key. Return null on
+  # a parsing error.
+  getByteCount: (query, param, defaultValue) ->
+    spec = query[param]
+    return defaultValue if undefined == spec
+    parseByteCount spec
 
   # Parse a cookie data string (usually document.cookie). The return type is an
   # object mapping cookies names to values. Returns null on error.
@@ -97,6 +104,24 @@ Params =
       return null
     { host: host, port: port }
 
+  # Parse a count of bytes. A suffix of "k", "m", or "g" (or uppercase)
+  # does what you would think. Returns null on error.
+  parseByteCount: (spec) ->
+    UNITS = {
+      k: 1024, m: 1024 * 1024, g: 1024 * 1024 * 1024
+      K: 1024, M: 1024 * 1024, G: 1024 * 1024 * 1024
+    }
+    matches = spec.match /^(\d+(?:\.\d*)?)(\w*)$/
+    return null if null == matches
+    count = Number matches[1]
+    return null if isNaN count
+    if '' == matches[2]
+      units = 1
+    else
+      units = UNITS[matches[2]]
+      return null if null == units
+    count * Number(units)
+
 safe_repr = (s) -> SAFE_LOGGING ? '[scrubbed]' : JSON.stringify(s)
 
 # HEADLESS is true if we are running not in a browser with a DOM.
@@ -105,6 +130,10 @@ if window && window.location
   query = Query.parse(window.location.search.substr(1))
   DEBUG = Params.getBool(query, 'debug', false)
 HEADLESS = 'undefined' == typeof(document)
+
+# Bytes per second. Set to undefined to disable limit.
+DEFAULT_RATE_LIMIT = DEFAULT_RATE_LIMIT || undefined
+MIN_RATE_LIMIT = 10 * 1024
 RATE_LIMIT_HISTORY = 5.0
 
 DEFAULT_PORTS =
@@ -165,14 +194,14 @@ makeWebsocket = (addr) ->
 
 class BucketRateLimit
   amount: 0.0
-  last_update: new Date()
+  lastUpdate: new Date()
 
   constructor: (@capacity, @time) ->
 
   age: ->
     now = new Date()
-    delta = (now - @last_update) / 1000.0
-    @last_update = now
+    delta = (now - @lastUpdate) / 1000.0
+    @lastUpdate = now
     @amount -= delta * @capacity / @time
     @amount = 0.0 if @amount < 0.0
 
@@ -186,9 +215,17 @@ class BucketRateLimit
     age()
     (@amount - @capacity) / (@capacity / @time)
 
-  is_limited: ->
+  isLimited: ->
     @age()
     @amount > @capacity
+
+# A rate limiter that never limits.
+class DummyRateLimit
+  constructor: (@capacity, @time) ->
+  update: (n) -> true
+  when: -> 0.0
+  isLimited: -> false
+
 
 # TODO: Different ICE servers.
 config = {
@@ -223,7 +260,7 @@ class Snowflake
   proxyPairs: []
   proxyPair: null
 
-  rateLimit: null  # TODO
+  rateLimit: null
   badge: null
   $badge: null
   state: MODE.INIT
@@ -237,8 +274,15 @@ class Snowflake
       @badge = new Badge()
       @$badgem = @badge.elem
     @$badge.setAttribute('id', 'snowflake-badge') if (@$badge)
-    rateLimitBytes = 0
-    @rateLimit = new BucketRateLimit(rateLimitBytes * RATE_LIMIT_HISTORY, RATE_LIMIT_HISTORY);
+
+    rateLimitBytes = undefined
+    if 'off' != query['ratelimit']
+      rateLimitBytes = Params.getByteCount(query, 'ratelimit', DEFAULT_RATE_LIMIT)
+    if undefined == rateLimitBytes
+      @rateLimit = new DummyRateLimit()
+    else
+      @rateLimit = new BucketRateLimit(rateLimitBytes * RATE_LIMIT_HISTORY,
+                                       RATE_LIMIT_HISTORY)
 
   # TODO: User-supplied for now, but should fetch from facilitator later.
   setRelayAddr: (relayAddr) ->
@@ -438,21 +482,19 @@ class ProxyPair
       # WebRTC --> websocket
       if @relayIsReady() && @relay.bufferedAmount < @MAX_BUFFER && @c2rSchedule.length > 0
         chunk = @c2rSchedule.shift()
-        # @rate_limit.update chunk.length
+        @rateLimit.update chunk.length
         @relay.send chunk
         busy = true
       # websocket --> WebRTC
       if @webrtcIsReady() && @client.bufferedAmount < @MAX_BUFFER && @r2cSchedule.length > 0
         chunk = @r2cSchedule.shift()
-        # this.rate_limit.update(chunk.length)
+        @rateLimit.update chunk.length
         @client.send chunk
         busy = true
-    checkChunks() while busy  # && !@rate_limit.is_limited()
+    checkChunks() while busy  && !@rateLimit.isLimited()
 
-    # TODO: a more real rate limit
     if @r2cSchedule.length > 0 || @c2rSchedule.length > 0 || (@relayIsReady() && @relay.bufferedAmount > 0) || (@webrtcIsReady() && @client.bufferedAmount > 0)
-      @flush_timeout_id = setTimeout @flush,  1000
-      # @flush_timeout_id = setTimeout @flush, @rate_limit.when() * 1000
+      @flush_timeout_id = setTimeout @flush,  @rateLimit.when() * 1000
 
 #
 ## -- DOM & Input Functionality -- ##
