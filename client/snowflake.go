@@ -50,13 +50,15 @@ type webRTCConn struct {
 	dc       *data.Channel
 	recvPipe *io.PipeReader
 }
+var webrtcRemote *webRTCConn
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
 	return c.recvPipe.Read(b)
 }
 
 func (c *webRTCConn) Write(b []byte) (int, error) {
-	log.Printf("webrtc Write %d %+q", len(b), string(b))
+	// log.Printf("webrtc Write %d %+q", len(b), string(b))
+	log.Printf("Write %d bytes --> WebRTC", len(b))
 	c.dc.Send(b)
 	return len(b), nil
 }
@@ -97,6 +99,7 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 		return nil, err
 	}
 
+	// Triggered by CreateDataChannel.
 	pc.OnNegotiationNeeded = func() {
 		log.Println("OnNegotiationNeeded")
 		go func() {
@@ -116,6 +119,7 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 		log.Printf("OnIceCandidate %s", candidate.Serialize())
 		// Allow candidates to accumulate until OnIceComplete.
 	}
+	// TODO: This may soon be deprecated, consider OnIceGatheringStateChange.
 	pc.OnIceComplete = func() {
 		log.Printf("OnIceComplete")
 		blobChan <- pc.LocalDescription().Serialize()
@@ -142,7 +146,8 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 		close(openChan)
 	}
 	dc.OnMessage = func(msg []byte) {
-		log.Printf("OnMessage channel %d %+q", len(msg), msg)
+		// log.Printf("OnMessage channel %d %+q", len(msg), msg)
+		log.Printf("OnMessage <--- %d bytes", len(msg))
 		n, err := pw.Write(msg)
 		if err != nil {
 			pw.CloseWithError(err)
@@ -158,7 +163,7 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 		return nil, err
 	case offer := <-blobChan:
 		log.Printf("----------------")
-		fmt.Fprintln(logFile, offer)
+		fmt.Fprintln(logFile, "\n" + offer + "\n")
 		log.Printf("----------------")
 	}
 
@@ -187,6 +192,21 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 	return &webRTCConn{pc: pc, dc: dc, recvPipe: pr}, nil
 }
 
+func endWebRTC() {
+	log.Printf("WebRTC: interruped")
+	if nil == webrtcRemote {
+		return
+	}
+	if nil != webrtcRemote.dc {
+		log.Printf("WebRTC: closing DataChannel")
+		webrtcRemote.dc.Close()
+	}
+	if nil != webrtcRemote.pc {
+		log.Printf("WebRTC: closing PeerConnection")
+		webrtcRemote.pc.Close()
+	}
+}
+
 func handler(conn *pt.SocksConn) error {
 	handlerChan <- 1
 	defer func() {
@@ -201,6 +221,7 @@ func handler(conn *pt.SocksConn) error {
 		return err
 	}
 	defer remote.Close()
+	webrtcRemote = remote
 
 	err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
@@ -325,7 +346,8 @@ func main() {
 		ln.Close()
 	}
 
-	if sig == syscall.SIGTERM {
+	if syscall.SIGTERM == sig || syscall.SIGINT == sig {
+		endWebRTC()
 		return
 	}
 
