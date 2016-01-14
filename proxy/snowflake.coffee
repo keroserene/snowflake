@@ -148,6 +148,12 @@ RATE_LIMIT_HISTORY = 5.0
 DEFAULT_PORTS =
   http:  80
   https: 443
+
+# DOM elements.
+$msglog = null
+$send = null
+$input = null
+
 # Build an escaped URL string from unescaped components. Only scheme and host
 # are required. See RFC 3986, section 3.
 buildUrl = (scheme, host, port, path, params) ->
@@ -243,10 +249,6 @@ config = {
   ]
 }
 
-# DOM elements
-$chatlog = null
-$send = null
-$input = null
 
 # TODO: Implement
 class Badge
@@ -411,13 +413,14 @@ class ProxyPair
     channel.onopen = =>
       log 'Data channel opened!'
       snowflake.state = MODE.WEBRTC_READY
+      $msglog.className = 'active';
       # This is the point when the WebRTC datachannel is done, so the next step
       # is to establish websocket to the server.
       @connectRelay()
     channel.onclose = =>
       log 'Data channel closed.'
-      @state = MODE.INIT;
-      $chatlog.className = ''
+      snowflake.state = MODE.INIT;
+      $msglog.className = ''
     channel.onerror = =>
       log 'Data channel error!'
     channel.onmessage = @onClientToRelayMessage
@@ -471,11 +474,12 @@ class ProxyPair
   relayIsReady: -> (null != @relay) && (WebSocket.OPEN == @relay.readyState)
   isClosed: (ws) -> undefined == ws || WebSocket.CLOSED == ws.readyState
   close: ->
-    @client.close() if !(isClosed @client)
-    @relay.close() if !(isClosed @relay)
+    @client.close() if @webrtcIsReady()
+    @relay.close() if @relayIsReady()
+    relay = null
 
   maybeCleanup: =>
-    if @running && @isClosed @relay
+    if @running
       @running = false
       # TODO: Call external callback
       true
@@ -518,9 +522,9 @@ welcome = ->
 log = (msg) ->
   console.log msg
   # Scroll to latest
-  if $chatlog
-    $chatlog.value += msg + '\n'
-    $chatlog.scrollTop = $chatlog.scrollHeight
+  if $msglog
+    $msglog.value += msg + '\n'
+    $msglog.scrollTop = $msglog.scrollHeight
 
 Interface =
   # Local input from keyboard into message window.
@@ -564,8 +568,8 @@ Signalling =
 
 init = ->
 
-  $chatlog = document.getElementById('chatlog')
-  $chatlog.value = ''
+  $msglog = document.getElementById('msglog')
+  $msglog.value = ''
 
   $send = document.getElementById('send')
   $send.onclick = Interface.acceptInput

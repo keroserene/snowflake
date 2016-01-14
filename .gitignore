@@ -8,3 +8,5 @@ client/client
 server/server
 snowflake.log
 proxy/test
+proxy/build
+ignore/

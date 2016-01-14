@@ -62,7 +62,8 @@ snowflake to use a default relay.
 
 Look for the offer in terminal C; copy and paste it into the browser.
 Copy and paste the answer generated in the browser back to terminal B.
-At this point the tor client should bootstrap to 100%.
+Once WebRTC successfully connects, the browser terminal should turn green.
+Shortly after, the tor client should bootstrap to 100%.
 
 
 ### More
