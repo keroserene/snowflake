@@ -103,8 +103,8 @@ Params =
     return null
 
   # Get an object value and parse it as a byte count. Example byte counts are
-  # '100' and '1.3m'. Returns |defaultValue| if param is not a key. Return null on
-  # a parsing error.
+  # '100' and '1.3m'. Returns |defaultValue| if param is not a key. Return null
+  # on a parsing error.
   getByteCount: (query, param, defaultValue) ->
     spec = query[param]
     return defaultValue if undefined == spec

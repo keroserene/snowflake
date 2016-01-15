@@ -1,5 +1,5 @@
 fs = require 'fs'
-{exec} = require 'child_process'
+{spawn, exec} = require 'child_process'
 
 # All coffeescript files required.
 FILES = [
@@ -9,6 +9,10 @@ FILES = [
   'websocket.coffee'
   'snowflake.coffee'
 ]
+FILES_TEST = [
+  'snowflake_test.coffee'
+]
+FILES_ALL = FILES.concat FILES_TEST
 OUTFILE = 'build/snowflake.coffee'
 STATIC = 'static'
 
@@ -34,6 +38,12 @@ task 'build', 'build the snowflake proxy', ->
   copyStaticFiles()
   compileCoffee()
   console.log 'Snowflake prepared.'
+
+task 'lint', 'ensure idiomatic coffeescript', ->
+  spawn 'coffeelint', FILES_ALL, {
+    file: 'coffeelint.json'
+    stdio: 'inherit'
+  }
 
 task 'clean', 'remove all built files', ->
   exec 'rm -r build'

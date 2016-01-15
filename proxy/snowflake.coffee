@@ -69,7 +69,8 @@ class Snowflake
 
     rateLimitBytes = undefined
     if 'off' != query['ratelimit']
-      rateLimitBytes = Params.getByteCount(query, 'ratelimit', DEFAULT_RATE_LIMIT)
+      rateLimitBytes = Params.getByteCount(query, 'ratelimit',
+                                           DEFAULT_RATE_LIMIT)
     if undefined == rateLimitBytes
       @rateLimit = new DummyRateLimit()
     else
@@ -125,7 +126,7 @@ class Snowflake
     params.push ['transport', 'webrtc']
 
   makeProxyPair: (relay) ->
-    pair = new ProxyPair(null, relay, @rateLimit);
+    pair = new ProxyPair null, relay, @rateLimit
     @proxyPairs.push pair
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.
@@ -224,7 +225,7 @@ init = ->
 
   $input = document.getElementById('input')
   $input.focus()
-  $input.onkeydown = (e) => $send.onclick() if 13 == e.keyCode  # enter
+  $input.onkeydown = (e) -> $send.onclick() if 13 == e.keyCode  # enter
 
   snowflake = new Snowflake()
   window.snowflake = snowflake

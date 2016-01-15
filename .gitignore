@@ -9,4 +9,5 @@ server/server
 snowflake.log
 proxy/test
 proxy/build
+proxy/node_modules
 ignore/

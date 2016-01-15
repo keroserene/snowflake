@@ -1,19 +1,17 @@
 window = {}
 
 VERBOSE = false
-if process.argv.indexOf('-v') >= 0
-    VERBOSE = true
+VERBOSE = true if process.argv.indexOf('-v') >= 0
+
 numTests = 0
 numFailed = 0
 
 announce = (testName) ->
-  if VERBOSE
-    console.log '\n --- ' + testName + ' ---'
+  console.log '\n --- ' + testName + ' ---' if VERBOSE
 
 pass = (test) ->
-  numTests++;
-  if VERBOSE
-    console.log 'PASS ' + test
+  numTests++
+  console.log 'PASS ' + test if VERBOSE
 
 fail = (test, expected, actual) ->
   numTests++
@@ -88,10 +86,10 @@ http://www.ietf.org/rfc/rfc2965.txt for the grammar.
 testParseCookieString = ->
   TESTS = [{
       cs: ''
-      expected: { }
+      expected: {}
     },{
       cs: 'a=b'
-      expected: { a: 'b'}
+      expected: { a: 'b' }
     },{
       cs: 'a=b=c'
       expected: { a: 'b=c' }
@@ -103,7 +101,7 @@ testParseCookieString = ->
       expected: { a: 'b', c: 'd' }
     },{
       cs: 'a= b',
-      expected: {a: 'b' }
+      expected: { a: 'b' }
     },{
       cs: 'a='
       expected: { a: '' }
@@ -271,7 +269,7 @@ testParseAddress = ->
 testGetParamAddress = ->
   DEFAULT = { host: '1.1.1.1', port: 2222 }
   TESTS = [{
-      query: { }
+      query: {}
       expected: DEFAULT
     },{
       query: { addr: '3.3.3.3:4444' },

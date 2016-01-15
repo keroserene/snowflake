@@ -24,7 +24,7 @@ class ProxyPair
       optional: [
         { DtlsSrtpKeyAgreement: true }
         { RtpDataChannels: false }
-      ]}
+      ] }
     @pc.onicecandidate = (evt) =>
       # Browser sends a null candidate once the ICE gathering completes.
       # In this case, it makes sense to send one copy-paste blob.
@@ -35,7 +35,7 @@ class ProxyPair
         Signalling.send @pc.localDescription
     # OnDataChannel triggered remotely from the client when connection succeeds.
     @pc.ondatachannel = (dc) =>
-      console.log dc;
+      console.log dc
       channel = dc.channel
       log 'Data Channel established...'
       @prepareDataChannel channel
@@ -49,11 +49,11 @@ class ProxyPair
       # This is the point when the WebRTC datachannel is done, so the next step
       # is to establish websocket to the server.
       @connectRelay()
-    channel.onclose = =>
+    channel.onclose = ->
       log 'Data channel closed.'
-      snowflake.state = MODE.INIT;
+      snowflake.state = MODE.INIT
       $msglog.className = ''
-    channel.onerror = =>
+    channel.onerror = ->
       log 'Data channel error!'
     channel.onmessage = @onClientToRelayMessage
 
@@ -124,19 +124,28 @@ class ProxyPair
     busy = true
     checkChunks = =>
       busy = false
+
       # WebRTC --> websocket
-      if @relayIsReady() && @relay.bufferedAmount < @MAX_BUFFER && @c2rSchedule.length > 0
+      if @relayIsReady() &&
+         @relay.bufferedAmount < @MAX_BUFFER &&
+         @c2rSchedule.length > 0
         chunk = @c2rSchedule.shift()
         @rateLimit.update chunk.length
         @relay.send chunk
         busy = true
+
       # websocket --> WebRTC
-      if @webrtcIsReady() && @client.bufferedAmount < @MAX_BUFFER && @r2cSchedule.length > 0
+      if @webrtcIsReady() &&
+         @client.bufferedAmount < @MAX_BUFFER &&
+         @r2cSchedule.length > 0
         chunk = @r2cSchedule.shift()
         @rateLimit.update chunk.length
         @client.send chunk
         busy = true
+
     checkChunks() while busy  && !@rateLimit.isLimited()
 
-    if @r2cSchedule.length > 0 || @c2rSchedule.length > 0 || (@relayIsReady() && @relay.bufferedAmount > 0) || (@webrtcIsReady() && @client.bufferedAmount > 0)
+    if @r2cSchedule.length > 0 || @c2rSchedule.length > 0 ||
+       (@relayIsReady()  && @relay.bufferedAmount > 0) ||
+       (@webrtcIsReady() && @client.bufferedAmount > 0)
       @flush_timeout_id = setTimeout @flush,  @rateLimit.when() * 1000
