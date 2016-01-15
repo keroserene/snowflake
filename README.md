@@ -14,6 +14,13 @@ There are currently two ways to try this:
 - Directly to the go-webrtc server plugin.
 - Through a browser snowflake proxy.
 
+Using the server plugin requires copy and pasting between 6 terminals.
+Using the browser proxy (which will soon be the only way) requires copy and
+pasting between 3 terminals and a browser tab.
+Once a signalling facilitator is implemented 
+([issue #1](https://github.com/keroserene/snowflake/issues/1))
+this will become much simpler to use.
+
 Setting up the client is the same in both cases.
 Open up three terminals for the **client:**
 
@@ -22,56 +29,57 @@ cd client/
 go build
 ```
 
-A: tor -f torrc SOCKSPort auto
+A: `tor -f torrc SOCKSPort auto`
 
-B: cat > signal
+B: `cat > signal`
 
-C: tail -F snowflake.log
+C: `tail -F snowflake.log`
 
-Now, to connect directly to a server plugin:
+##### -- Via WebRTC Server --
 
-Open up another three terminals for the **server:**
+To connect directly to a server plugin,
+open up another three terminals for the **server:**
 
 ```
 cd server/
 go build
 ```
 
-D: tor -f torrc
+D: `tor -f torrc`
 
-E: cat > signal
+E: `cat > signal`
 
-F: tail -F snowflake.log
+F: `tail -F snowflake.log`
 
-Look for the offer in terminal C; copy and paste it into terminal E.
-Copy and paste the answer in terminal F to terminal B.
-At this point the tor client should bootstrap to 100%.
+- Look for the offer in terminal C; copy and paste it into terminal E.
+- Copy and paste the answer in terminal F to terminal B.
+- At this point the tor client should bootstrap to 100%.
 
-#### Snowflake proxy
+##### -- Via Browser Proxy --
 
-Otherwise, to connect through the WebRTC proxy in the browser, build with:
+To connect through the WebRTC browser proxy, first make sure
+coffeescript is installed. Then, build with:
 ```
 cd proxy/
 cake build
 ```
 
-Then start a local http server in the `proxy/build/` however you wish
+Then start a local http server in the `proxy/build/` in any way you like.
 For instance:
 
-'''
+```
 cd build/
 python -m http.server
-'''
+```
 
 Open a browser tab to `0.0.0.0:8000/snowflake.html`.
-The page will ask you to input a relay.
-Input your desired relay address, or input nothing/gibberish which will cause
-snowflake to use a default relay.
+Input your desired relay address, or nothing/gibberish, which will cause
+snowflake to just use a default relay.
 
-Look for the offer in terminal C; copy and paste it into the browser.
-Copy and paste the answer generated in the browser back to terminal B.
-Once WebRTC successfully connects, the browser terminal should turn green.
-Shortly after, the tor client should bootstrap to 100%.
+- Look for the offer in terminal C; copy and paste it into the browser.
+- Copy and paste the answer generated in the browser back to terminal B.
+- Once WebRTC successfully connects, the browser terminal should turn green.
+  Shortly after, the tor client should bootstrap to 100%.
 
 
 ### More

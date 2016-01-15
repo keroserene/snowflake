@@ -50,6 +50,7 @@ type webRTCConn struct {
 	dc       *data.Channel
 	recvPipe *io.PipeReader
 }
+
 var webrtcRemote *webRTCConn
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
@@ -163,7 +164,7 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 		return nil, err
 	case offer := <-blobChan:
 		log.Printf("----------------")
-		fmt.Fprintln(logFile, "\n" + offer + "\n")
+		fmt.Fprintln(logFile, "\n"+offer+"\n")
 		log.Printf("----------------")
 	}
 
