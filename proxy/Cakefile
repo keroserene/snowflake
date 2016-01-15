@@ -1,17 +1,44 @@
 fs = require 'fs'
-
 {exec} = require 'child_process'
+
+# All coffeescript files required.
+FILES = [
+  'shims.coffee'
+  'util.coffee'
+  'proxypair.coffee'
+  'websocket.coffee'
+  'snowflake.coffee'
+]
+OUTFILE = 'build/snowflake.coffee'
+STATIC = 'static'
 
 task 'test', 'snowflake unit tests', ->
   testFile = 'test/snowflake.bundle.coffee'
-  exec 'cat snowflake.coffee snowflake_test.coffee | cat > ' + testFile, (err, stdout, stderr) ->
+  exec 'cat ' + FILES.join(' ') + ' snowflake_test.coffee | cat > ' +
+      testFile, (err, stdout, stderr) ->
     throw err if err
     console.log stdout + stderr
   exec 'coffee ' + testFile + ' -v', (err, stdout, stderr) ->
     throw err if err
     console.log stdout + stderr
 
-task 'build', 'build the snowflake proxy', ->
-  exec 'coffee -o build -c snowflake.coffee', (err, stdout, stderr) ->
+concatCoffeeFiles = -> exec 'cat ' + FILES.join(' ') + ' | cat > ' + OUTFILE
+
+copyStaticFiles = -> exec 'cp ' + STATIC + '/* build/'
+
+compileCoffee = ->
+  exec 'coffee -o build -c build/snowflake.coffee', (err, stdout, stderr) ->
     throw err if err
-    console.log stdout + stderr
+
+task 'build:concat', 'concatenate coffeescript files.', concatCoffeeFiles
+
+task 'build', 'build the snowflake proxy', ->
+  exec 'mkdir build'
+  concatCoffeeFiles()
+  copyStaticFiles()
+  compileCoffee()
+  console.log 'Snowflake prepared.'
+
+task 'clean', 'remove all built files', ->
+  exec 'rm -r build'
+  exec 'rm -r test'

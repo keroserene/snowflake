@@ -49,12 +49,20 @@ At this point the tor client should bootstrap to 100%.
 
 #### Snowflake proxy
 
-Otherwise, to connect through the WebRTC proxy in the browser, start a local
-http server in the `proxy/` directory however you wish. For instance:
+Otherwise, to connect through the WebRTC proxy in the browser, build with:
 ```
 cd proxy/
-python -m http.server
+cake build
 ```
+
+Then start a local http server in the `proxy/build/` however you wish
+For instance:
+
+'''
+cd build/
+python -m http.server
+'''
+
 Open a browser tab to `0.0.0.0:8000/snowflake.html`.
 The page will ask you to input a relay.
 Input your desired relay address, or input nothing/gibberish which will cause
