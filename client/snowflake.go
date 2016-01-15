@@ -1,3 +1,6 @@
+// Client transport plugin for the snowflake pluggable transport.
+//
+// TODO: Use meek for signalling.
 package main
 
 import (
@@ -16,6 +19,13 @@ import (
 	"github.com/keroserene/go-webrtc/data"
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
+)
+
+// Hard-coded meek signalling channel for now.
+// TODO: expose as param
+const (
+	MEEK_URL     = "not implemented yet"
+	FRONT_DOMAIN = "www.google.com"
 )
 
 var ptInfo pt.ClientInfo
@@ -89,8 +99,10 @@ func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
 	return fmt.Errorf("SetWriteDeadline not implemented")
 }
 
-func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
-	blobChan := make(chan string)
+func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
+	*webRTCConn, error) {
+
+	offerChan := make(chan *webrtc.SessionDescription)
 	errChan := make(chan error)
 	openChan := make(chan bool)
 
@@ -123,7 +135,7 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 	// TODO: This may soon be deprecated, consider OnIceGatheringStateChange.
 	pc.OnIceComplete = func() {
 		log.Printf("OnIceComplete")
-		blobChan <- pc.LocalDescription().Serialize()
+		offerChan <- pc.LocalDescription()
 	}
 	pc.OnDataChannel = func(channel *data.Channel) {
 		log.Println("OnDataChannel")
@@ -162,10 +174,22 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 	case err := <-errChan:
 		pc.Close()
 		return nil, err
-	case offer := <-blobChan:
+	case offer := <-offerChan:
 		log.Printf("----------------")
-		fmt.Fprintln(logFile, "\n"+offer+"\n")
+		fmt.Fprintln(logFile, "\n"+offer.Serialize()+"\n")
 		log.Printf("----------------")
+		go func() {
+			log.Printf("Sending offer via meek...")
+			answer, err := meek.Negotiate(pc.LocalDescription())
+			if nil != err {
+				log.Printf("Signalling error: %s", err)
+			}
+			if nil == answer {
+				log.Printf("No answer received from meek channel.")
+			} else {
+				signalChan <- answer
+			}
+		}()
 	}
 
 	log.Printf("waiting for answer")
@@ -184,6 +208,7 @@ func dialWebRTC(config *webrtc.Configuration) (*webRTCConn, error) {
 
 	// Wait until data channel is open; otherwise for example sends may get
 	// lost.
+	// TODO: Buffering *should* work though.
 	_, ok = <-openChan
 	if !ok {
 		pc.Close()
@@ -215,8 +240,16 @@ func handler(conn *pt.SocksConn) error {
 	}()
 	defer conn.Close()
 
-	config := webrtc.NewConfiguration(webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
-	remote, err := dialWebRTC(config)
+	// go func() {
+	// }()
+	// Prepare meek signalling channel.
+	info := NewRequestInfo(MEEK_URL, FRONT_DOMAIN)
+	meek := NewMeekChannel(info)
+
+	config := webrtc.NewConfiguration(
+		webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
+	// remote, err := dialWebRTC(config, nil)
+	remote, err := dialWebRTC(config, meek)
 	if err != nil {
 		conn.Reject()
 		return err
