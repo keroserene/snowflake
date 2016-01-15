@@ -12,16 +12,6 @@ FILES = [
 OUTFILE = 'build/snowflake.coffee'
 STATIC = 'static'
 
-task 'test', 'snowflake unit tests', ->
-  testFile = 'test/snowflake.bundle.coffee'
-  exec 'cat ' + FILES.join(' ') + ' snowflake_test.coffee | cat > ' +
-      testFile, (err, stdout, stderr) ->
-    throw err if err
-    console.log stdout + stderr
-  exec 'coffee ' + testFile + ' -v', (err, stdout, stderr) ->
-    throw err if err
-    console.log stdout + stderr
-
 concatCoffeeFiles = -> exec 'cat ' + FILES.join(' ') + ' | cat > ' + OUTFILE
 
 copyStaticFiles = -> exec 'cp ' + STATIC + '/* build/'
@@ -30,10 +20,16 @@ compileCoffee = ->
   exec 'coffee -o build -c build/snowflake.coffee', (err, stdout, stderr) ->
     throw err if err
 
-task 'build:concat', 'concatenate coffeescript files.', concatCoffeeFiles
+task 'test', 'snowflake unit tests', ->
+  exec 'mkdir -p test'
+  testFile = 'test/snowflake.bundle.coffee'
+  exec 'cat ' + FILES.join(' ') + ' snowflake_test.coffee | cat > ' + testFile
+  exec 'coffee ' + testFile + ' -v', (err, stdout, stderr) ->
+    throw err if err
+    console.log stdout + stderr
 
 task 'build', 'build the snowflake proxy', ->
-  exec 'mkdir build'
+  exec 'mkdir -p build'
   concatCoffeeFiles()
   copyStaticFiles()
   compileCoffee()
