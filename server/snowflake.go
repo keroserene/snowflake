@@ -50,7 +50,8 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 }
 
 func (c *webRTCConn) Write(b []byte) (int, error) {
-	log.Printf("webrtc Write %d %+q", len(b), string(b))
+	// log.Printf("webrtc Write %d %+q", len(b), string(b))
+	log.Printf("Write %d bytes --> WebRTC", len(b))
 	c.dc.Send(b)
 	return len(b), nil
 }
@@ -104,7 +105,8 @@ func datachannelHandler(conn *webRTCConn) {
 		pw.Close()
 	}
 	dc.OnMessage = func(msg []byte) {
-		log.Printf("OnMessage channel %d %+q", len(msg), msg)
+		// log.Printf("OnMessage channel %d %+q", len(msg), msg)
+		log.Printf("OnMessage <--- %d bytes", len(msg))
 		n, err := pw.Write(msg)
 		if err != nil {
 			pw.CloseWithError(err)
