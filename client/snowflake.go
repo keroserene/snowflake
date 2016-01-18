@@ -25,8 +25,9 @@ import (
 // Hard-coded meek signalling channel for now.
 // TODO: expose as param
 const (
-	MEEK_URL     = "not implemented yet"
-	FRONT_DOMAIN = "www.google.com"
+	MEEK_URL     = "snowflake-reg.appspot.com"
+	FRONT_DOMAIN = "https://www.google.com"
+	// FRONT_DOMAIN = "https://www.google.com"
 )
 
 var ptInfo pt.ClientInfo
@@ -187,7 +188,11 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 			// if nil == answer {
 			// 	log.Printf("No answer received from meek channel.")
 			// } else {
-			// 	signalChan <- answer
+			// 	// TODO: Once this is correct, uncomment and remove copy-paste
+			// 	// signalling.
+			// 	log.Println("Recieved answer from Meek channel: \n",
+			// 		answer.Serialize())
+			// 	// signalChan <- answer
 			// }
 			if offerURL != "" {
 				answer, err := sendOfferHTTP(offerURL, offer)
@@ -207,7 +212,7 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 		pc.Close()
 		return nil, fmt.Errorf("no answer received")
 	}
-	log.Printf("got answer %s", answer.Serialize())
+	log.Printf("Received Answer: %s", answer.Serialize())
 	err = pc.SetRemoteDescription(answer)
 	if err != nil {
 		pc.Close()

@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -31,8 +32,9 @@ func NewRequestInfo(meekUrl string, front string) *RequestInfo {
 		return nil
 	}
 	info.URL = requestUrl
-	info.Host = info.URL.Host
-	info.URL.Host = front
+	info.Host = front
+	// info.URL.Host = front
+	// info.Host = info.URL.Host
 	return info
 }
 
@@ -57,13 +59,13 @@ func NewMeekChannel(info *RequestInfo) *MeekChannel {
 
 // Do an HTTP roundtrip using the payload data in buf.
 func (m *MeekChannel) roundTripHTTP(buf []byte) (*http.Response, error) {
-	req, err := http.NewRequest("POST", m.info.URL.String(), bytes.NewReader(buf))
+	// Compose an innocent looking request.
+	req, err := http.NewRequest("POST", m.info.Host+"/reg/123", bytes.NewReader(buf))
 	if nil != err {
 		return nil, err
 	}
-	if "" != m.info.Host {
-		req.Host = m.info.Host
-	}
+	// Set actually desired target host.
+	req.Host = m.info.URL.String()
 	// req.Header.Set("X-Session-Id", m.info.SessionID)
 	return m.transport.RoundTrip(req)
 }
@@ -78,7 +80,12 @@ func (m *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 		return nil, err
 	}
 	defer resp.Body.Close()
+	log.Println("MeekChannel Response: ", resp)
 	body, err := ioutil.ReadAll(resp.Body)
+	if nil != err {
+		return nil, err
+	}
+	log.Println("MeekChannel Body: ", string(body))
 	answer := webrtc.DeserializeSessionDescription(string(body))
 	return answer, nil
 }
