@@ -223,7 +223,7 @@ func main() {
 
 	ptInfo, err = pt.ServerSetup(nil)
 	if err != nil {
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
 	webRTCConfig := webrtc.NewConfiguration(webrtc.OptionIceServer("stun:stun.l.google.com:19302"))

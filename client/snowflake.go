@@ -336,7 +336,7 @@ func main() {
 
 	ptInfo, err = pt.ClientSetup(nil)
 	if err != nil {
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
 	if ptInfo.ProxyURL != nil {
