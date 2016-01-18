@@ -104,7 +104,7 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 
 	offerChan := make(chan *webrtc.SessionDescription)
 	errChan := make(chan error)
-	openChan := make(chan bool)
+	openChan := make(chan struct{})
 
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
@@ -151,7 +151,7 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 	}
 	dc.OnOpen = func() {
 		log.Println("OnOpen channel")
-		openChan <- true
+		openChan <- struct{}{}
 	}
 	dc.OnClose = func() {
 		log.Println("OnClose channel")
