@@ -100,12 +100,12 @@ func datachannelHandler(conn *webRTCConn) {
 }
 
 // Create a PeerConnection from an SDP offer. Blocks until the gathering of ICE
-// candidates is complete and and answer is available in LocalDescription.
+// candidates is complete and the answer is available in LocalDescription.
 // Installs an OnDataChannel callback that creates a webRTCConn and passes it to
 // datachannelHandler.
 func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
 	errChan := make(chan error)
-	answerChan := make(chan *webrtc.SessionDescription)
+	answerChan := make(chan struct{})
 
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
@@ -115,7 +115,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 		panic("OnNegotiationNeeded")
 	}
 	pc.OnIceComplete = func() {
-		answerChan <- pc.LocalDescription()
+		answerChan <- struct{}{}
 	}
 	pc.OnDataChannel = func(dc *data.Channel) {
 		log.Println("OnDataChannel")
@@ -170,7 +170,11 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	case err = <-errChan:
 		pc.Close()
 		return nil, err
-	case <-answerChan:
+	case _, ok := <-answerChan:
+		if !ok {
+			pc.Close()
+			return nil, fmt.Errorf("Failed gathering ICE candidates.")
+		}
 	}
 
 	return pc, nil
