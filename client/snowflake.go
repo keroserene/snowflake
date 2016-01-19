@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -30,6 +31,7 @@ const (
 
 var ptInfo pt.ClientInfo
 var logFile *os.File
+var offerURL string
 
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
@@ -177,15 +179,23 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 		fmt.Fprintln(logFile, "\n"+offer.Serialize()+"\n")
 		log.Printf("----------------")
 		go func() {
-			log.Printf("Sending offer via meek...")
-			answer, err := meek.Negotiate(pc.LocalDescription())
-			if nil != err {
-				log.Printf("Signalling error: %s", err)
-			}
-			if nil == answer {
-				log.Printf("No answer received from meek channel.")
-			} else {
-				signalChan <- answer
+			// log.Printf("Sending offer via meek...")
+			// answer, err := meek.Negotiate(pc.LocalDescription())
+			// if nil != err {
+			// 	log.Printf("Signalling error: %s", err)
+			// }
+			// if nil == answer {
+			// 	log.Printf("No answer received from meek channel.")
+			// } else {
+			// 	signalChan <- answer
+			// }
+			if offerURL != "" {
+				answer, err := sendOfferHTTP(offerURL, offer)
+				if err != nil {
+					log.Println(err)
+				} else {
+					signalChan <- answer
+				}
 			}
 		}()
 	}
@@ -306,6 +316,9 @@ func readSignalingMessages(f *os.File) {
 
 func main() {
 	var err error
+
+	flag.StringVar(&offerURL, "url", "", "do signaling through URL")
+	flag.Parse()
 
 	logFile, err = os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {

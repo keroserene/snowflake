@@ -82,3 +82,19 @@ func (m *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 	answer := webrtc.DeserializeSessionDescription(string(body))
 	return answer, nil
 }
+
+// Simple interim non-fronting HTTP POST negotiation, to be removed when more
+// general fronting is present.
+func sendOfferHTTP(url string, offer *webrtc.SessionDescription) (*webrtc.SessionDescription, error) {
+	resp, err := http.Post(url, "", bytes.NewBuffer([]byte(offer.Serialize())))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	answer := webrtc.DeserializeSessionDescription(string(body))
+	return answer, nil
+}
