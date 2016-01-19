@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -214,6 +215,10 @@ func receiveSignalsFIFO(filename string, config *webrtc.Configuration) error {
 
 func main() {
 	var err error
+	var httpAddr string
+
+	flag.StringVar(&httpAddr, "http", "", "listen for HTTP signaling")
+	flag.Parse()
 
 	logFile, err = os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
@@ -239,6 +244,16 @@ func main() {
 			log.Printf("receiveSignalsFIFO: %s", err)
 		}
 	}()
+
+	// Start HTTP-based signaling receiver.
+	if httpAddr != "" {
+		go func() {
+			err := receiveSignalsHTTP(httpAddr, webRTCConfig)
+			if err != nil {
+				log.Printf("receiveSignalsHTTP: %s", err)
+			}
+		}()
+	}
 
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		switch bindaddr.MethodName {
