@@ -31,8 +31,6 @@ const (
 var ptInfo pt.ClientInfo
 var logFile *os.File
 
-var notImplemented = fmt.Errorf("not implemented")
-
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
 var handlerChan = make(chan int)
