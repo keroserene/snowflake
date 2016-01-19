@@ -14,20 +14,45 @@ There are currently two ways to try this:
 - Directly to the go-webrtc server plugin.
 - Through a browser snowflake proxy.
 
-Using the server plugin requires copy and pasting between 6 terminals.
+Using the server plugin uses an HTTP server that simulates the interaction
+that a client would have with a facilitator.
 Using the browser proxy (which will soon be the only way) requires copy and
 pasting between 3 terminals and a browser tab.
 Once a signalling facilitator is implemented 
 ([issue #1](https://github.com/keroserene/snowflake/issues/1))
 this will become much simpler to use.
 
-Setting up the client is the same in both cases.
-Open up three terminals for the **client:**
+##### -- Via WebRTC Server --
+
+Edit server/torrc and add "-http 127.0.0.1:8080" to the end of the
+ServerTransportPlugin line:
+```
+ServerTransportPlugin snowflake exec ./server -http 127.0.0.1:8080
+```
+
+```
+cd server/
+go build
+tor -f torrc
+```
+
+Edit client/torrc and add "-url http://127.0.0.1:8080" to the end of the
+ClientTransportPlugin line:
+```
+ClientTransportPlugin snowflake exec ./client -url http://127.0.0.1:8080/
+```
 
 ```
 cd client/
 go build
+tor -f torrc
 ```
+
+At this point the tor client should bootstrap to 100%.
+
+##### -- Via Browser Proxy --
+
+Open up three terminals for the **client:**
 
 A: `tor -f torrc SOCKSPort auto`
 
@@ -35,27 +60,6 @@ B: `cat > signal`
 
 C: `tail -F snowflake.log`
 
-##### -- Via WebRTC Server --
-
-To connect directly to a server plugin,
-open up another three terminals for the **server:**
-
-```
-cd server/
-go build
-```
-
-D: `tor -f torrc`
-
-E: `cat > signal`
-
-F: `tail -F snowflake.log`
-
-- Look for the offer in terminal C; copy and paste it into terminal E.
-- Copy and paste the answer in terminal F to terminal B.
-- At this point the tor client should bootstrap to 100%.
-
-##### -- Via Browser Proxy --
 
 To connect through the WebRTC browser proxy, first make sure
 coffeescript is installed. Then, build with:
