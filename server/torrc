@@ -5,4 +5,4 @@ SocksPort 0
 ExitPolicy reject *:*
 DataDirectory datadir
 
-ServerTransportPlugin snowflake exec ./server -http 127.0.0.1:8080
+ServerTransportPlugin snowflake exec ./server
