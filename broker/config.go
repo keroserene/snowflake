@@ -10,7 +10,7 @@ $ torify ~/go_appengine/appcfg.py --no_cookies -A $YOUR_APP_ID update .
 */
 package snowflake_broker
 
-// host:port/basepath of the facilitator you want to register with
-// for example, fp-facilitator.org or example.com:12345/facilitator
+// host:port/basepath of the broker you want to register with
+// for example, fp-broker.org or example.com:12345/broker
 // https:// and /reg/ will be prepended and appended respectively.
-const SNOWFLAKE_FACILITATOR = ""
+const SNOWFLAKE_BROKER = ""

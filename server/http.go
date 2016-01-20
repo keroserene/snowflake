@@ -1,5 +1,5 @@
 // An HTTP-based signaling channel for the WebRTC server. It imitates the
-// facilitator as seen by clients, but it doesn't connect them to an
+// broker as seen by clients, but it doesn't connect them to an
 // intermediate WebRTC proxy, rather connects them directly to this WebRTC
 // server. This code should be deleted when we have proxies in place.
 

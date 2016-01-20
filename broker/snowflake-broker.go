@@ -51,7 +51,7 @@ func regHandler(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Get browser snowflake to talkto this appengine instance
 	// so it can reply with an answer, and not just the offer again :)
-	// TODO: Real facilitator which matches clients and snowflake proxies.
+	// TODO: Real broker which matches clients and snowflake proxies.
 	w.Write(body)
 }
 
@@ -59,7 +59,7 @@ func init() {
 	http.HandleFunc("/robots.txt", robotsTxtHandler)
 	http.HandleFunc("/ip", ipHandler)
 	http.HandleFunc("/reg/", regHandler)
-	// if SNOWFLAKE_FACILITATOR == "" {
-	// panic("SNOWFLAKE_FACILITATOR empty; did you forget to edit config.go?")
+	// if SNOWFLAKE_BROKER == "" {
+	// panic("SNOWFLAKE_BROKER empty; did you forget to edit config.go?")
 	// }
 }

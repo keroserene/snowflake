@@ -6,7 +6,7 @@ A Pluggable Transport using WebRTC
 
 - Successfully bootstraps over WebRTC, both directly to a server plugin,
   as well as through the browser which proxies WebRTC to websocket.
-- Needs work on signaling with the facilitator.
+- Needs work on signaling with the broker.
 
 ### Usage
 
@@ -15,10 +15,10 @@ There are currently two ways to try this:
 - Through a browser snowflake proxy.
 
 Using the server plugin uses an HTTP server that simulates the interaction
-that a client would have with a facilitator.
+that a client would have with a broker.
 Using the browser proxy (which will soon be the only way) requires copy and
 pasting between 3 terminals and a browser tab.
-Once a signalling facilitator is implemented 
+Once a signaling broker is implemented
 ([issue #1](https://github.com/keroserene/snowflake/issues/1))
 this will become much simpler to use.
 

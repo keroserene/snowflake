@@ -77,7 +77,7 @@ class Snowflake
       @rateLimit = new BucketRateLimit(rateLimitBytes * RATE_LIMIT_HISTORY,
                                        RATE_LIMIT_HISTORY)
 
-  # TODO: Should fetch from facilitator later.
+  # TODO: Should fetch from broker later.
   setRelayAddr: (relayAddr) ->
     addr = Parse.address relayAddr
     if !addr
@@ -116,10 +116,10 @@ class Snowflake
     promise = @proxyPair.pc.createAnswer next
     promise.then next if promise
 
-  # Poll facilitator when this snowflake can support more clients.
+  # Poll broker when this snowflake can support more clients.
   proxyMain: ->
     if @proxyPairs.length >= MAX_NUM_CLIENTS * CONNECTIONS_PER_CLIENT
-      setTimeout(@proxyMain, @facilitator_poll_interval * 1000)
+      setTimeout(@proxyMain, @broker_poll_interval * 1000)
       return
     params = [['r', '1']]
     params.push ['transport', 'websocket']
@@ -185,7 +185,7 @@ Interface =
     $input.focus()
 
 # Signalling channel - just tells user to copy paste to the peer.
-# Eventually this should go over the facilitator.
+# Eventually this should go over the broker.
 Signalling =
   send: (msg) ->
     log '---- Please copy the below to peer ----\n'
