@@ -331,19 +331,21 @@ func main() {
 
 	log.Println("starting")
 
-	// This FIFO receives signaling messages.
-	err = syscall.Mkfifo("signal", 0600)
-	if err != nil {
-		if err.(syscall.Errno) != syscall.EEXIST {
+	if offerURL == "" {
+		// This FIFO receives signaling messages.
+		err = syscall.Mkfifo("signal", 0600)
+		if err != nil {
+			if err.(syscall.Errno) != syscall.EEXIST {
+				log.Fatal(err)
+			}
+		}
+		signalFile, err := os.OpenFile("signal", os.O_RDONLY, 0600)
+		if err != nil {
 			log.Fatal(err)
 		}
+		defer signalFile.Close()
+		go readSignalingMessages(signalFile)
 	}
-	signalFile, err := os.OpenFile("signal", os.O_RDONLY, 0600)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer signalFile.Close()
-	go readSignalingMessages(signalFile)
 
 	webrtc.SetLoggingVerbosity(1)
 
