@@ -331,7 +331,8 @@ func main() {
 
 	log.Println("starting")
 
-	if offerURL == "" {
+	if offerURL == "" && !meekEnabled {
+		log.Println("No HTTP signaling detected. Waiting for a \"signal\" pipe...")
 		// This FIFO receives signaling messages.
 		err = syscall.Mkfifo("signal", 0600)
 		if err != nil {
