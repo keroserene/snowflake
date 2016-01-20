@@ -26,8 +26,8 @@ import (
 // TODO: expose as param
 const (
 	// Go fully requires the protocol to make url spec
-	FRONT_URL = "https://www.google.com"
-	BROKER_URL     = "snowflake-reg.appspot.com"
+	FRONT_URL  = "https://www.google.com"
+	BROKER_URL = "snowflake-reg.appspot.com"
 )
 
 var ptInfo pt.ClientInfo
@@ -255,12 +255,9 @@ func handler(conn *pt.SocksConn) error {
 	}()
 	defer conn.Close()
 
-	// Prepare meek signalling channel.
-	info := NewRequestInfo(BROKER_URL, FRONT_URL)
-	meek := NewMeekChannel(info)
-
 	config := webrtc.NewConfiguration(
 		webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
+	meek := NewMeekChannel(BROKER_URL, FRONT_URL)
 	remote, err := dialWebRTC(config, meek)
 	if err != nil {
 		conn.Reject()

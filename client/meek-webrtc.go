@@ -1,5 +1,5 @@
 // Exchange WebRTC SessionDescriptions over a domain-fronted HTTP
-// signalling channel.
+// signaling channel.
 package main
 
 import (
@@ -12,71 +12,60 @@ import (
 	"github.com/keroserene/go-webrtc"
 )
 
-// RequestInfo encapsulates all the configuration used for a request–response
-// roundtrip, including variables that may come from SOCKS args or from the
-// command line.
-type RequestInfo struct {
-	// What to put in the X-Session-ID header - SessionID string
-	// The desired potentially filtered URL to request.
-	URL *url.URL
+// Meek Signalling Channel.
+type MeekChannel struct {
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
-	Host string
+	Host        string
+	Method      string
+	trueURL     *url.URL
+	externalUrl string
+	transport   http.Transport // Used to make all requests.
 }
 
-func NewRequestInfo(targetUrl string, front string) *RequestInfo {
-	info := new(RequestInfo)
-	requestUrl, err := url.Parse(targetUrl)
+// Construct a new MeekChannel, where
+// |broker| is the URL of the facilitating program which assigns proxies
+// to clients, and
+// |front| is URL of the front domain.
+func NewMeekChannel(broker string, front string) *MeekChannel {
+	targetUrl, err := url.Parse(broker)
 	if nil != err {
 		return nil
 	}
-	info.URL = requestUrl
-	info.Host = front
-	return info
-}
+	mc := new(MeekChannel)
+	mc.Host = front
+	mc.Method = "POST"
 
-// Meek Signalling Channel.
-type MeekChannel struct {
-	info *RequestInfo
-	// Used to make all requests.
-	transport http.Transport
-}
+	mc.trueURL = targetUrl
+	mc.externalUrl = front + "/reg/test" // TODO: Have a better suffix.
 
-func NewMeekChannel(info *RequestInfo) *MeekChannel {
-	m := new(MeekChannel)
 	// We make a copy of DefaultTransport because we want the default Dial
 	// and TLSHandshakeTimeout settings. But we want to disable the default
-	// ProxyFromEnvironment setting. Proxy is overridden below if
-	// options.ProxyURL is set.
-	m.transport = *http.DefaultTransport.(*http.Transport)
-	m.transport.Proxy = nil
-	m.info = info
-	return m
+	// ProxyFromEnvironment setting.
+	mc.transport = *http.DefaultTransport.(*http.Transport)
+	mc.transport.Proxy = nil
+	return mc
 }
 
-// Do an HTTP roundtrip using the payload data in buf.
-func (mc *MeekChannel) roundTripHTTP(buf []byte) (*http.Response, error) {
-	// Compose an innocent looking request.
-	req, err := http.NewRequest("POST", mc.info.Host+"/reg/123", bytes.NewReader(buf))
+// Roundtrip HTTP POST using WebRTC SessionDescriptions.
+//
+// Sends an SDP offer to the meek broker, which assigns a proxy and responds
+// with an SDP answer from a designated remote WebRTC peer.
+func (mc *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
+	*webrtc.SessionDescription, error) {
+	data := bytes.NewReader([]byte(offer.Serialize()))
+	request, err := http.NewRequest(mc.Method, mc.externalUrl, data)
 	if nil != err {
 		return nil, err
 	}
-	// Set actually desired host in the request.
-	req.Host = mc.info.URL.String()
-	// req.Header.Set("X-Session-Id", m.info.SessionID)
-	return mc.transport.RoundTrip(req)
-}
-
-// Send an SDP offer to the meek facilitator, and wait for an SDP answer from
-// the assigned proxy in the response.
-func (mc *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
-	*webrtc.SessionDescription, error) {
-	resp, err := mc.roundTripHTTP([]byte(offer.Serialize()))
+	request.Host = mc.trueURL.String()
+	resp, err := mc.transport.RoundTrip(request)
 	if nil != err {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	log.Println("MeekChannel Response: ", resp)
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if nil != err {
 		return nil, err
@@ -84,7 +73,6 @@ func (mc *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 	answer := webrtc.DeserializeSessionDescription(string(body))
 	return answer, nil
 }
-
 
 // Simple interim non-fronting HTTP POST negotiation, to be removed when more
 // general fronting is present.
