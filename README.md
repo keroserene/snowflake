@@ -88,4 +88,11 @@ snowflake to just use a default relay.
 
 ### More
 
+To try using the Meek signaling channel (which will soon be fully ready),
+add the `--meek` flag like so:
+
+```
+ClientTransportPlugin snowflake exec ./client --meek
+```
+
 More documentation on the way.

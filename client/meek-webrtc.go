@@ -1,5 +1,5 @@
-// Exchange WebRTC SessionDescriptions over meek.
-// Much of this source is extracted from meek-client.go.
+// Exchange WebRTC SessionDescriptions over a domain-fronted HTTP
+// signalling channel.
 package main
 
 import (
@@ -16,29 +16,26 @@ import (
 // roundtrip, including variables that may come from SOCKS args or from the
 // command line.
 type RequestInfo struct {
-	// What to put in the X-Session-ID header.
-	// SessionID string
-	// The URL to request.
+	// What to put in the X-Session-ID header - SessionID string
+	// The desired potentially filtered URL to request.
 	URL *url.URL
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
 	Host string
 }
 
-func NewRequestInfo(meekUrl string, front string) *RequestInfo {
+func NewRequestInfo(targetUrl string, front string) *RequestInfo {
 	info := new(RequestInfo)
-	requestUrl, err := url.Parse(meekUrl)
+	requestUrl, err := url.Parse(targetUrl)
 	if nil != err {
 		return nil
 	}
 	info.URL = requestUrl
 	info.Host = front
-	// info.URL.Host = front
-	// info.Host = info.URL.Host
 	return info
 }
 
-// Meek Signalling Channel
+// Meek Signalling Channel.
 type MeekChannel struct {
 	info *RequestInfo
 	// Used to make all requests.
@@ -58,24 +55,23 @@ func NewMeekChannel(info *RequestInfo) *MeekChannel {
 }
 
 // Do an HTTP roundtrip using the payload data in buf.
-func (m *MeekChannel) roundTripHTTP(buf []byte) (*http.Response, error) {
+func (mc *MeekChannel) roundTripHTTP(buf []byte) (*http.Response, error) {
 	// Compose an innocent looking request.
-	req, err := http.NewRequest("POST", m.info.Host+"/reg/123", bytes.NewReader(buf))
+	req, err := http.NewRequest("POST", mc.info.Host+"/reg/123", bytes.NewReader(buf))
 	if nil != err {
 		return nil, err
 	}
-	// Set actually desired target host.
-	req.Host = m.info.URL.String()
+	// Set actually desired host in the request.
+	req.Host = mc.info.URL.String()
 	// req.Header.Set("X-Session-Id", m.info.SessionID)
-	return m.transport.RoundTrip(req)
+	return mc.transport.RoundTrip(req)
 }
 
 // Send an SDP offer to the meek facilitator, and wait for an SDP answer from
 // the assigned proxy in the response.
-func (m *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
+func (mc *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
-	buf := []byte(offer.Serialize())
-	resp, err := m.roundTripHTTP(buf)
+	resp, err := mc.roundTripHTTP([]byte(offer.Serialize()))
 	if nil != err {
 		return nil, err
 	}
@@ -85,10 +81,10 @@ func (m *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 	if nil != err {
 		return nil, err
 	}
-	log.Println("MeekChannel Body: ", string(body))
 	answer := webrtc.DeserializeSessionDescription(string(body))
 	return answer, nil
 }
+
 
 // Simple interim non-fronting HTTP POST negotiation, to be removed when more
 // general fronting is present.
