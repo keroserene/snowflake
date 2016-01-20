@@ -1,4 +1,4 @@
-package snowflake_reg
+package snowflake_broker
 
 import (
 	// "io"
