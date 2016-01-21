@@ -22,18 +22,10 @@ import (
 	"git.torproject.org/pluggable-transports/goptlib.git"
 )
 
-// Hard-coded meek signalling channel for now.
-// TODO: expose as param
-const (
-	// Go fully requires the protocol to make url spec
-	FRONT_URL  = "https://www.google.com"
-	BROKER_URL = "snowflake-reg.appspot.com"
-)
-
 var ptInfo pt.ClientInfo
 var logFile *os.File
-var offerURL string
-var meekEnabled bool
+var brokerURL string
+var frontDomain string
 
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
@@ -180,26 +172,15 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 		fmt.Fprintln(logFile, "\n"+offer.Serialize()+"\n")
 		log.Printf("----------------")
 		go func() {
-			if meekEnabled {
-				log.Println("Sending offer via meek channel...\nTarget URL: ", BROKER_URL,
-					"\nFront URL:  ", FRONT_URL)
+			if "" != brokerURL {
+				log.Println("Sending offer via meek channel...\nTarget URL: ", brokerURL,
+					"\nFront URL:  ", frontDomain)
 				answer, err := meek.Negotiate(pc.LocalDescription())
 				if nil != err {
 					log.Printf("MeekChannel signaling error: %s", err)
 				}
 				if nil == answer {
 					log.Printf("MeekChannel: No answer received.")
-				} else {
-					log.Println("Recieved answer from Meek channel: \n\n",
-						answer.Serialize(), "\n")
-					// TODO: Once this is correct, uncomment and remove copy-paste stuff.
-					// signalChan <- answer
-				}
-			}
-			if offerURL != "" {
-				answer, err := sendOfferHTTP(offerURL, offer)
-				if err != nil {
-					log.Println(err)
 				} else {
 					signalChan <- answer
 				}
@@ -214,7 +195,7 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 		pc.Close()
 		return nil, fmt.Errorf("no answer received")
 	}
-	log.Printf("Received Answer: %s", answer.Serialize())
+	log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
 	err = pc.SetRemoteDescription(answer)
 	if err != nil {
 		pc.Close()
@@ -257,7 +238,7 @@ func handler(conn *pt.SocksConn) error {
 
 	config := webrtc.NewConfiguration(
 		webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
-	meek := NewMeekChannel(BROKER_URL, FRONT_URL)
+	meek := NewMeekChannel(brokerURL, frontDomain)
 	remote, err := dialWebRTC(config, meek)
 	if err != nil {
 		conn.Reject()
@@ -318,8 +299,8 @@ func readSignalingMessages(f *os.File) {
 func main() {
 	var err error
 
-	flag.StringVar(&offerURL, "url", "", "do signalling through URL")
-	flag.BoolVar(&meekEnabled, "meek", false, "use domain fronted signaling")
+	flag.StringVar(&brokerURL, "url", "", "URL of signaling broker")
+	flag.StringVar(&frontDomain, "front", "", "front domain")
 	flag.Parse()
 
 	logFile, err = os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -328,10 +309,9 @@ func main() {
 	}
 	defer logFile.Close()
 	log.SetOutput(logFile)
-
 	log.Println("starting")
 
-	if offerURL == "" && !meekEnabled {
+	if "" == brokerURL {
 		log.Println("No HTTP signaling detected. Waiting for a \"signal\" pipe...")
 		// This FIFO receives signaling messages.
 		err = syscall.Mkfifo("signal", 0600)

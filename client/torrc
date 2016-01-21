@@ -1,5 +1,8 @@
 UseBridges 1
 DataDirectory datadir
 
-ClientTransportPlugin snowflake exec ./client
+ClientTransportPlugin snowflake exec ./client \
+-url https://snowflake-reg.appspot.com/ \
+-front www.google.com
+
 Bridge snowflake 0.0.3.0:1

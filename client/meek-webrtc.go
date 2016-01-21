@@ -16,28 +16,25 @@ import (
 type MeekChannel struct {
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
-	Host        string
-	Method      string
-	trueURL     *url.URL
-	externalUrl string
-	transport   http.Transport // Used to make all requests.
+	Host      string
+	url       *url.URL
+	transport http.Transport // Used to make all requests.
 }
 
-// Construct a new MeekChannel, where
-// |broker| is the URL of the facilitating program which assigns proxies
-// to clients, and
-// |front| is URL of the front domain.
+// Construct a new MeekChannel, where:
+// |broker| is the full URL of the facilitating program which assigns proxies
+// to clients, and |front| is the option fronting domain.
 func NewMeekChannel(broker string, front string) *MeekChannel {
-	targetUrl, err := url.Parse(broker)
+	targetURL, err := url.Parse(broker)
 	if nil != err {
 		return nil
 	}
 	mc := new(MeekChannel)
-	mc.Host = front
-	mc.Method = "POST"
-
-	mc.trueURL = targetUrl
-	mc.externalUrl = front + "/client"
+	mc.url = targetURL
+	if "" != front { // Optional front domain.
+		mc.Host = mc.url.Host
+		mc.url.Host = front
+	}
 
 	// We make a copy of DefaultTransport because we want the default Dial
 	// and TLSHandshakeTimeout settings. But we want to disable the default
@@ -54,37 +51,22 @@ func NewMeekChannel(broker string, front string) *MeekChannel {
 func (mc *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
 	data := bytes.NewReader([]byte(offer.Serialize()))
-	request, err := http.NewRequest(mc.Method, mc.externalUrl, data)
+	// Suffix with broker's client registration handler.
+	request, err := http.NewRequest("POST", mc.url.String()+"client", data)
 	if nil != err {
 		return nil, err
 	}
-	request.Host = mc.trueURL.String()
+	if "" != mc.Host { // Set true host if necessary.
+		request.Host = mc.Host
+	}
 	resp, err := mc.transport.RoundTrip(request)
 	if nil != err {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	log.Println("MeekChannel Response: ", resp)
-
+	log.Printf("MeekChannel Response:\n%s\n\n", resp)
 	body, err := ioutil.ReadAll(resp.Body)
 	if nil != err {
-		return nil, err
-	}
-	log.Println("Body: ", string(body))
-	answer := webrtc.DeserializeSessionDescription(string(body))
-	return answer, nil
-}
-
-// Simple interim non-fronting HTTP POST negotiation, to be removed when more
-// general fronting is present.
-func sendOfferHTTP(url string, offer *webrtc.SessionDescription) (*webrtc.SessionDescription, error) {
-	resp, err := http.Post(url, "", bytes.NewBuffer([]byte(offer.Serialize())))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
 		return nil, err
 	}
 	answer := webrtc.DeserializeSessionDescription(string(body))
