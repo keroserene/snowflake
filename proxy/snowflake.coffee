@@ -8,6 +8,7 @@ Assume that the webrtc client plugin is always the offerer, in which case
 this must always act as the answerer.
 ###
 DEFAULT_WEBSOCKET = '192.81.135.242:9901'
+DEFAULT_BROKER = 'https://snowflake-reg.appspot.com/reg/test'
 DEFAULT_PORTS =
   http:  80
   https: 443
@@ -207,14 +208,9 @@ Signalling =
 
 log = (msg) ->  # Log to the message window.
   console.log msg
-  # Scroll to latest
-  if $msglog
+  if $msglog                        # Scroll to latest
     $msglog.value += msg + '\n'
     $msglog.scrollTop = $msglog.scrollHeight
-
-welcome = ->
-  log '== snowflake browser proxy =='
-  log 'Input desired relay address:'
 
 init = ->
   $msglog = document.getElementById('msglog')
@@ -227,8 +223,11 @@ init = ->
   $input.focus()
   $input.onkeydown = (e) -> $send.onclick() if 13 == e.keyCode  # enter
 
+  log '== snowflake browser proxy =='
   snowflake = new Snowflake()
   window.snowflake = snowflake
-  welcome()
+  broker = new Broker DEFAULT_BROKER
+  broker.register()
+  log 'Input desired relay address:'
 
 window.onload = init if window

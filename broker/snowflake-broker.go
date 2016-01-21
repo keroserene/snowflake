@@ -48,7 +48,7 @@ func regHandler(w http.ResponseWriter, r *http.Request) {
 		return
 		log.Println("Invalid data.")
 	}
-
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	// TODO: Get browser snowflake to talkto this appengine instance
 	// so it can reply with an answer, and not just the offer again :)
 	// TODO: Real broker which matches clients and snowflake proxies.

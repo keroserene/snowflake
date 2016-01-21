@@ -7,6 +7,7 @@ FILES = [
   'util.coffee'
   'proxypair.coffee'
   'websocket.coffee'
+  'broker.coffee'
   'snowflake.coffee'
 ]
 FILES_TEST = [
