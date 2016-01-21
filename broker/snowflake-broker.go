@@ -118,7 +118,7 @@ func clientHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: Needs improvement.
 	snowflake := heap.Pop(snowflakes).(*Snowflake)
 	if nil == snowflake {
-		w.Header().Set("Status", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		// w.Write([]byte("no snowflake proxies available"))
 		return
 	}
