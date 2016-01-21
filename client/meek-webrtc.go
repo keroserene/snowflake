@@ -64,7 +64,7 @@ func (mc *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 		return nil, err
 	}
 	defer resp.Body.Close()
-	log.Printf("MeekChannel Response:\n%s\n\n", resp)
+	log.Printf("MeekChannel Response:\n%s\n\n", resp.Status)
 	body, err := ioutil.ReadAll(resp.Body)
 	if nil != err {
 		return nil, err
