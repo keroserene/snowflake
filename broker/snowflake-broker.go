@@ -2,7 +2,7 @@ package snowflake_broker
 
 import (
 	"container/heap"
-	"fmt"
+	// "fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -104,8 +104,8 @@ func clientHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: Make this much better.
 	snowflake := heap.Pop(snowflakes).(*Snowflake)
 	if nil == snowflake {
+		// w.Header().Set("Status", http.StatusServiceUnavailable)
 		w.Write([]byte("no snowflake proxies available"))
-		// w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	// snowflakes = snowflakes[1:]
@@ -135,10 +135,11 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Passing client offer to snowflake.")
 		w.Write(offer)
 	case <-time.After(time.Second * 10):
-		s := fmt.Sprintf("%d snowflakes left.", snowflakes.Len())
-		w.Write([]byte("timed out. " + s))
+		// s := fmt.Sprintf("%d snowflakes left.", snowflakes.Len())
+		// w.Write([]byte("timed out. " + s))
+		// w.Header().Set("Status", http.StatusRequestTimeout)
+		w.WriteHeader(http.StatusGatewayTimeout)
 		heap.Remove(snowflakes, snowflake.index)
-		// w.WriteHeader(http.StatusRequestTimeout)
 	}
 }
 

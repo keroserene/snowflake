@@ -9,6 +9,7 @@ this must always act as the answerer.
 ###
 DEFAULT_WEBSOCKET = '192.81.135.242:9901'
 DEFAULT_BROKER = 'https://snowflake-reg.appspot.com/proxy'
+COPY_PASTE_ENABLED = false
 DEFAULT_PORTS =
   http:  80
   https: 443
@@ -58,7 +59,7 @@ class Snowflake
   $badge: null
   state: MODE.INIT
 
-  constructor: ->
+  constructor: (@broker) ->
     if HEADLESS
       # No badge
     else if DEBUG
@@ -98,6 +99,27 @@ class Snowflake
       @makeProxyPair @relayAddr
     @proxyPair = @proxyPairs[0]
 
+  # Poll broker for clients.
+  findClients: ->
+    poll = =>
+      recv = broker.getClientOffer()
+      recv.then((desc) =>
+        log 'Received:\n\n' + desc + '\n'
+        offer = JSON.parse desc
+        @receiveOffer offer
+      , (err) ->
+        log err
+        setTimeout(poll, 1000)
+      )
+    poll()
+
+    # if @proxyPairs.length >= MAX_NUM_CLIENTS * CONNECTIONS_PER_CLIENT
+      # setTimeout(@proxyMain, @broker_poll_interval * 1000)
+      # return
+    # params = [['r', '1']]
+    # params.push ['transport', 'websocket']
+    # params.push ['transport', 'webrtc']
+
   # Receive an SDP offer from client plugin.
   receiveOffer: (desc) =>
     sdp = new RTCSessionDescription desc
@@ -117,14 +139,6 @@ class Snowflake
     promise = @proxyPair.pc.createAnswer next
     promise.then next if promise
 
-  # Poll broker when this snowflake can support more clients.
-  proxyMain: ->
-    if @proxyPairs.length >= MAX_NUM_CLIENTS * CONNECTIONS_PER_CLIENT
-      setTimeout(@proxyMain, @broker_poll_interval * 1000)
-      return
-    params = [['r', '1']]
-    params.push ['transport', 'websocket']
-    params.push ['transport', 'webrtc']
 
   makeProxyPair: (relay) ->
     pair = new ProxyPair null, relay, @rateLimit
@@ -156,6 +170,7 @@ class Snowflake
     @badge.die() if @badge
 
 snowflake = null
+broker = null
 
 #
 ## -- DOM & Inputs -- #
@@ -170,7 +185,9 @@ Interface =
   # Local input from keyboard into message window.
   acceptInput: ->
     msg = $input.value
-    switch snowflake.state
+    if !COPY_PASTE_ENABLED
+      log 'No input expected - Copy Paste Signalling disabled.'
+    else switch snowflake.state
       when MODE.INIT
         # Set target relay.
         if !(snowflake.setRelayAddr msg)
@@ -224,10 +241,13 @@ init = ->
   $input.onkeydown = (e) -> $send.onclick() if 13 == e.keyCode  # enter
 
   log '== snowflake browser proxy =='
-  snowflake = new Snowflake()
-  window.snowflake = snowflake
   broker = new Broker DEFAULT_BROKER
-  broker.register()
-  log 'Input desired relay address:'
+  snowflake = new Snowflake(broker)
+  window.snowflake = snowflake
+  if COPY_PASTE_ENABLED
+    log 'Input desired relay address:'
+  else
+    snowflake.setRelayAddr DEFAULT_WEBSOCKET
+    snowflake.findClients()
 
 window.onload = init if window
