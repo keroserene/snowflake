@@ -37,7 +37,7 @@ func NewMeekChannel(broker string, front string) *MeekChannel {
 	mc.Method = "POST"
 
 	mc.trueURL = targetUrl
-	mc.externalUrl = front + "/reg/test" // TODO: Have a better suffix.
+	mc.externalUrl = front + "/client"
 
 	// We make a copy of DefaultTransport because we want the default Dial
 	// and TLSHandshakeTimeout settings. But we want to disable the default
@@ -70,6 +70,7 @@ func (mc *MeekChannel) Negotiate(offer *webrtc.SessionDescription) (
 	if nil != err {
 		return nil, err
 	}
+	log.Println("Body: ", string(body))
 	answer := webrtc.DeserializeSessionDescription(string(body))
 	return answer, nil
 }

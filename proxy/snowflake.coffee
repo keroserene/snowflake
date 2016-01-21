@@ -8,7 +8,7 @@ Assume that the webrtc client plugin is always the offerer, in which case
 this must always act as the answerer.
 ###
 DEFAULT_WEBSOCKET = '192.81.135.242:9901'
-DEFAULT_BROKER = 'https://snowflake-reg.appspot.com/reg/test'
+DEFAULT_BROKER = 'https://snowflake-reg.appspot.com/proxy'
 DEFAULT_PORTS =
   http:  80
   https: 443

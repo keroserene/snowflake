@@ -21,7 +21,6 @@ class Broker
     xhr = new XMLHttpRequest()
     try
       xhr.open 'POST', @url
-      xhr
     catch err
       ###
       An exception happens here when, for example, NoScript allows the domain on
@@ -35,14 +34,14 @@ class Broker
     # xhr.responseType = 'text'
     xhr.onreadystatechange = ->
       if xhr.DONE == xhr.readyState
+        log 'Broker: ' + xhr.status
         if 200 == xhr.status
-          log 'Broker: success'
           log 'Response: ' + xhr.responseText
-          # @fac_complete xhr.responseText
+          log xhr
         else
           log 'Broker error ' + xhr.status + ' - ' + xhr.statusText
-
     xhr.send 'snowflake-testing'
+    log "Broker: sent a registration message, waiting for reply..."
 
   sendAnswer: (answer) ->
     log 'Sending answer to broker.'
