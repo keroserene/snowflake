@@ -8,7 +8,7 @@ Assume that the webrtc client plugin is always the offerer, in which case
 this must always act as the answerer.
 ###
 DEFAULT_WEBSOCKET = '192.81.135.242:9901'
-DEFAULT_BROKER = 'https://snowflake-reg.appspot.com/proxy'
+DEFAULT_BROKER = 'https://snowflake-reg.appspot.com/'
 COPY_PASTE_ENABLED = false
 DEFAULT_PORTS =
   http:  80
@@ -104,21 +104,14 @@ class Snowflake
     poll = =>
       recv = broker.getClientOffer()
       recv.then((desc) =>
-        log 'Received:\n\n' + desc + '\n'
         offer = JSON.parse desc
+        log 'Received:\n\n' + offer.sdp + '\n'
         @receiveOffer offer
       , (err) ->
         log err
         setTimeout(poll, 1000)
       )
     poll()
-
-    # if @proxyPairs.length >= MAX_NUM_CLIENTS * CONNECTIONS_PER_CLIENT
-      # setTimeout(@proxyMain, @broker_poll_interval * 1000)
-      # return
-    # params = [['r', '1']]
-    # params.push ['transport', 'websocket']
-    # params.push ['transport', 'webrtc']
 
   # Receive an SDP offer from client plugin.
   receiveOffer: (desc) =>

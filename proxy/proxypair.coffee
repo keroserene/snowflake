@@ -32,7 +32,10 @@ class ProxyPair
         # TODO: Use a promise.all to tell Snowflake about all offers at once,
         # once multiple proxypairs are supported.
         log 'Finished gathering ICE candidates.'
-        Signalling.send @pc.localDescription
+        if COPY_PASTE_ENABLED
+          Signalling.send @pc.localDescription
+        else
+          snowflake.broker.sendAnswer @pc.localDescription
     # OnDataChannel triggered remotely from the client when connection succeeds.
     @pc.ondatachannel = (dc) =>
       console.log dc

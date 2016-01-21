@@ -1,3 +1,12 @@
+/*
+Broker acts as the HTTP signaling channel.
+It matches clients and snowflake proxies by passing corresponding
+SessionDescriptions in order to negotiate a WebRTC connection.
+
+TODO(serene): This code is currently the absolute minimum required to
+cause a successful negotiation.
+It's otherwise very unsafe and problematic, and needs quite some work...
+*/
 package snowflake_broker
 
 import (
@@ -8,8 +17,6 @@ import (
 	"net"
 	"net/http"
 	"time"
-	// "appengine"
-	// "appengine/urlfetch"
 )
 
 // This is an intermediate step - a basic hardcoded appengine rendezvous
@@ -23,10 +30,11 @@ import (
 // var snowflakes []chan []byte
 
 type Snowflake struct {
-	id         string
-	sigChannel chan []byte
-	clients    int
-	index      int
+	id            string
+	offerChannel  chan []byte
+	answerChannel chan []byte
+	clients       int
+	index         int
 }
 
 // Implements heap.Interface, and holds Snowflakes.
@@ -63,14 +71,17 @@ func (sh *SnowflakeHeap) Pop() interface{} {
 }
 
 var snowflakes *SnowflakeHeap
+var snowflakeMap map[string]*Snowflake
 
 // Create and add a Snowflake to the heap.
 func AddSnowflake(id string) *Snowflake {
 	snowflake := new(Snowflake)
 	snowflake.id = id
 	snowflake.clients = 0
-	snowflake.sigChannel = make(chan []byte)
+	snowflake.offerChannel = make(chan []byte)
+	snowflake.answerChannel = make(chan []byte)
 	heap.Push(snowflakes, snowflake)
+	snowflakeMap[id] = snowflake
 	return snowflake
 }
 
@@ -97,65 +108,108 @@ func clientHandler(w http.ResponseWriter, r *http.Request) {
 	offer, err := ioutil.ReadAll(r.Body)
 	if nil != err {
 		log.Println("Invalid data.")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	// Pop the most available snowflake proxy, and pass the offer to it.
-	// TODO: Make this much better.
+	w.Header().Set("Access-Control-Allow-Headers", "X-Session-ID")
+
+	// Find the most available snowflake proxy, and pass the offer to it.
+	// TODO: Needs improvement.
 	snowflake := heap.Pop(snowflakes).(*Snowflake)
 	if nil == snowflake {
-		// w.Header().Set("Status", http.StatusServiceUnavailable)
-		w.Write([]byte("no snowflake proxies available"))
+		w.Header().Set("Status", http.StatusServiceUnavailable)
+		// w.Write([]byte("no snowflake proxies available"))
 		return
 	}
-	// snowflakes = snowflakes[1:]
-	snowflake.sigChannel <- offer
-	w.Write([]byte("sent offer to proxy!"))
-	// TODO: Get browser snowflake to talkto this appengine instance
-	// so it can reply with an answer, and not just the offer again :)
-	// TODO: Real broker which matches clients and snowflake proxies.
-	w.Write(offer)
+	snowflake.offerChannel <- offer
+
+	// Wait for the answer to be returned on the channel.
+	select {
+	case answer := <-snowflake.answerChannel:
+		log.Println("Retrieving answer")
+		w.Write(answer)
+		// Only remove from the snowflake map once the answer is set.
+		delete(snowflakeMap, snowflake.id)
+
+	case <-time.After(time.Second * 10):
+		w.WriteHeader(http.StatusGatewayTimeout)
+		w.Write([]byte("timed out waiting for answer!"))
+	}
 }
 
 /*
-A snowflake browser proxy requests a client from the Broker.
+For snowflake proxies to request a client from the Broker.
 */
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID")
+	// For CORS preflight.
+	if "OPTIONS" == r.Method {
+		return
+	}
+
+	id := r.Header.Get("X-Session-ID")
 	body, err := ioutil.ReadAll(r.Body)
 	if nil != err {
 		log.Println("Invalid data.")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	snowflakeSession := body
-	log.Println("Received snowflake: ", snowflakeSession)
-	snowflake := AddSnowflake(string(snowflakeSession))
+	if string(body) != id { // Mismatched IDs!
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	// Maybe confirm that X-Session-ID is the same.
+	log.Println("Received snowflake: ", id)
+	snowflake := AddSnowflake(id)
+
+	// Wait for a client to avail an offer to the snowflake, or timeout
+	// and ask the snowflake to poll later.
 	select {
-	case offer := <-snowflake.sigChannel:
+	case offer := <-snowflake.offerChannel:
 		log.Println("Passing client offer to snowflake.")
 		w.Write(offer)
+
 	case <-time.After(time.Second * 10):
-		// s := fmt.Sprintf("%d snowflakes left.", snowflakes.Len())
-		// w.Write([]byte("timed out. " + s))
-		// w.Header().Set("Status", http.StatusRequestTimeout)
-		w.WriteHeader(http.StatusGatewayTimeout)
 		heap.Remove(snowflakes, snowflake.index)
+		w.WriteHeader(http.StatusGatewayTimeout)
 	}
 }
 
-func reflectHandler(w http.ResponseWriter, r *http.Request) {
+/*
+Expects snowflake proxes which have previously successfully received
+an offer from proxyHandler to respond with an answer in an HTTP POST,
+which the broker will pass back to the original client.
+*/
+func answerHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "X-Session-ID")
+	// For CORS preflight.
+	if "OPTIONS" == r.Method {
+		return
+	}
+
+	id := r.Header.Get("X-Session-ID")
+	snowflake, ok := snowflakeMap[id]
+	if !ok || nil == snowflake {
+		// The snowflake took too long to respond with an answer,
+		// and the designated client is no longer around / recognized by the Broker.
+		w.WriteHeader(http.StatusGone)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 	if nil != err {
 		log.Println("Invalid data.")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Write(body)
+	log.Println("Received answer: ", body)
+	snowflake.answerChannel <- body
 }
 
 func init() {
-	// snowflakes = make([]chan []byte, 0)
 	snowflakes = new(SnowflakeHeap)
+	snowflakeMap = make(map[string]*Snowflake)
 	heap.Init(snowflakes)
 
 	http.HandleFunc("/robots.txt", robotsTxtHandler)
@@ -163,8 +217,5 @@ func init() {
 
 	http.HandleFunc("/client", clientHandler)
 	http.HandleFunc("/proxy", proxyHandler)
-	http.HandleFunc("/reflect", reflectHandler)
-	// if SNOWFLAKE_BROKER == "" {
-	// panic("SNOWFLAKE_BROKER empty; did you forget to edit config.go?")
-	// }
+	http.HandleFunc("/answer", answerHandler)
 }
