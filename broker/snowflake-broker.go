@@ -171,7 +171,9 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(offer)
 
 	case <-time.After(time.Second * 10):
+		// This snowflake is no longer available to serve clients.
 		heap.Remove(snowflakes, snowflake.index)
+		delete(snowflakeMap, snowflake.id)
 		w.WriteHeader(http.StatusGatewayTimeout)
 	}
 }

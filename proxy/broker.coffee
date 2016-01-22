@@ -69,7 +69,6 @@ class Broker
       return
     xhr.onreadystatechange = ->
       return if xhr.DONE != xhr.readyState
-      log xhr
       switch xhr.status
         when STATUS_OK
           log 'Broker: Successfully replied with answer.'

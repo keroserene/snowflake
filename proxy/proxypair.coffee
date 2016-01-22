@@ -19,7 +19,8 @@ class ProxyPair
 
   constructor: (@clientAddr, @relayAddr, @rateLimit) ->
 
-  connectClient: =>
+  # Prepare a WebRTC PeerConnection and await for an SDP offer.
+  begin: ->
     @pc = new PeerConnection config, {
       optional: [
         { DtlsSrtpKeyAgreement: true }
@@ -44,6 +45,16 @@ class ProxyPair
       @prepareDataChannel channel
       @client = channel
 
+  receiveWebRTCOffer: (offer) ->
+    console.assert 'offer' == offer.type
+    try
+      err = @pc.setRemoteDescription offer
+    catch e
+      log 'Invalid SDP message.'
+      return false
+    log 'SDP ' + offer.type + ' successfully received.'
+    true
+
   prepareDataChannel: (channel) =>
     channel.onopen = =>
       log 'Data channel opened!'
@@ -56,8 +67,9 @@ class ProxyPair
       log 'Data channel closed.'
       snowflake.state = MODE.INIT
       $msglog.className = ''
-    channel.onerror = ->
-      log 'Data channel error!'
+      # Change this for multiplexing.
+      snowflake.reset()
+    channel.onerror = -> log 'Data channel error!'
     channel.onmessage = @onClientToRelayMessage
 
   # Assumes WebRTC datachannel is connected.

@@ -87,21 +87,17 @@ class Snowflake
       return false
     @relayAddr = addr
     log 'Using ' + relayAddr + ' as Relay.'
-    @beginWebRTC()
-    log 'Input offer from the snowflake client:'
+    log 'Input offer from the snowflake client:' if COPY_PASTE_ENABLED
     return true
 
   # Initialize WebRTC PeerConnection
   beginWebRTC: ->
-    log 'Starting up Snowflake...\n'
     @state = MODE.WEBRTC_CONNECTING
     for i in [1..CONNECTIONS_PER_CLIENT]
       @makeProxyPair @relayAddr
     @proxyPair = @proxyPairs[0]
-
-  # Poll broker for clients.
-  findClients: ->
-    poll = =>
+    # Poll broker for clients.
+    findClients = =>
       recv = broker.getClientOffer()
       recv.then((desc) =>
         offer = JSON.parse desc
@@ -109,21 +105,15 @@ class Snowflake
         @receiveOffer offer
       , (err) ->
         log err
-        setTimeout(poll, 1000)
+        setTimeout(findClients, 1000)
       )
-    poll()
+    findClients()
 
-  # Receive an SDP offer from client plugin.
+  # Receive an SDP offer from some client assigned by the Broker.
   receiveOffer: (desc) =>
     sdp = new RTCSessionDescription desc
-    try
-      err = @proxyPair.pc.setRemoteDescription sdp
-    catch e
-      log 'Invalid SDP message.'
-      return false
-    log 'SDP ' + sdp.type + ' successfully received.'
-    @sendAnswer() if 'offer' == sdp.type
-    true
+    if @proxyPair.receiveWebRTCOffer sdp
+      @sendAnswer() if 'offer' == sdp.type
 
   sendAnswer: =>
     next = (sdp) =>
@@ -131,7 +121,6 @@ class Snowflake
       @proxyPair.pc.setLocalDescription sdp
     promise = @proxyPair.pc.createAnswer next
     promise.then next if promise
-
 
   makeProxyPair: (relay) ->
     pair = new ProxyPair null, relay, @rateLimit
@@ -141,7 +130,7 @@ class Snowflake
       @proxyPairs.splice(@proxyPairs.indexOf(pair), 1)
       @badge.endProxy() if @badge
     try
-      pair.connectClient()
+      pair.begin()
     catch err
       log 'ERROR: ProxyPair exception while connecting.'
       log err
@@ -161,6 +150,12 @@ class Snowflake
     log 'Snowflake died.'
     @cease()
     @badge.die() if @badge
+
+  # Close all existing ProxyPairs and begin finding new clients from scratch.
+  reset: ->
+    @cease()
+    log '\nSnowflake resetting...'
+    @beginWebRTC()
 
 snowflake = null
 broker = null
@@ -241,6 +236,6 @@ init = ->
     log 'Input desired relay address:'
   else
     snowflake.setRelayAddr DEFAULT_WEBSOCKET
-    snowflake.findClients()
+    snowflake.beginWebRTC()
 
 window.onload = init if window
