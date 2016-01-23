@@ -117,6 +117,12 @@ Params =
     return defaultValue if undefined == val
     Parse.address val
 
+  # Get an object value and return it as a string. Returns default_val if param
+  # is not a key.
+  getString: (query, param, defaultValue) ->
+    val = query[param]
+    return defaultValue if undefined == val
+    val
 
 class BucketRateLimit
   amount: 0.0

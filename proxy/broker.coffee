@@ -25,6 +25,9 @@ class Broker
     @clients = 0
     @id = genSnowflakeID()
     log 'Contacting Broker at ' + @url + '\nSnowflake ID: ' + @id
+    # Ensure url has the right protocol + trailing slash.
+    @url = 'https://' + @url if 0 != @url.indexOf('https://', 0)
+    @url += '/' if '/' != @url.substr -1
 
   # Snowflake registers with the broker using an HTTP POST request, and expects
   # a response from the broker containing some client offer.

@@ -7,17 +7,21 @@ Uses WebRTC from the client, and websocket to the server.
 Assume that the webrtc client plugin is always the offerer, in which case
 this must always act as the answerer.
 ###
-DEFAULT_WEBSOCKET = '192.81.135.242:9901'
-DEFAULT_BROKER = 'https://snowflake-reg.appspot.com/'
+DEFAULT_BROKER = 'snowflake-reg.appspot.com'
+DEFAULT_RELAY =
+  host: '192.81.135.242'
+  port: 9901
 COPY_PASTE_ENABLED = false
 DEFAULT_PORTS =
   http:  80
   https: 443
 
 DEBUG = false
+query = null
 if window && window.location
   query = Query.parse(window.location.search.substr(1))
   DEBUG = Params.getBool(query, 'debug', false)
+  COPY_PASTE_ENABLED = Params.getBool(query, 'manual', false)
 # HEADLESS is true if we are running not in a browser with a DOM.
 HEADLESS = 'undefined' == typeof(document)
 
@@ -79,34 +83,31 @@ class Snowflake
       @rateLimit = new BucketRateLimit(rateLimitBytes * RATE_LIMIT_HISTORY,
                                        RATE_LIMIT_HISTORY)
 
-  # TODO: Should fetch from broker later.
+  # TODO: Should potentially fetch from broker later.
+  # Set the target relay address spec, which is expected to be a websocket relay.
   setRelayAddr: (relayAddr) ->
-    addr = Parse.address relayAddr
-    if !addr
-      log 'Invalid address spec.'
-      return false
-    @relayAddr = addr
-    log 'Using ' + relayAddr + ' as Relay.'
+    @relayAddr = relayAddr
+    log 'Using ' + relayAddr.host + ':' + relayAddr.port + ' as Relay.'
     log 'Input offer from the snowflake client:' if COPY_PASTE_ENABLED
     return true
 
   # Initialize WebRTC PeerConnection
-  beginWebRTC: ->
+  beginWebRTC: (automatic) ->
     @state = MODE.WEBRTC_CONNECTING
     for i in [1..CONNECTIONS_PER_CLIENT]
       @makeProxyPair @relayAddr
     @proxyPair = @proxyPairs[0]
+    return if !automatic
     # Poll broker for clients.
     findClients = =>
       recv = broker.getClientOffer()
-      recv.then((desc) =>
+      recv.then (desc) =>
         offer = JSON.parse desc
         log 'Received:\n\n' + offer.sdp + '\n'
         @receiveOffer offer
       , (err) ->
         log err
         setTimeout(findClients, 1000)
-      )
     findClients()
 
   # Receive an SDP offer from some client assigned by the Broker.
@@ -176,11 +177,6 @@ Interface =
     if !COPY_PASTE_ENABLED
       log 'No input expected - Copy Paste Signalling disabled.'
     else switch snowflake.state
-      when MODE.INIT
-        # Set target relay.
-        if !(snowflake.setRelayAddr msg)
-          log 'Defaulting to websocket relay at ' + DEFAULT_WEBSOCKET
-          snowflake.setRelayAddr DEFAULT_WEBSOCKET
       when MODE.WEBRTC_CONNECTING
         Signalling.receive msg
       when MODE.WEBRTC_READY
@@ -229,13 +225,14 @@ init = ->
   $input.onkeydown = (e) -> $send.onclick() if 13 == e.keyCode  # enter
 
   log '== snowflake browser proxy =='
-  broker = new Broker DEFAULT_BROKER
+  log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
+  brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
+  broker = new Broker brokerUrl
   snowflake = new Snowflake(broker)
   window.snowflake = snowflake
-  if COPY_PASTE_ENABLED
-    log 'Input desired relay address:'
-  else
-    snowflake.setRelayAddr DEFAULT_WEBSOCKET
-    snowflake.beginWebRTC()
+
+  relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
+  snowflake.setRelayAddr relayAddr
+  snowflake.beginWebRTC(!COPY_PASTE_ENABLED)
 
 window.onload = init if window
