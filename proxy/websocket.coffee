@@ -2,6 +2,9 @@
 Only websocket-specific stuff.
 ###
 
+DEFAULT_PORTS =
+  http:  80
+  https: 443
 
 # Build an escaped URL string from unescaped components. Only scheme and host
 # are required. See RFC 3986, section 3.

@@ -12,9 +12,6 @@ DEFAULT_RELAY =
   host: '192.81.135.242'
   port: 9901
 COPY_PASTE_ENABLED = false
-DEFAULT_PORTS =
-  http:  80
-  https: 443
 
 DEBUG = false
 query = null
@@ -29,6 +26,7 @@ HEADLESS = 'undefined' == typeof(document)
 DEFAULT_RATE_LIMIT = DEFAULT_RATE_LIMIT || undefined
 MIN_RATE_LIMIT = 10 * 1024
 RATE_LIMIT_HISTORY = 5.0
+DEFAULT_BROKER_POLL_INTERVAL = 5.0 * 1000
 
 MAX_NUM_CLIENTS = 1
 CONNECTIONS_PER_CLIENT = 1
@@ -92,12 +90,12 @@ class Snowflake
     return true
 
   # Initialize WebRTC PeerConnection
-  beginWebRTC: (automatic) ->
+  beginWebRTC: ->
     @state = MODE.WEBRTC_CONNECTING
     for i in [1..CONNECTIONS_PER_CLIENT]
       @makeProxyPair @relayAddr
     @proxyPair = @proxyPairs[0]
-    return if !automatic
+    return if COPY_PASTE_ENABLED
     # Poll broker for clients.
     findClients = =>
       recv = broker.getClientOffer()
@@ -107,7 +105,7 @@ class Snowflake
         @receiveOffer offer
       , (err) ->
         log err
-        setTimeout(findClients, 1000)
+        setTimeout(findClients, DEFAULT_BROKER_POLL_INTERVAL)
     findClients()
 
   # Receive an SDP offer from some client assigned by the Broker.
@@ -233,6 +231,6 @@ init = ->
 
   relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
   snowflake.setRelayAddr relayAddr
-  snowflake.beginWebRTC(!COPY_PASTE_ENABLED)
+  snowflake.beginWebRTC()
 
 window.onload = init if window
