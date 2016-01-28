@@ -4,9 +4,11 @@ go:
     - 1.5
 
 before_script:
-    npm install -g coffee-script
+    npm install -g coffee-script coffeelint
 
 script:
     - make check
     - go test -v -race ./broker
-    - cd proxy && cake test
+    - cd proxy
+    - cake lint
+    - cake test

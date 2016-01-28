@@ -82,7 +82,8 @@ class Snowflake
                                        RATE_LIMIT_HISTORY)
 
   # TODO: Should potentially fetch from broker later.
-  # Set the target relay address spec, which is expected to be a websocket relay.
+  # Set the target relay address spec, which is expected to be a websocket
+  # relay.
   setRelayAddr: (relayAddr) ->
     @relayAddr = relayAddr
     log 'Using ' + relayAddr.host + ':' + relayAddr.port + ' as Relay.'
