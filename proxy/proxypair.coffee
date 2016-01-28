@@ -65,6 +65,7 @@ class ProxyPair
       @connectRelay()
     channel.onclose = ->
       log 'Data channel closed.'
+      Status.set 'disconnected.'
       snowflake.state = MODE.INIT
       $msglog.className = ''
       # Change this for multiplexing.
@@ -79,6 +80,7 @@ class ProxyPair
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
       log '\nRelay ' + @relay.label + ' connected!'
+      Status.set 'connected'
     @relay.onclose = @onClose
     @relay.onerror = @onError
     @relay.onmessage = @onRelayToClientMessage
@@ -86,13 +88,13 @@ class ProxyPair
   # WebRTC --> websocket
   onClientToRelayMessage: (msg) =>
     line = recv = msg.data
-    console.log msg
-    # Go sends only raw bytes...
-    if '[object ArrayBuffer]' == recv.toString()
-      bytes = new Uint8Array recv
-      line = String.fromCharCode.apply(null, bytes)
-    line = line.trim()
-    console.log 'WebRTC --> websocket data: ' + line
+    if DEBUG
+      # Go sends only raw bytes...
+      if '[object ArrayBuffer]' == recv.toString()
+        bytes = new Uint8Array recv
+        line = String.fromCharCode.apply(null, bytes)
+      line = line.trim()
+      console.log 'WebRTC --> websocket data: ' + line
     @c2rSchedule.push recv
     @flush()
 

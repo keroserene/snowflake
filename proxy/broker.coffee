@@ -53,12 +53,12 @@ class Broker
           when STATUS_OK
             fulfill xhr.responseText  # Should contain offer.
           when STATUS_GATEWAY_TIMEOUT
-            reject 'Timed out waiting for a client to serve. Retrying...'
+            reject 'Timed out waiting for a client to serve.'
           else
             log 'Broker ERROR: Unexpected ' + xhr.status +
                 ' - ' + xhr.statusText
+            Status.set ' failure. Please refresh.'
       xhr.send @id
-      log @id + " - polling for client offer..."
 
   sendAnswer: (answer) ->
     log @id + ' - Sending answer back to broker...\n'
@@ -81,4 +81,5 @@ class Broker
         else
           log 'Broker ERROR: Unexpected ' + xhr.status +
               ' - ' + xhr.statusText
+          Status.set ' failure. Please refresh.'
     xhr.send JSON.stringify(answer)

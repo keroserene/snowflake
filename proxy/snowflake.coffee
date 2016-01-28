@@ -60,6 +60,7 @@ class Snowflake
   badge: null
   $badge: null
   state: MODE.INIT
+  retries: 0
 
   constructor: (@broker) ->
     if HEADLESS
@@ -80,6 +81,7 @@ class Snowflake
     else
       @rateLimit = new BucketRateLimit(rateLimitBytes * RATE_LIMIT_HISTORY,
                                        RATE_LIMIT_HISTORY)
+    @retries = 0
 
   # TODO: Should potentially fetch from broker later.
   # Set the target relay address spec, which is expected to be a websocket
@@ -97,16 +99,30 @@ class Snowflake
       @makeProxyPair @relayAddr
     @proxyPair = @proxyPairs[0]
     return if COPY_PASTE_ENABLED
+    timer = null
+    # Temporary countdown.
+    countdown = (msg, sec) ->
+      Status.set msg + ' (Retrying in ' + sec + ' seconds...)'
+      sec--
+      if sec >= 0
+        setTimeout((-> countdown(msg, sec)), 1000)
+      else
+        findClients()
     # Poll broker for clients.
     findClients = =>
+      clearTimeout timer
+      msg = 'polling for client... '
+      msg += '[retries: ' + @retries + ']' if @retries > 0
+      Status.set msg
       recv = broker.getClientOffer()
+      @retries++
       recv.then (desc) =>
         offer = JSON.parse desc
         log 'Received:\n\n' + offer.sdp + '\n'
         @receiveOffer offer
       , (err) ->
-        log err
-        setTimeout(findClients, DEFAULT_BROKER_POLL_INTERVAL)
+        countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
+
     findClients()
 
   # Receive an SDP offer from some client assigned by the Broker.
@@ -155,6 +171,7 @@ class Snowflake
   reset: ->
     @cease()
     log '\nSnowflake resetting...'
+    @retries = 0
     @beginWebRTC()
 
 snowflake = null
@@ -168,6 +185,7 @@ broker = null
 $msglog = null
 $send = null
 $input = null
+$status = null
 
 Interface =
   # Local input from keyboard into message window.
@@ -212,7 +230,12 @@ log = (msg) ->  # Log to the message window.
     $msglog.value += msg + '\n'
     $msglog.scrollTop = $msglog.scrollHeight
 
+# Status bar
+Status =
+  set: (msg) -> $status.innerHTML = 'Status: ' + msg
+
 init = ->
+  $status = document.getElementById('status')
   $msglog = document.getElementById('msglog')
   $msglog.value = ''
 

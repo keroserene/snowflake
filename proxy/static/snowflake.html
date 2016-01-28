@@ -62,10 +62,19 @@
     border: none; // box-shadow: 0 2px 5px #000;
   }
   #send:hover { background-color: #636; }
+  #status {
+    background-color: rgba(0,0,0,0.9);  color: #999;
+    margin: 8px 0; padding: 8px 1em; cursor: default;
+    font-size: 12px;
+    text-align: left;
+  }
   </style>
 </head>
 <body>
   <div class="chatarea">
+    <div id="status">
+      Timeout...
+    </div>
     <textarea id="msglog" readonly>
     </textarea>
     <div class="inputarea">
