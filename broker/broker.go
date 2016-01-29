@@ -18,10 +18,14 @@ import (
 	"time"
 )
 
+const (
+	ClientTimeout = 10
+	ProxyTimeout  = 10
+)
+
 // This is minimum viable client-proxy registration.
 // TODO(#13): better, more secure registration corresponding to what's in
 // the python flashproxy facilitator.
-
 var snowflakes *SnowflakeHeap
 
 // Map keeping track of snowflakeIDs required to match SDP answers from
@@ -54,6 +58,16 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(remoteAddr))
 }
 
+// Return early if it's CORS preflight.
+func isPreflight(w http.ResponseWriter, r *http.Request) bool {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID")
+	if "OPTIONS" == r.Method {
+		return true
+	}
+	return false
+}
+
 /*
 Expects a WebRTC SDP offer in the Request to give to an assigned
 snowflake proxy, which responds with the SDP answer to be sent in
@@ -70,7 +84,7 @@ func clientHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "X-Session-ID")
 
 	// Find the most available snowflake proxy, and pass the offer to it.
-	// TODO: Needs improvement.
+	// TODO: Needs improvement - maybe shouldn'
 	snowflake := heap.Pop(snowflakes).(*Snowflake)
 	if nil == snowflake {
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -87,7 +101,7 @@ func clientHandler(w http.ResponseWriter, r *http.Request) {
 		// Only remove from the snowflake map once the answer is set.
 		delete(snowflakeMap, snowflake.id)
 
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * ClientTimeout):
 		w.WriteHeader(http.StatusGatewayTimeout)
 		w.Write([]byte("timed out waiting for answer!"))
 	}
@@ -97,13 +111,9 @@ func clientHandler(w http.ResponseWriter, r *http.Request) {
 For snowflake proxies to request a client from the Broker.
 */
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID")
-	// For CORS preflight.
-	if "OPTIONS" == r.Method {
+	if isPreflight(w, r) {
 		return
 	}
-
 	id := r.Header.Get("X-Session-ID")
 	body, err := ioutil.ReadAll(r.Body)
 	if nil != err {
@@ -125,7 +135,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Passing client offer to snowflake.")
 		w.Write(offer)
 
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * ProxyTimeout):
 		// This snowflake is no longer available to serve clients.
 		heap.Remove(snowflakes, snowflake.index)
 		delete(snowflakeMap, snowflake.id)
@@ -139,13 +149,9 @@ an offer from proxyHandler to respond with an answer in an HTTP POST,
 which the broker will pass back to the original client.
 */
 func answerHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "X-Session-ID")
-	// For CORS preflight.
-	if "OPTIONS" == r.Method {
+	if isPreflight(w, r) {
 		return
 	}
-
 	id := r.Header.Get("X-Session-ID")
 	snowflake, ok := snowflakeMap[id]
 	if !ok || nil == snowflake {
