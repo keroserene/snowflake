@@ -11,7 +11,6 @@ package snowflake_broker
 
 import (
 	"container/heap"
-	// "fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -19,58 +18,14 @@ import (
 	"time"
 )
 
-// This is an intermediate step - a basic hardcoded appengine rendezvous
-// to a single browser snowflake.
-
 // This is minimum viable client-proxy registration.
-// TODO: better, more secure registration corresponding to what's in
+// TODO(#13): better, more secure registration corresponding to what's in
 // the python flashproxy facilitator.
 
-// Slice of available snowflake proxies.
-// var snowflakes []chan []byte
-
-type Snowflake struct {
-	id            string
-	offerChannel  chan []byte
-	answerChannel chan []byte
-	clients       int
-	index         int
-}
-
-// Implements heap.Interface, and holds Snowflakes.
-type SnowflakeHeap []*Snowflake
-
-func (sh SnowflakeHeap) Len() int { return len(sh) }
-
-func (sh SnowflakeHeap) Less(i, j int) bool {
-	// Snowflakes serving less clients should sort earlier.
-	return sh[i].clients < sh[j].clients
-}
-
-func (sh SnowflakeHeap) Swap(i, j int) {
-	sh[i], sh[j] = sh[j], sh[i]
-	sh[i].index = i
-	sh[j].index = j
-}
-
-func (sh *SnowflakeHeap) Push(s interface{}) {
-	n := len(*sh)
-	snowflake := s.(*Snowflake)
-	snowflake.index = n
-	*sh = append(*sh, snowflake)
-}
-
-// Only valid when Len() > 0.
-func (sh *SnowflakeHeap) Pop() interface{} {
-	flakes := *sh
-	n := len(flakes)
-	snowflake := flakes[n-1]
-	snowflake.index = -1
-	*sh = flakes[0 : n-1]
-	return snowflake
-}
-
 var snowflakes *SnowflakeHeap
+
+// Map keeping track of snowflakeIDs required to match SDP answers from
+// the second http POST.
 var snowflakeMap map[string]*Snowflake
 
 // Create and add a Snowflake to the heap.
