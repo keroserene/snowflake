@@ -1,10 +1,9 @@
-// Client transport plugin for the snowflake pluggable transport.
-//
-// TODO: Use meek for signalling.
+// Client transport plugin for the Snowflake pluggable transport.
 package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -16,10 +15,9 @@ import (
 	"syscall"
 	"time"
 
+	"git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/keroserene/go-webrtc"
 	"github.com/keroserene/go-webrtc/data"
-
-	"git.torproject.org/pluggable-transports/goptlib.git"
 )
 
 var ptInfo pt.ClientInfo
@@ -93,7 +91,7 @@ func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
 	return fmt.Errorf("SetWriteDeadline not implemented")
 }
 
-func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
+func dialWebRTC(config *webrtc.Configuration, broker *BrokerChannel) (
 	*webRTCConn, error) {
 
 	offerChan := make(chan *webrtc.SessionDescription)
@@ -131,6 +129,8 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 		log.Printf("OnIceComplete")
 		offerChan <- pc.LocalDescription()
 	}
+	// This callback is not expected, as the Client initiates the creation
+	// of the data channel, not the remote peer.
 	pc.OnDataChannel = func(channel *data.Channel) {
 		log.Println("OnDataChannel")
 		panic("OnDataChannel")
@@ -151,6 +151,7 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 		log.Println("OnClose channel")
 		pw.Close()
 		close(openChan)
+		// TODO: (Issue #12) Should attempt to renegotiate at this point.
 	}
 	dc.OnMessage = func(msg []byte) {
 		log.Printf("OnMessage <--- %d bytes", len(msg))
@@ -173,14 +174,14 @@ func dialWebRTC(config *webrtc.Configuration, meek *MeekChannel) (
 		log.Printf("----------------")
 		go func() {
 			if "" != brokerURL {
-				log.Println("Sending offer via meek channel...\nTarget URL: ", brokerURL,
+				log.Println("Sending offer via BrokerChannel...\nTarget URL: ", brokerURL,
 					"\nFront URL:  ", frontDomain)
-				answer, err := meek.Negotiate(pc.LocalDescription())
+				answer, err := broker.Negotiate(pc.LocalDescription())
 				if nil != err {
-					log.Printf("MeekChannel signaling error: %s", err)
+					log.Printf("BrokerChannel signaling error: %s", err)
 				}
 				if nil == answer {
-					log.Printf("MeekChannel: No answer received.")
+					log.Printf("BrokerChannel: No answer received.")
 				} else {
 					signalChan <- answer
 				}
@@ -236,10 +237,16 @@ func handler(conn *pt.SocksConn) error {
 	}()
 	defer conn.Close()
 
+	// TODO: [#3] Fetch ICE server information from Broker.
+	// TODO: [#18] Consider TURN servers here too.
 	config := webrtc.NewConfiguration(
 		webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
-	meek := NewMeekChannel(brokerURL, frontDomain)
-	remote, err := dialWebRTC(config, meek)
+	broker := NewBrokerChannel(brokerURL, frontDomain)
+	if nil == broker {
+		conn.Reject()
+		return errors.New("Failed to prepare BrokerChannel")
+	}
+	remote, err := dialWebRTC(config, broker)
 	if err != nil {
 		conn.Reject()
 		return err
