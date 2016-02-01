@@ -4,34 +4,40 @@
 
 A Pluggable Transport using WebRTC
 
+
 ### Status
 
-- Successful automatic bootstraps with a WebRTC transport,
-  using HTTP signaling (with optional domain fronting) speaking to
-  a multitude of volunteer "snowflakes".
-- Needs a lot more work though.
+Successfully & automatically bootstraps with a WebRTC transport, using HTTP
+signaling (with optional domain fronting) speaking to a multitude of volunteer
+"snowflakes". Still lots of work to do.
 
 ### Usage
 
-
-
 ```
 cd client/
+go get
 go build
 tor -f torrc
 ```
+This should start the client plugin, bootstrapping to 100% using WebRTC.
 
-And it will start the client plugin with the following `torrc`
-options:
+#### Dependencies
+
+- [go-webrtc](https://github.com/keroserene/go-webrtc).
+- Go 1.5+
+
+#### More Info
+
+The client uses the following `torrc` options:
 ```
 ClientTransportPlugin snowflake exec ./client \
 --url https://snowflake-reg.appspot.com/ \
 --front www.google.com
 ```
 
-It will speak to the Broker, get matched with a "snowflake" browser proxy,
+Which allows it to speak to the Broker,
+get matched with a "snowflake" browser proxy,
 and negotiate a WebRTC PeerConnection.
-After that, it should bootstrap to 100%.
 
 To see logs, do `tail -F snowflake.log` in a second terminal.
 
@@ -46,7 +52,8 @@ ClientTransportPlugin snowflake exec ./client --meek
 Also, it is possible to connect directly to the go-webrtc server plugin
 (skipping all the browser snowflake / broker stuff - see appendix)
 
-### Building a Snowflake Proxy
+
+#### Building a Snowflake
 
 This will only work if there are any browser snowflakes running at all.
 To run your own, first make sure coffeescript is installed.
@@ -115,3 +122,6 @@ Then, in the browser proxy:
   Shortly after, the tor client should bootstrap to 100%.
 
 More documentation on the way.
+
+Also available at:
+[torproject.org/pluggable-transports/snowflake](https://gitweb.torproject.org/pluggable-transports/snowflake.git/)
