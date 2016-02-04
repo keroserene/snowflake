@@ -232,19 +232,22 @@ log = (msg) ->  # Log to the message window.
 
 # Status bar
 Status =
-  set: (msg) -> $status.innerHTML = 'Status: ' + msg
+  set: (msg) ->
+    $status.innerHTML = 'Status: ' + msg if $status
 
 init = ->
-  $status = document.getElementById('status')
-  $msglog = document.getElementById('msglog')
-  $msglog.value = ''
+  $badge = document.getElementById('badge')
+  if !badge
+    $status = document.getElementById('status')
+    $msglog = document.getElementById('msglog')
+    $msglog.value = ''
 
-  $send = document.getElementById('send')
-  $send.onclick = Interface.acceptInput
+    $send = document.getElementById('send')
+    $send.onclick = Interface.acceptInput
 
-  $input = document.getElementById('input')
-  $input.focus()
-  $input.onkeydown = (e) -> $send.onclick() if 13 == e.keyCode  # enter
+    $input = document.getElementById('input')
+    $input.focus()
+    $input.onkeydown = (e) -> $send.onclick() if 13 == e.keyCode  # enter
 
   log '== snowflake browser proxy =='
   log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED

@@ -33,6 +33,12 @@ task 'test', 'snowflake unit tests', ->
     throw err if err
     console.log stdout + stderr
 
+# task 'build:embed', 'build the snowflake badge', ->
+  # exec 'mkdir -p build'
+  # concatCoffeeFiles()
+  # copyStaticFiles()
+  # compileCoffee()
+
 task 'build', 'build the snowflake proxy', ->
   exec 'mkdir -p build'
   concatCoffeeFiles()
