@@ -1,4 +1,5 @@
 window = {}
+ui = {}
 
 VERBOSE = false
 VERBOSE = true if process.argv.indexOf('-v') >= 0

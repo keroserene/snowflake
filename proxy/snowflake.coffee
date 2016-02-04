@@ -38,9 +38,6 @@ config = {
   ]
 }
 
-# TODO: Implement
-class Badge
-
 # Janky state machine
 MODE =
   INIT:              0
@@ -57,21 +54,10 @@ class Snowflake
   proxyPair: null
 
   rateLimit: null
-  badge: null
-  $badge: null
   state: MODE.INIT
   retries: 0
 
   constructor: (@broker) ->
-    if HEADLESS
-      # No badge
-    else if DEBUG
-      @$badge = debug_div
-    else
-      @badge = new Badge()
-      @$badgem = @badge.elem
-    @$badge.setAttribute('id', 'snowflake-badge') if (@$badge)
-
     rateLimitBytes = undefined
     if 'off' != query['ratelimit']
       rateLimitBytes = Params.getByteCount(query, 'ratelimit',
@@ -144,14 +130,14 @@ class Snowflake
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.
       @proxyPairs.splice(@proxyPairs.indexOf(pair), 1)
-      @badge.endProxy() if @badge
+      # @badge.endProxy() if @badge
     try
       pair.begin()
     catch err
       log 'ERROR: ProxyPair exception while connecting.'
       log err
       return
-    @badge.beginProxy if @badge
+    # @badge.beginProxy if @badge
 
   cease: ->
     while @proxyPairs.length > 0
@@ -160,12 +146,12 @@ class Snowflake
   disable: ->
     log 'Disabling Snowflake.'
     @cease()
-    @badge.disable() if @badge
+    # @badge.disable() if @badge
 
   die: ->
     log 'Snowflake died.'
     @cease()
-    @badge.die() if @badge
+    # @badge.die() if @badge
 
   # Close all existing ProxyPairs and begin finding new clients from scratch.
   reset: ->
