@@ -102,7 +102,7 @@ class Snowflake
     timer = null
     # Temporary countdown.
     countdown = (msg, sec) ->
-      Status.set msg + ' (Retrying in ' + sec + ' seconds...)'
+      ui.setStatus msg + ' (Retrying in ' + sec + ' seconds...)'
       sec--
       if sec >= 0
         setTimeout((-> countdown(msg, sec)), 1000)
@@ -113,7 +113,7 @@ class Snowflake
       clearTimeout timer
       msg = 'polling for client... '
       msg += '[retries: ' + @retries + ']' if @retries > 0
-      Status.set msg
+      ui.setStatus msg
       recv = broker.getClientOffer()
       @retries++
       recv.then (desc) =>
@@ -176,32 +176,8 @@ class Snowflake
 
 snowflake = null
 broker = null
+ui = null
 
-#
-## -- DOM & Inputs -- #
-#
-
-# DOM elements references.
-$msglog = null
-$send = null
-$input = null
-$status = null
-
-Interface =
-  # Local input from keyboard into message window.
-  acceptInput: ->
-    msg = $input.value
-    if !COPY_PASTE_ENABLED
-      log 'No input expected - Copy Paste Signalling disabled.'
-    else switch snowflake.state
-      when MODE.WEBRTC_CONNECTING
-        Signalling.receive msg
-      when MODE.WEBRTC_READY
-        log 'No input expected - WebRTC connected.'
-      else
-        log 'ERROR: ' + msg
-    $input.value = ''
-    $input.focus()
 
 # Signalling channel - just tells user to copy paste to the peer.
 # Eventually this should go over the broker.
@@ -224,37 +200,20 @@ Signalling =
       return false
     snowflake.receiveOffer recv if desc
 
-log = (msg) ->  # Log to the message window.
+# Log to both console and UI if applicable.
+log = (msg) ->
   console.log msg
-  if $msglog                        # Scroll to latest
-    $msglog.value += msg + '\n'
-    $msglog.scrollTop = $msglog.scrollHeight
-
-# Status bar
-Status =
-  set: (msg) ->
-    $status.innerHTML = 'Status: ' + msg if $status
+  ui.log msg
 
 init = ->
-  $badge = document.getElementById('badge')
-  if !badge
-    $status = document.getElementById('status')
-    $msglog = document.getElementById('msglog')
-    $msglog.value = ''
-
-    $send = document.getElementById('send')
-    $send.onclick = Interface.acceptInput
-
-    $input = document.getElementById('input')
-    $input.focus()
-    $input.onkeydown = (e) -> $send.onclick() if 13 == e.keyCode  # enter
-
-  log '== snowflake browser proxy =='
+  ui = new UI()
+  log '== snowflake proxy =='
   log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
   broker = new Broker brokerUrl
   snowflake = new Snowflake(broker)
-  window.snowflake = snowflake
+  # window.snowflake = snowflake
+  # window.ui = ui
 
   relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
   snowflake.setRelayAddr relayAddr

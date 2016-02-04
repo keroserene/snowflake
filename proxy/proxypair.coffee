@@ -59,15 +59,15 @@ class ProxyPair
     channel.onopen = =>
       log 'Data channel opened!'
       snowflake.state = MODE.WEBRTC_READY
-      $msglog.className = 'active' if $msglog
+      ui.setActive true
       # This is the point when the WebRTC datachannel is done, so the next step
       # is to establish websocket to the server.
       @connectRelay()
     channel.onclose = ->
       log 'Data channel closed.'
-      Status.set 'disconnected.'
+      ui.setStatus 'disconnected.'
       snowflake.state = MODE.INIT
-      $msglog.className = '' if $msglog
+      ui.setActive false
       # Change this for multiplexing.
       snowflake.reset()
     channel.onerror = -> log 'Data channel error!'
@@ -80,7 +80,7 @@ class ProxyPair
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
       log '\nRelay ' + @relay.label + ' connected!'
-      Status.set 'connected'
+      ui.setStatus 'connected'
     @relay.onclose = @onClose
     @relay.onerror = @onError
     @relay.onmessage = @onRelayToClientMessage

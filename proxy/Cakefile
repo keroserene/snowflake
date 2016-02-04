@@ -8,6 +8,7 @@ FILES = [
   'proxypair.coffee'
   'websocket.coffee'
   'broker.coffee'
+  'ui.coffee'
   'snowflake.coffee'
 ]
 FILES_TEST = [
@@ -33,12 +34,6 @@ task 'test', 'snowflake unit tests', ->
     throw err if err
     console.log stdout + stderr
 
-# task 'build:embed', 'build the snowflake badge', ->
-  # exec 'mkdir -p build'
-  # concatCoffeeFiles()
-  # copyStaticFiles()
-  # compileCoffee()
-
 task 'build', 'build the snowflake proxy', ->
   exec 'mkdir -p build'
   concatCoffeeFiles()
@@ -54,4 +49,4 @@ task 'lint', 'ensure idiomatic coffeescript', ->
 
 task 'clean', 'remove all built files', ->
   exec 'rm -r build'
-  exec 'rm -r test'
+  exec 'rm -r test/snowflake.bundle.coffee'
