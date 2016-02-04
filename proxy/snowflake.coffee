@@ -118,7 +118,7 @@ class Snowflake
       @retries++
       recv.then (desc) =>
         offer = JSON.parse desc
-        log 'Received:\n\n' + offer.sdp + '\n'
+        dbg 'Received:\n\n' + offer.sdp + '\n'
         @receiveOffer offer
       , (err) ->
         countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
@@ -133,7 +133,7 @@ class Snowflake
 
   sendAnswer: =>
     next = (sdp) =>
-      log 'webrtc: Answer ready.'
+      dbg 'webrtc: Answer ready.'
       @proxyPair.pc.setLocalDescription sdp
     promise = @proxyPair.pc.createAnswer next
     promise.then next if promise
@@ -170,14 +170,13 @@ class Snowflake
   # Close all existing ProxyPairs and begin finding new clients from scratch.
   reset: ->
     @cease()
-    log '\nSnowflake resetting...'
+    log 'Snowflake resetting...'
     @retries = 0
     @beginWebRTC()
 
 snowflake = null
 broker = null
 ui = null
-
 
 # Signalling channel - just tells user to copy paste to the peer.
 # Eventually this should go over the broker.
@@ -202,8 +201,10 @@ Signalling =
 
 # Log to both console and UI if applicable.
 log = (msg) ->
-  console.log msg
+  console.log 'Snowflake: ' + msg
   ui.log msg
+
+dbg = (msg) -> log msg if ui.debug
 
 init = ->
   ui = new UI()

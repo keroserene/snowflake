@@ -32,16 +32,15 @@ class ProxyPair
       if null == evt.candidate
         # TODO: Use a promise.all to tell Snowflake about all offers at once,
         # once multiple proxypairs are supported.
-        log 'Finished gathering ICE candidates.'
+        dbg 'Finished gathering ICE candidates.'
         if COPY_PASTE_ENABLED
           Signalling.send @pc.localDescription
         else
           snowflake.broker.sendAnswer @pc.localDescription
     # OnDataChannel triggered remotely from the client when connection succeeds.
     @pc.ondatachannel = (dc) =>
-      console.log dc
       channel = dc.channel
-      log 'Data Channel established...'
+      dbg 'Data Channel established...'
       @prepareDataChannel channel
       @client = channel
 
@@ -52,19 +51,19 @@ class ProxyPair
     catch e
       log 'Invalid SDP message.'
       return false
-    log 'SDP ' + offer.type + ' successfully received.'
+    dbg 'SDP ' + offer.type + ' successfully received.'
     true
 
   prepareDataChannel: (channel) =>
     channel.onopen = =>
-      log 'Data channel opened!'
+      log 'WebRTC DataChannel opened!'
       snowflake.state = MODE.WEBRTC_READY
       ui.setActive true
       # This is the point when the WebRTC datachannel is done, so the next step
       # is to establish websocket to the server.
       @connectRelay()
     channel.onclose = ->
-      log 'Data channel closed.'
+      log 'WebRTC DataChannel closed.'
       ui.setStatus 'disconnected.'
       snowflake.state = MODE.INIT
       ui.setActive false
@@ -75,11 +74,11 @@ class ProxyPair
 
   # Assumes WebRTC datachannel is connected.
   connectRelay: =>
-    log 'Connecting to relay...'
+    dbg 'Connecting to relay...'
     @relay = makeWebsocket @relayAddr
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
-      log '\nRelay ' + @relay.label + ' connected!'
+      log @relay.label + ' connected!'
       ui.setStatus 'connected'
     @relay.onclose = @onClose
     @relay.onerror = @onError
@@ -106,13 +105,13 @@ class ProxyPair
 
   onClose: (event) =>
     ws = event.target
-    log(ws.label + ': closed.')
+    log ws.label + ' closed.'
     @flush()
     @maybeCleanup()
 
   onError: (event) =>
     ws = event.target
-    log ws.label + ': error.'
+    log ws.label + ' error.'
     @close()
     # we can't rely on onclose_callback to cleanup, since one common error
     # case is when the client fails to connect and the relay never starts.

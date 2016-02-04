@@ -37,7 +37,7 @@ class UI
     if debug
       @$msglog.className = if connected then 'active' else ''
     else
-      # magic
+      @$badge.className = if connected then 'active' else ''
 
   # Local input from keyboard into message window.
   acceptInput: =>

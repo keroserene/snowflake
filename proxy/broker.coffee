@@ -24,7 +24,7 @@ class Broker
   constructor: (@url) ->
     @clients = 0
     @id = genSnowflakeID()
-    log 'Contacting Broker at ' + @url + '\nSnowflake ID: ' + @id
+    dbg 'Contacting Broker at ' + @url + '\nSnowflake ID: ' + @id
     # Ensure url has the right protocol + trailing slash.
     @url = 'https://' + @url if 0 != @url.indexOf('https://', 0)
     @url += '/' if '/' != @url.substr -1
@@ -61,8 +61,8 @@ class Broker
       xhr.send @id
 
   sendAnswer: (answer) ->
-    log @id + ' - Sending answer back to broker...\n'
-    log answer.sdp
+    dbg @id + ' - Sending answer back to broker...\n'
+    dbg answer.sdp
     xhr = new XMLHttpRequest()
     try
       xhr.open 'POST', @url + 'answer'
@@ -74,12 +74,12 @@ class Broker
       return if xhr.DONE != xhr.readyState
       switch xhr.status
         when STATUS_OK
-          log 'Broker: Successfully replied with answer.'
-          log xhr.responseText
+          dbg 'Broker: Successfully replied with answer.'
+          dbg xhr.responseText
         when STATUS_GONE
-          log 'Broker: No longer valid to reply with answer.'
+          dbg 'Broker: No longer valid to reply with answer.'
         else
-          log 'Broker ERROR: Unexpected ' + xhr.status +
+          dbg 'Broker ERROR: Unexpected ' + xhr.status +
               ' - ' + xhr.statusText
           Status.set ' failure. Please refresh.'
     xhr.send JSON.stringify(answer)
