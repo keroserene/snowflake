@@ -4,7 +4,7 @@ go:
     - 1.5
 
 before_script:
-    npm install -g coffee-script coffeelint
+    npm install -g coffee-script coffeelint jasmine
 
 script:
     - make check

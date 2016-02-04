@@ -11,10 +11,10 @@ FILES = [
   'ui.coffee'
   'snowflake.coffee'
 ]
-FILES_TEST = [
-  'snowflake_test.coffee'
+FILES_SPEC = [
+  'spec.coffee'
 ]
-FILES_ALL = FILES.concat FILES_TEST
+FILES_ALL = FILES.concat FILES_SPEC
 OUTFILE = 'build/snowflake.coffee'
 STATIC = 'static'
 
@@ -23,16 +23,18 @@ concatCoffeeFiles = -> exec 'cat ' + FILES.join(' ') + ' | cat > ' + OUTFILE
 copyStaticFiles = -> exec 'cp ' + STATIC + '/* build/'
 
 compileCoffee = ->
-  exec 'coffee -o build -c build/snowflake.coffee', (err, stdout, stderr) ->
+  exec 'coffee -o build -b -c build/snowflake.coffee', (err, stdout, stderr) ->
     throw err if err
 
 task 'test', 'snowflake unit tests', ->
-  exec 'mkdir -p test'
-  testFile = 'test/snowflake.bundle.coffee'
-  exec 'cat ' + FILES.join(' ') + ' snowflake_test.coffee | cat > ' + testFile
-  exec 'coffee ' + testFile + ' -v', (err, stdout, stderr) ->
-    throw err if err
-    console.log stdout + stderr
+  exec 'jasmine init >&-'
+  jasmineFiles = FILES.concat FILES_SPEC
+  outFile = 'spec/snowflake.bundle.coffee'
+  exec 'cat ' + jasmineFiles.join(' ') +  ' | cat > ' + outFile
+  exec 'coffee -o spec -cb ' + outFile
+  spawn 'jasmine', ['spec/snowflake.bundle.js'], {
+    stdio: 'inherit'
+  }
 
 task 'build', 'build the snowflake proxy', ->
   exec 'mkdir -p build'
@@ -49,4 +51,5 @@ task 'lint', 'ensure idiomatic coffeescript', ->
 
 task 'clean', 'remove all built files', ->
   exec 'rm -r build'
+  exec 'rm -r spec'
   exec 'rm -r test/snowflake.bundle.coffee'

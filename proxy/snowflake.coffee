@@ -15,10 +15,12 @@ COPY_PASTE_ENABLED = false
 
 DEBUG = false
 query = null
-if window && window.location
+if 'undefined' != typeof window && window.location
   query = Query.parse(window.location.search.substr(1))
   DEBUG = Params.getBool(query, 'debug', false)
   COPY_PASTE_ENABLED = Params.getBool(query, 'manual', false)
+else
+  window = {}
 # HEADLESS is true if we are running not in a browser with a DOM.
 HEADLESS = 'undefined' == typeof(document)
 
