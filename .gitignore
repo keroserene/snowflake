@@ -10,5 +10,5 @@ snowflake.log
 proxy/test
 proxy/build
 proxy/node_modules
-proxy/spec
+proxy/spec/support
 ignore/

@@ -1,5 +1,5 @@
 fs = require 'fs'
-{spawn, exec} = require 'child_process'
+{exec, spawn, execSync} = require 'child_process'
 
 # All coffeescript files required.
 FILES = [
@@ -12,7 +12,8 @@ FILES = [
   'snowflake.coffee'
 ]
 FILES_SPEC = [
-  'spec.coffee'
+  'spec/util.spec.coffee'
+  'spec/proxypair.spec.coffee'
 ]
 FILES_ALL = FILES.concat FILES_SPEC
 OUTFILE = 'build/snowflake.coffee'
@@ -20,19 +21,21 @@ STATIC = 'static'
 
 concatCoffeeFiles = -> exec 'cat ' + FILES.join(' ') + ' | cat > ' + OUTFILE
 
-copyStaticFiles = -> exec 'cp ' + STATIC + '/* build/'
+copyStaticFiles = -> exec '' + STATIC + '/* build/'
 
 compileCoffee = ->
   exec 'coffee -o build -b -c build/snowflake.coffee', (err, stdout, stderr) ->
     throw err if err
 
 task 'test', 'snowflake unit tests', ->
+  exec 'mkdir -p build'
   exec 'jasmine init >&-'
+  # Simply concat all the files because we're not using node exports.
   jasmineFiles = FILES.concat FILES_SPEC
-  outFile = 'spec/snowflake.bundle.coffee'
+  outFile = 'build/bundle.spec.coffee'
   exec 'cat ' + jasmineFiles.join(' ') +  ' | cat > ' + outFile
-  exec 'coffee -o spec -cb ' + outFile
-  spawn 'jasmine', ['spec/snowflake.bundle.js'], {
+  execSync 'coffee -cb ' + outFile
+  spawn 'jasmine', ['build/bundle.spec.js'], {
     stdio: 'inherit'
   }
 
@@ -51,5 +54,3 @@ task 'lint', 'ensure idiomatic coffeescript', ->
 
 task 'clean', 'remove all built files', ->
   exec 'rm -r build'
-  exec 'rm -r spec'
-  exec 'rm -r test/snowflake.bundle.coffee'

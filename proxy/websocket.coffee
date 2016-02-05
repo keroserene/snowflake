@@ -56,5 +56,3 @@ makeWebsocket = (addr) ->
   ###
   ws.binaryType = 'arraybuffer'
   ws
-
-# module.exports.buildUrl = buildUrl

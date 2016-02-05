@@ -1,14 +1,20 @@
 language: go
 
 go:
-    - 1.5
+  - 1.5
+
+env:
+  - TRAVIS_NODE_VERSION="4.1"
+
+install:
+  - rm -rf ~/.nvm && git clone https://github.com/creationix/nvm.git ~/.nvm && (cd ~/.nvm && git checkout `git describe --abbrev=0 --tags`) && source ~/.nvm/nvm.sh && nvm install $TRAVIS_NODE_VERSION
 
 before_script:
-    npm install -g coffee-script coffeelint jasmine
+  npm install -g coffee-script coffeelint jasmine
 
 script:
-    - make check
-    - go test -v -race ./broker
-    - cd proxy
-    - cake lint
-    - cake test
+  - make check
+  - go test -v -race ./broker
+  - cd proxy
+  - cake lint
+  - cake test

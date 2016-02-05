@@ -3,10 +3,14 @@ jasmine tests for Snowflake
 ###
 
 # Stubs to fake browser functionality.
+class PeerConnection
 class WebSocket
   OPEN: 1
   CLOSED: 0
-ui = {}
+ui =
+  log: ->
+  setActive: ->
+log = ->
 
 describe 'BuildUrl', ->
   it 'should parse just protocol and host', ->
@@ -139,14 +143,14 @@ describe 'Params', ->
     getBool = (query) ->
       Params.getBool (Query.parse query), 'param', false
     it 'parses correctly', ->
-      expect(getBool 'param=true').toEqual true
-      expect(getBool 'param').toEqual true
-      expect(getBool 'param=').toEqual true
-      expect(getBool 'param=1').toEqual true
-      expect(getBool 'param=0').toEqual false
-      expect(getBool 'param=false').toEqual false
+      expect(getBool 'param=true').toBe true
+      expect(getBool 'param').toBe true
+      expect(getBool 'param=').toBe true
+      expect(getBool 'param=1').toBe true
+      expect(getBool 'param=0').toBe false
+      expect(getBool 'param=false').toBe false
       expect(getBool 'param=unexpected').toBeNull()
-      expect(getBool 'pram=true').toEqual false
+      expect(getBool 'pram=true').toBe false
 
   describe 'address', ->
     DEFAULT = { host: '1.1.1.1', port: 2222 }
@@ -166,15 +170,79 @@ describe 'ProxyPair', ->
   rateLimit = new DummyRateLimit()
   destination = []
   fakeClient = send: (d) -> destination.push d
+  # Fake snowflake to interact with
+  snowflake = {
+    broker:
+      sendAnswer: ->
+  }
   pp = new ProxyPair(fakeClient, fakeRelay, rateLimit)
-  it 'handles relay correctly', ->
+
+  it 'begins webrtc connection', ->
+    pp.begin()
+    expect(pp.pc).not.toBeNull()
+
+  it 'accepts WebRTC offer from some client', ->
+    it 'rejects invalid offers', ->
+      expect(pp.receiveWebRTCOffer {}).toBe false
+      expect pp.receiveWebRTCOffer {
+        type: 'answer'
+      }.toBeFalse()
+    it 'accepts valid offers', ->
+      goodOffer = {
+        type: 'offer'
+        sdp: 'foo'
+      }
+      expect(pp.receiveWebRTCOffer goodOffer).toBe true
+
+  it 'responds with a WebRTC answer correctly', ->
+    spyOn snowflake.broker, 'sendAnswer'
+    pp.pc.onicecandidate {
+      candidate: null
+    }
+    expect(snowflake.broker.sendAnswer).toHaveBeenCalled()
+
+  it 'handles a new data channel correctly', ->
+    expect(pp.client).toBeNull()
+    pp.pc.ondatachannel {
+      channel: {}
+    }
+    expect(pp.client).not.toBeNull()
+    expect(pp.client.onopen).not.toBeNull()
+    expect(pp.client.onclose).not.toBeNull()
+    expect(pp.client.onerror).not.toBeNull()
+    expect(pp.client.onmessage).not.toBeNull()
+
+  it 'connects to the relay once datachannel opens', ->
+    spyOn pp, 'connectRelay'
+    pp.client.onopen()
+    expect(pp.connectRelay).toHaveBeenCalled()
+
+  it 'connects to a relay', ->
     pp.connectRelay()
     expect(pp.relay.onopen).not.toBeNull()
     expect(pp.relay.onclose).not.toBeNull()
     expect(pp.relay.onerror).not.toBeNull()
     expect(pp.relay.onmessage).not.toBeNull()
-  # TODO: Test for flush
-  # pp.c2rSchedule.push { data: 'omg' }
-  # pp.flush()
-  # if destination == ['omg'] then pass 'flush'
-  # else fail 'flush', ['omg'], destination
+
+  it 'flushes data between client and relay', ->
+
+    it 'proxies data from client to relay', ->
+      spyOn pp.relay, 'send'
+      pp.c2rSchedule.push { data: 'foo' }
+      pp.flush()
+      expect(pp.client.send).not.toHaveBeenCalled()
+      expect(pp.relay.send).toHaveBeenCalledWith 'foo'
+
+    it 'proxies data from relay to client', ->
+      spyOn pp.client, 'send'
+      pp.r2cSchedule.push { data: 'bar' }
+      pp.flush()
+      expect(pp.client.send).toHaveBeenCalledWith 'bar'
+      expect(pp.relay.send).not.toHaveBeenCalled()
+
+    it 'sends nothing with nothing to flush', ->
+      pp.flush()
+      expect(pp.client.send).not.toHaveBeenCalled()
+      expect(pp.relay.send).not.toHaveBeenCalled()
+
+  # TODO: rate limit tests
