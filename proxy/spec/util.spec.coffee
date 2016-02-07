@@ -1,16 +1,6 @@
 ###
-jasmine tests for Snowflake
+jasmine tests for Snowflake utils
 ###
-
-# Stubs to fake browser functionality.
-class PeerConnection
-class WebSocket
-  OPEN: 1
-  CLOSED: 0
-ui =
-  log: ->
-  setActive: ->
-log = ->
 
 describe 'BuildUrl', ->
   it 'should parse just protocol and host', ->

@@ -6,10 +6,10 @@ class UI
   debug = false  # True when there's no badge
 
   # DOM elements references.
-  $msglog = null
-  $send = null
-  $input = null
-  $status = null
+  $msglog: null
+  $send:   null
+  $input:  null
+  $status: null
 
   constructor: ->
     @$badge = document.getElementById('badge')

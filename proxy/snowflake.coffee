@@ -21,8 +21,6 @@ if 'undefined' != typeof window && window.location
   COPY_PASTE_ENABLED = Params.getBool(query, 'manual', false)
 else
   window = {}
-# HEADLESS is true if we are running not in a browser with a DOM.
-HEADLESS = 'undefined' == typeof(document)
 
 # Bytes per second. Set to undefined to disable limit.
 DEFAULT_RATE_LIMIT = DEFAULT_RATE_LIMIT || undefined
@@ -59,7 +57,7 @@ class Snowflake
   state: MODE.INIT
   retries: 0
 
-  constructor: (@broker) ->
+  constructor: (@broker, @ui) ->
     rateLimitBytes = undefined
     if 'off' != query['ratelimit']
       rateLimitBytes = Params.getByteCount(query, 'ratelimit',
@@ -89,8 +87,8 @@ class Snowflake
     return if COPY_PASTE_ENABLED
     timer = null
     # Temporary countdown.
-    countdown = (msg, sec) ->
-      ui.setStatus msg + ' (Retrying in ' + sec + ' seconds...)'
+    countdown = (msg, sec) =>
+      @ui.setStatus msg + ' (Retrying in ' + sec + ' seconds...)'
       sec--
       if sec >= 0
         setTimeout((-> countdown(msg, sec)), 1000)
@@ -101,8 +99,8 @@ class Snowflake
       clearTimeout timer
       msg = 'polling for client... '
       msg += '[retries: ' + @retries + ']' if @retries > 0
-      ui.setStatus msg
-      recv = broker.getClientOffer()
+      @ui.setStatus msg
+      recv = @broker.getClientOffer()
       @retries++
       recv.then (desc) =>
         offer = JSON.parse desc
@@ -132,14 +130,12 @@ class Snowflake
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.
       @proxyPairs.splice(@proxyPairs.indexOf(pair), 1)
-      # @badge.endProxy() if @badge
     try
       pair.begin()
     catch err
       log 'ERROR: ProxyPair exception while connecting.'
       log err
       return
-    # @badge.beginProxy if @badge
 
   cease: ->
     while @proxyPairs.length > 0
@@ -148,12 +144,10 @@ class Snowflake
   disable: ->
     log 'Disabling Snowflake.'
     @cease()
-    # @badge.disable() if @badge
 
   die: ->
     log 'Snowflake died.'
     @cease()
-    # @badge.die() if @badge
 
   # Close all existing ProxyPairs and begin finding new clients from scratch.
   reset: ->
@@ -163,8 +157,6 @@ class Snowflake
     @beginWebRTC()
 
 snowflake = null
-broker = null
-ui = null
 
 # Signalling channel - just tells user to copy paste to the peer.
 # Eventually this should go over the broker.
@@ -190,19 +182,19 @@ Signalling =
 # Log to both console and UI if applicable.
 log = (msg) ->
   console.log 'Snowflake: ' + msg
-  ui.log msg
+  snowflake.ui.log msg
 
-dbg = (msg) -> log msg if true == ui.debug
+dbg = (msg) -> log msg if true == snowflake.ui.debug
 
 init = ->
   ui = new UI()
-  log '== snowflake proxy =='
-  log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
   broker = new Broker brokerUrl
-  snowflake = new Snowflake(broker)
-  # window.snowflake = snowflake
-  # window.ui = ui
+  snowflake = new Snowflake broker, ui
+
+  dbg 'Contacting Broker at ' + broker.url + '\nSnowflake ID: ' + broker.id
+  log '== snowflake proxy =='
+  log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
 
   relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
   snowflake.setRelayAddr relayAddr

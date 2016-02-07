@@ -5,7 +5,6 @@ Represents a single:
 
 ###
 
-
 class ProxyPair
 
   MAX_BUFFER: 10 * 1024 * 1024
@@ -58,15 +57,15 @@ class ProxyPair
     channel.onopen = =>
       log 'WebRTC DataChannel opened!'
       snowflake.state = MODE.WEBRTC_READY
-      ui.setActive true
+      snowflake.ui.setActive true
       # This is the point when the WebRTC datachannel is done, so the next step
       # is to establish websocket to the server.
       @connectRelay()
     channel.onclose = ->
       log 'WebRTC DataChannel closed.'
-      ui.setStatus 'disconnected.'
+      snowflake.ui.setStatus 'disconnected.'
+      snowflake.ui.setActive false
       snowflake.state = MODE.INIT
-      ui.setActive false
       # Change this for multiplexing.
       snowflake.reset()
     channel.onerror = -> log 'Data channel error!'
@@ -79,7 +78,7 @@ class ProxyPair
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
       log @relay.label + ' connected!'
-      ui.setStatus 'connected'
+      snowflake.ui.setStatus 'connected'
     @relay.onclose = @onClose
     @relay.onerror = @onError
     @relay.onmessage = @onRelayToClientMessage

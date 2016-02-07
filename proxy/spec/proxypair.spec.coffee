@@ -1,27 +1,13 @@
 ###
-jasmine tests for Snowflake
+jasmine tests for Snowflake proxypair
 ###
 
-# Stubs to fake browser functionality.
-class PeerConnection
-class WebSocket
-  OPEN: 1
-  CLOSED: 0
-ui =
-  log: ->
-  setActive: ->
-log = ->
 
 describe 'ProxyPair', ->
   fakeRelay = Parse.address '0.0.0.0:12345'
   rateLimit = new DummyRateLimit()
   destination = []
   fakeClient = send: (d) -> destination.push d
-  # Fake snowflake to interact with
-  snowflake = {
-    broker:
-      sendAnswer: ->
-  }
   pp = new ProxyPair(fakeClient, fakeRelay, rateLimit)
 
   it 'begins webrtc connection', ->

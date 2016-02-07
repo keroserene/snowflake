@@ -13,7 +13,9 @@ FILES = [
 ]
 FILES_SPEC = [
   'spec/util.spec.coffee'
+  'spec/ui.spec.coffee'
   'spec/proxypair.spec.coffee'
+  'spec/snowflake.spec.coffee'
 ]
 FILES_ALL = FILES.concat FILES_SPEC
 OUTFILE = 'build/snowflake.coffee'

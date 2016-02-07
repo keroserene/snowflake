@@ -24,7 +24,6 @@ class Broker
   constructor: (@url) ->
     @clients = 0
     @id = genSnowflakeID()
-    dbg 'Contacting Broker at ' + @url + '\nSnowflake ID: ' + @id
     # Ensure url has the right protocol + trailing slash.
     @url = 'https://' + @url if 0 != @url.indexOf('https://', 0)
     @url += '/' if '/' != @url.substr -1
