@@ -192,7 +192,7 @@ log = (msg) ->
   console.log 'Snowflake: ' + msg
   ui.log msg
 
-dbg = (msg) -> log msg if ui.debug
+dbg = (msg) -> log msg if true == ui.debug
 
 init = ->
   ui = new UI()

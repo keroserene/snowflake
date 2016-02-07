@@ -21,10 +21,10 @@ STATIC = 'static'
 
 concatCoffeeFiles = -> exec 'cat ' + FILES.join(' ') + ' | cat > ' + OUTFILE
 
-copyStaticFiles = -> exec '' + STATIC + '/* build/'
+copyStaticFiles = -> exec 'cp ' + STATIC + '/* build/'
 
 compileCoffee = ->
-  exec 'coffee -o build -b -c build/snowflake.coffee', (err, stdout, stderr) ->
+  exec 'coffee -o build -cb ' + OUTFILE, (err, stdout, stderr) ->
     throw err if err
 
 task 'test', 'snowflake unit tests', ->
