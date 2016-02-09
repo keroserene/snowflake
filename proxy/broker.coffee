@@ -17,6 +17,7 @@ class Broker
 
   clients: 0
   id: null
+  request: null
 
   # When interacting with the Broker, snowflake must generate a unique session
   # ID so the Broker can keep track of which signalling channel it's speaking
@@ -34,6 +35,7 @@ class Broker
   getClientOffer: ->
     new Promise (fulfill, reject) =>
       xhr = new XMLHttpRequest()
+      @request = xhr
       try
         xhr.open 'POST', @url + 'proxy'
         xhr.setRequestHeader('X-Session-ID', @id)
