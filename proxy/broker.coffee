@@ -32,23 +32,13 @@ class Broker
   # Snowflake registers with the broker using an HTTP POST request, and expects
   # a response from the broker containing some client offer.
   # TODO: Actually support multiple clients.
-  getClientOffer: ->
+  getClientOffer: =>
     new Promise (fulfill, reject) =>
       xhr = new XMLHttpRequest()
       @request = xhr
-      try
-        xhr.open 'POST', @url + 'proxy'
-        xhr.setRequestHeader('X-Session-ID', @id)
-      catch err
-        ###
-        An exception happens here when, for example, NoScript allows the domain
-        on which the proxy badge runs, but not the domain to which it's trying
-        to make the HTTP request. The exception message is like "Component
-        returned failure code: 0x805e0006 [nsIXMLHttpRequest.open]" on Firefox.
-        ###
-        log 'Broker: exception while connecting: ' + err.message
-        return
-      xhr.onreadystatechange = ->
+      @fulfill = fulfill
+      # @request.onreadystatechange = @processOffer
+      xhr.onreadystatechange = =>
         return if xhr.DONE != xhr.readyState
         switch xhr.status
           when STATUS_OK
@@ -59,7 +49,22 @@ class Broker
             log 'Broker ERROR: Unexpected ' + xhr.status +
                 ' - ' + xhr.statusText
             Status.set ' failure. Please refresh.'
-      xhr.send @id
+      @sendRequest()
+
+  sendRequest: =>
+    try
+      @request.open 'POST', @url + 'proxy'
+      @request.setRequestHeader('X-Session-ID', @id)
+    catch err
+      ###
+      An exception happens here when, for example, NoScript allows the domain
+      on which the proxy badge runs, but not the domain to which it's trying
+      to make the HTTP request. The exception message is like "Component
+      returned failure code: 0x805e0006 [nsIXMLHttpRequest.open]" on Firefox.
+      ###
+      log 'Broker: exception while connecting: ' + err.message
+      return
+    @request.send @id
 
   sendAnswer: (answer) ->
     dbg @id + ' - Sending answer back to broker...\n'
