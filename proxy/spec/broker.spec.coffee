@@ -19,32 +19,74 @@ describe 'Broker', ->
     expect(b.url).toEqual 'https://fake/'
     expect(b.id).not.toBeNull()
 
-  it 'polls and promises a client offer', (done) ->
-    b = new Broker 'fake'
-    # fake successful request
-    spyOn(b, 'sendRequest').and.callFake ->
-      b.request.readyState = b.request.DONE
-      b.request.status = STATUS_OK
-      b.request.responseText = 'test'
-      b.request.onreadystatechange()
-    poll = b.getClientOffer()
-    expect(poll).not.toBeNull()
-    poll.then (desc) =>
-      expect(desc).toEqual 'test'
-      done()
+  describe 'getClientOffer', ->
+    it 'polls and promises a client offer', (done) ->
+      b = new Broker 'fake'
+      # fake successful request and response from broker.
+      spyOn(b, '_postRequest').and.callFake ->
+        b._xhr.readyState = b._xhr.DONE
+        b._xhr.status = STATUS_OK
+        b._xhr.responseText = 'fake offer'
+        b._xhr.onreadystatechange()
+      poll = b.getClientOffer()
+      expect(poll).not.toBeNull()
+      expect(b._postRequest).toHaveBeenCalled()
+      poll.then (desc) ->
+        expect(desc).toEqual 'fake offer'
+        done()
+      .catch ->
+        fail 'should not reject on STATUS_OK'
+        done()
 
-  it 'requests correctly', ->
-    b = new Broker 'fake'
-    b.request = new XMLHttpRequest()
-    spyOn(b.request, 'open')
-    spyOn(b.request, 'setRequestHeader')
-    spyOn(b.request, 'send')
-    b.sendRequest()
-    expect(b.request.open).toHaveBeenCalled()
-    expect(b.request.setRequestHeader).toHaveBeenCalled()
-    expect(b.request.send).toHaveBeenCalled()
+    it 'rejects if the broker timed-out', (done) ->
+      b = new Broker 'fake'
+      # fake timed-out request from broker
+      spyOn(b, '_postRequest').and.callFake ->
+        b._xhr.readyState = b._xhr.DONE
+        b._xhr.status = STATUS_GATEWAY_TIMEOUT
+        b._xhr.onreadystatechange()
+      poll = b.getClientOffer()
+      expect(poll).not.toBeNull()
+      expect(b._postRequest).toHaveBeenCalled()
+      poll.then (desc) ->
+        fail 'should not fulfill on GATEWAY_TIMEOUT'
+        done()
+      , (err) ->
+        expect(err).toBe MESSAGE_TIMEOUT
+        done()
+
+    it 'rejects on any other status', (done) ->
+      b = new Broker 'fake'
+      # fake timed-out request from broker
+      spyOn(b, '_postRequest').and.callFake ->
+        b._xhr.readyState = b._xhr.DONE
+        b._xhr.status = 1337
+        b._xhr.onreadystatechange()
+      poll = b.getClientOffer()
+      expect(poll).not.toBeNull()
+      expect(b._postRequest).toHaveBeenCalled()
+      poll.then (desc) ->
+        fail 'should not fulfill on non-OK status'
+        done()
+      , (err) ->
+        expect(err).toBe MESSAGE_UNEXPECTED
+        expect(b._xhr.status).toBe 1337
+        done()
 
   it 'responds to the broker with answer', ->
-    # TODO: fix
     b = new Broker 'fake'
-    b.sendAnswer 'foo'
+    spyOn(b, '_postRequest')
+    b.sendAnswer 123
+    expect(b._postRequest).toHaveBeenCalledWith(
+      jasmine.any(Object), 'answer', '123')
+
+  it 'POST XMLHttpRequests to the broker', ->
+    b = new Broker 'fake'
+    b._xhr = new XMLHttpRequest()
+    spyOn(b._xhr, 'open')
+    spyOn(b._xhr, 'setRequestHeader')
+    spyOn(b._xhr, 'send')
+    b._postRequest b._xhr, 'test', 'data'
+    expect(b._xhr.open).toHaveBeenCalled()
+    expect(b._xhr.setRequestHeader).toHaveBeenCalled()
+    expect(b._xhr.send).toHaveBeenCalled()
