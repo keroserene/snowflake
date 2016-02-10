@@ -1,6 +1,13 @@
 This is the browser proxy component of Snowflake.
 
-### Testing:
+### Embedding
+
+See [keroserene.net/snowflake](http://keroserene.net/snowflake) for more info:
+```
+<iframe src="http://keroserene.net/snowflake/embed.html" width="88" height="16" frameborder="0" scrolling="no"></iframe>
+```
+
+### Testing
 
 Unit testing with Jasmine are available with:
 ```
