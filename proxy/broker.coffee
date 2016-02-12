@@ -28,7 +28,8 @@ class Broker
     @clients = 0
     @id = genSnowflakeID()
     # Ensure url has the right protocol + trailing slash.
-    @url = 'https://' + @url if 0 != @url.indexOf('https://', 0)
+    @url = 'http://' + @url if 0 == @url.indexOf('localhost', 0)
+    @url = 'https://' + @url if 0 != @url.indexOf('http', 0)
     @url += '/' if '/' != @url.substr -1
 
   # Promises some client SDP Offer.

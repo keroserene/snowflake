@@ -22,6 +22,8 @@ func TestSnowflakeHeap(t *testing.T) {
 	s4.clients = 1
 
 	heap.Push(h, s1)
+	if 1 != h.Len() {
+	}
 	heap.Push(h, s2)
 	heap.Push(h, s3)
 	heap.Push(h, s4)
@@ -36,6 +38,9 @@ func TestSnowflakeHeap(t *testing.T) {
 	}
 
 	r := heap.Pop(h).(*Snowflake)
+	if 2 != h.Len() {
+		t.Error("Unexpected length.")
+	}
 	if r.clients != 3 {
 		t.Error("Unexpected clients: ", r.clients)
 	}
@@ -44,6 +49,9 @@ func TestSnowflakeHeap(t *testing.T) {
 	}
 
 	r = heap.Pop(h).(*Snowflake)
+	if 1 != h.Len() {
+		t.Error("Unexpected length.")
+	}
 	if r.clients != 4 {
 		t.Error("Unexpected clients: ", r.clients)
 	}
