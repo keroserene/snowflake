@@ -24,20 +24,29 @@ const (
 	ProxyTimeout  = 10
 )
 
-type SnowflakeContext struct {
+type BrokerContext struct {
 	snowflakes *SnowflakeHeap
 	// Map keeping track of snowflakeIDs required to match SDP answers from
 	// the second http POST.
 	snowflakeMap map[string]*Snowflake
 }
 
+func NewBrokerContext() *BrokerContext {
+	snowflakes := new(SnowflakeHeap)
+	heap.Init(snowflakes)
+	return &BrokerContext{
+		snowflakes:   snowflakes,
+		snowflakeMap: make(map[string]*Snowflake),
+	}
+}
+
 type SnowflakeHandler struct {
-	*SnowflakeContext
-	h func(*SnowflakeContext, http.ResponseWriter, *http.Request)
+	*BrokerContext
+	h func(*BrokerContext, http.ResponseWriter, *http.Request)
 }
 
 func (sh SnowflakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	sh.h(sh.SnowflakeContext, w, r)
+	sh.h(sh.BrokerContext, w, r)
 }
 
 type ProxyRequest struct {
@@ -48,9 +57,7 @@ type ProxyRequest struct {
 var createChan = make(chan *ProxyRequest)
 
 // Create and add a Snowflake to the heap.
-func (sc *SnowflakeContext) AddSnowflake(id string) *Snowflake {
-	log.Println(sc.snowflakes)
-
+func (sc *BrokerContext) AddSnowflake(id string) *Snowflake {
 	snowflake := new(Snowflake)
 	snowflake.id = id
 	snowflake.clients = 0
@@ -58,16 +65,12 @@ func (sc *SnowflakeContext) AddSnowflake(id string) *Snowflake {
 	snowflake.answerChannel = make(chan []byte)
 	heap.Push(sc.snowflakes, snowflake)
 	sc.snowflakeMap[id] = snowflake
-
-	log.Println("Total snowflakes available: ", sc.snowflakes.Len())
-	log.Println(sc.snowflakes)
-	log.Println(sc.snowflakeMap)
 	return snowflake
 }
 
-func (sc *SnowflakeContext) Broker(proxies <-chan *ProxyRequest) {
+// Match proxies to clients.
+func (sc *BrokerContext) Broker(proxies <-chan *ProxyRequest) {
 	for p := range proxies {
-		log.Println("adding ", p.id)
 		snowflake := sc.AddSnowflake(p.id)
 		// Wait for a client to avail an offer to the snowflake, or timeout
 		// and ask the snowflake to poll later.
@@ -115,7 +118,7 @@ Expects a WebRTC SDP offer in the Request to give to an assigned
 snowflake proxy, which responds with the SDP answer to be sent in
 the HTTP response back to the client.
 */
-func clientHandler(ctx *SnowflakeContext, w http.ResponseWriter, r *http.Request) {
+func clientHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	offer, err := ioutil.ReadAll(r.Body)
 	if nil != err {
 		log.Println("Invalid data.")
@@ -153,7 +156,7 @@ func clientHandler(ctx *SnowflakeContext, w http.ResponseWriter, r *http.Request
 /*
 For snowflake proxies to request a client from the Broker.
 */
-func proxyHandler(ctx *SnowflakeContext, w http.ResponseWriter, r *http.Request) {
+func proxyHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if isPreflight(w, r) {
 		return
 	}
@@ -192,7 +195,7 @@ Expects snowflake proxes which have previously successfully received
 an offer from proxyHandler to respond with an answer in an HTTP POST,
 which the broker will pass back to the original client.
 */
-func answerHandler(ctx *SnowflakeContext, w http.ResponseWriter, r *http.Request) {
+func answerHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if isPreflight(w, r) {
 		return
 	}
@@ -214,28 +217,19 @@ func answerHandler(ctx *SnowflakeContext, w http.ResponseWriter, r *http.Request
 	snowflake.answerChannel <- body
 }
 
-func debugHandler(ctx *SnowflakeContext, w http.ResponseWriter, r *http.Request) {
+func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	s := fmt.Sprintf("current: %d", ctx.snowflakes.Len())
 	w.Write([]byte(s))
 }
 
 func init() {
-	// snowflakeMap = make(map[string]*Snowflake)
-	snowflakes := new(SnowflakeHeap)
-	heap.Init(snowflakes)
-	ctx := &SnowflakeContext{
-		snowflakes:   snowflakes,
-		snowflakeMap: make(map[string]*Snowflake),
-	}
+	ctx := NewBrokerContext()
 
 	go ctx.Broker(createChan)
 
 	http.HandleFunc("/robots.txt", robotsTxtHandler)
 	http.HandleFunc("/ip", ipHandler)
 
-	// http.HandleFunc("/client", clientHandler)
-	// http.HandleFunc("/proxy", proxyHandler)
-	// http.HandleFunc("/answer", answerHandler)
 	http.Handle("/client", SnowflakeHandler{ctx, clientHandler})
 	http.Handle("/proxy", SnowflakeHandler{ctx, proxyHandler})
 	http.Handle("/answer", SnowflakeHandler{ctx, answerHandler})
