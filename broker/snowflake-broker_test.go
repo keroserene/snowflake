@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"fmt"
 )
 
 func TestBroker(t *testing.T) {
@@ -25,7 +26,7 @@ func TestBroker(t *testing.T) {
 		Convey("Responds to client offers...", func() {
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte("test"))
-			r, err := http.NewRequest("POST", "broker.com/client", data)
+			r, err := http.NewRequest("POST", "snowflake.broker/client", data)
 			So(err, ShouldBeNil)
 
 			Convey("with 503 when no snowflakes are available.", func() {
@@ -73,7 +74,7 @@ func TestBroker(t *testing.T) {
 			done := make(chan bool)
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte("test"))
-			r, err := http.NewRequest("POST", "broker.com/proxy", data)
+			r, err := http.NewRequest("POST", "snowflake.broker/proxy", data)
 			r.Header.Set("X-Session-ID", "test")
 			So(err, ShouldBeNil)
 
@@ -105,6 +106,44 @@ func TestBroker(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusGatewayTimeout)
 			})
 		})
+
+		Convey("Responds to proxy answers...", func() {	
+			w := httptest.NewRecorder()
+			data := bytes.NewReader([]byte("fake answer"))
+			s := ctx.AddSnowflake("test")
+
+			Convey("by passing to the client if valid.", func() {
+				r, err := http.NewRequest("POST", "snowflake.broker/answer", data)
+				So(err, ShouldBeNil)
+				r.Header.Set("X-Session-ID", "test")
+				go func(ctx *BrokerContext) {
+					answerHandler(ctx, w, r)
+				}(ctx)
+				answer := <- s.answerChannel
+				So(w.Code, ShouldEqual, http.StatusOK)
+				So(answer, ShouldResemble, []byte("fake answer"))
+			})
+
+			Convey("with error if the proxy is not recognized", func() {
+				r, err := http.NewRequest("POST", "snowflake.broker/answer", nil)
+				So(err, ShouldBeNil)
+				r.Header.Set("X-Session-ID", "invalid")
+				answerHandler(ctx, w, r)
+				So(w.Code, ShouldEqual, http.StatusGone)
+				fmt.Println("omg")
+			})
+
+			Convey("with error if the proxy gives invalid answer", func() {
+				data := bytes.NewReader(nil)
+				r, err := http.NewRequest("POST", "snowflake.broker/answer", data)
+				r.Header.Set("X-Session-ID", "test")
+				So(err, ShouldBeNil)
+				answerHandler(ctx, w, r)
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
+			})
+
+		})
+
 	})
 }
 

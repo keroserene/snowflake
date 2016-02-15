@@ -210,7 +210,7 @@ func answerHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body, err := ioutil.ReadAll(r.Body)
-	if nil != err {
+	if nil != err || nil == body || len(body) <= 0 {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
