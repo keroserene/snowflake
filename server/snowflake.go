@@ -15,7 +15,6 @@ import (
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/keroserene/go-webrtc"
-	"github.com/keroserene/go-webrtc/data"
 )
 
 var ptMethodName = "snowflake"
@@ -41,7 +40,7 @@ func copyLoop(a, b net.Conn) {
 }
 
 type webRTCConn struct {
-	dc *data.Channel
+	dc *webrtc.DataChannel
 	pc *webrtc.PeerConnection
 	pr *io.PipeReader
 }
@@ -117,7 +116,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	pc.OnIceComplete = func() {
 		answerChan <- struct{}{}
 	}
-	pc.OnDataChannel = func(dc *data.Channel) {
+	pc.OnDataChannel = func(dc *webrtc.DataChannel) {
 		log.Println("OnDataChannel")
 
 		pr, pw := io.Pipe()

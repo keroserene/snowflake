@@ -17,7 +17,6 @@ import (
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/keroserene/go-webrtc"
-	"github.com/keroserene/go-webrtc/data"
 )
 
 var ptInfo pt.ClientInfo
@@ -49,7 +48,7 @@ func copyLoop(a, b net.Conn) {
 
 type webRTCConn struct {
 	pc       *webrtc.PeerConnection
-	dc       *data.Channel
+	dc       *webrtc.DataChannel
 	recvPipe *io.PipeReader
 }
 
@@ -131,14 +130,14 @@ func dialWebRTC(config *webrtc.Configuration, broker *BrokerChannel) (
 	}
 	// This callback is not expected, as the Client initiates the creation
 	// of the data channel, not the remote peer.
-	pc.OnDataChannel = func(channel *data.Channel) {
+	pc.OnDataChannel = func(channel *webrtc.DataChannel) {
 		log.Println("OnDataChannel")
 		panic("OnDataChannel")
 	}
 
 	pr, pw := io.Pipe()
 
-	dc, err := pc.CreateDataChannel("test", data.Init{})
+	dc, err := pc.CreateDataChannel("test", webrtc.Init{})
 	if err != nil {
 		log.Printf("CreateDataChannel: %s", err)
 		return nil, err
