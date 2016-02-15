@@ -28,17 +28,17 @@ type BrokerContext struct {
 	snowflakes *SnowflakeHeap
 	// Map keeping track of snowflakeIDs required to match SDP answers from
 	// the second http POST.
-	snowflakeMap map[string]*Snowflake
-	createChan   chan *ProxyRequest
+	snowflakeMap  map[string]*Snowflake
+	createChannel chan *ProxyRequest
 }
 
 func NewBrokerContext() *BrokerContext {
 	snowflakes := new(SnowflakeHeap)
 	heap.Init(snowflakes)
 	return &BrokerContext{
-		snowflakes:   snowflakes,
-		snowflakeMap: make(map[string]*Snowflake),
-		createChan:   make(chan *ProxyRequest),
+		snowflakes:    snowflakes,
+		snowflakeMap:  make(map[string]*Snowflake),
+		createChannel: make(chan *ProxyRequest),
 	}
 }
 
@@ -72,7 +72,7 @@ func (sc *BrokerContext) AddSnowflake(id string) *Snowflake {
 // func (ctx *BrokerContext) Broker(proxies <-chan *ProxyRequest) {
 func (ctx *BrokerContext) Broker() {
 	// for p := range proxies {
-	for p := range ctx.createChan {
+	for p := range ctx.createChannel {
 		snowflake := ctx.AddSnowflake(p.id)
 		// Wait for a client to avail an offer to the snowflake, or timeout
 		// and ask the snowflake to poll later.
@@ -131,7 +131,7 @@ func clientHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "X-Session-ID")
 
 	// Find the most available snowflake proxy, and pass the offer to it.
-	// TODO: Needs improvement - maybe shouldn'
+	// TODO: Needs improvement - maybe shouldn't immediately fail?
 	if ctx.snowflakes.Len() <= 0 {
 		log.Println("Client: No snowflake proxies available.")
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -178,7 +178,7 @@ func proxyHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	p := new(ProxyRequest)
 	p.id = id
 	p.offerChan = make(chan []byte)
-	ctx.createChan <- p
+	ctx.createChannel <- p
 
 	// Wait for a client to avail an offer to the snowflake, or timeout
 	// and ask the snowflake to poll later.

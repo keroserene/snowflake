@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"fmt"
 )
 
 func TestBroker(t *testing.T) {
@@ -84,7 +83,7 @@ func TestBroker(t *testing.T) {
 					done <- true
 				}(ctx)
 				// Pass a fake client offer to this proxy
-				p := <-ctx.createChan
+				p := <-ctx.createChannel
 				So(p.id, ShouldEqual, "test")
 				p.offerChan <- []byte("fake offer")
 				<-done
@@ -97,7 +96,7 @@ func TestBroker(t *testing.T) {
 					proxyHandler(ctx, w, r)
 					done <- true
 				}(ctx)
-				p := <-ctx.createChan
+				p := <-ctx.createChannel
 				So(p.id, ShouldEqual, "test")
 				// nil means timeout
 				p.offerChan <- nil
@@ -107,10 +106,10 @@ func TestBroker(t *testing.T) {
 			})
 		})
 
-		Convey("Responds to proxy answers...", func() {	
+		Convey("Responds to proxy answers...", func() {
+			s := ctx.AddSnowflake("test")
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte("fake answer"))
-			s := ctx.AddSnowflake("test")
 
 			Convey("by passing to the client if valid.", func() {
 				r, err := http.NewRequest("POST", "snowflake.broker/answer", data)
@@ -119,7 +118,7 @@ func TestBroker(t *testing.T) {
 				go func(ctx *BrokerContext) {
 					answerHandler(ctx, w, r)
 				}(ctx)
-				answer := <- s.answerChannel
+				answer := <-s.answerChannel
 				So(w.Code, ShouldEqual, http.StatusOK)
 				So(answer, ShouldResemble, []byte("fake answer"))
 			})
@@ -130,7 +129,6 @@ func TestBroker(t *testing.T) {
 				r.Header.Set("X-Session-ID", "invalid")
 				answerHandler(ctx, w, r)
 				So(w.Code, ShouldEqual, http.StatusGone)
-				fmt.Println("omg")
 			})
 
 			Convey("with error if the proxy gives invalid answer", func() {
@@ -141,9 +139,61 @@ func TestBroker(t *testing.T) {
 				answerHandler(ctx, w, r)
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
 			})
-
 		})
+	})
 
+	Convey("End-To-End", t, func() {
+		done := make(chan bool)
+		polled := make(chan bool)
+		ctx := NewBrokerContext()
+
+		// Proxy polls with its ID first...
+		dataP := bytes.NewReader([]byte("test"))
+		wP := httptest.NewRecorder()
+		rP, err := http.NewRequest("POST", "snowflake.broker/proxy", dataP)
+		So(err, ShouldBeNil)
+		rP.Header.Set("X-Session-ID", "test")
+		go func() {
+			proxyHandler(ctx, wP, rP)
+			polled <- true
+		}()
+
+		// Manually do the Broker goroutine action here for full control.
+		p := <-ctx.createChannel
+		So(p.id, ShouldEqual, "test")
+		s := ctx.AddSnowflake(p.id)
+		go func() {
+			offer := <-s.offerChannel
+			p.offerChan <- offer
+		}()
+		So(ctx.snowflakeMap["test"], ShouldNotBeNil)
+
+		// Client request blocks until proxy answer arrives.
+		dataC := bytes.NewReader([]byte("fake offer"))
+		wC := httptest.NewRecorder()
+		rC, err := http.NewRequest("POST", "snowflake.broker/client", dataC)
+		So(err, ShouldBeNil)
+		go func() {
+			clientHandler(ctx, wC, rC)
+			done <- true
+		}()
+
+		<-polled
+		So(wP.Code, ShouldEqual, http.StatusOK)
+		So(wP.Body.String(), ShouldResemble, "fake offer")
+		So(ctx.snowflakeMap["test"], ShouldNotBeNil)
+		// Follow up with the answer request afterwards
+		wA := httptest.NewRecorder()
+		dataA := bytes.NewReader([]byte("fake answer"))
+		rA, err := http.NewRequest("POST", "snowflake.broker/proxy", dataA)
+		So(err, ShouldBeNil)
+		rA.Header.Set("X-Session-ID", "test")
+		answerHandler(ctx, wA, rA)
+		So(wA.Code, ShouldEqual, http.StatusOK)
+
+		<-done
+		So(wC.Code, ShouldEqual, http.StatusOK)
+		So(wC.Body.String(), ShouldEqual, "fake answer")
 	})
 }
 
