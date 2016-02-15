@@ -15,7 +15,6 @@ func TestBroker(t *testing.T) {
 		ctx := NewBrokerContext()
 
 		Convey("Adds Snowflake", func() {
-			ctx := NewBrokerContext()
 			So(ctx.snowflakes.Len(), ShouldEqual, 0)
 			So(len(ctx.snowflakeMap), ShouldEqual, 0)
 			ctx.AddSnowflake("foo")
@@ -24,7 +23,6 @@ func TestBroker(t *testing.T) {
 		})
 
 		Convey("Responds to client offers...", func() {
-
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte("test"))
 			r, err := http.NewRequest("POST", "broker.com/client", data)
@@ -55,6 +53,9 @@ func TestBroker(t *testing.T) {
 			})
 
 			Convey("Times out when no proxy responds.", func() {
+				if testing.Short() {
+					return
+				}
 				done := make(chan bool)
 				snowflake := ctx.AddSnowflake("fake")
 				go func() {
@@ -66,7 +67,43 @@ func TestBroker(t *testing.T) {
 				<-done
 				So(w.Code, ShouldEqual, http.StatusGatewayTimeout)
 			})
+		})
 
+		Convey("Responds to proxy polls...", func() {
+			done := make(chan bool)
+			w := httptest.NewRecorder()
+			data := bytes.NewReader([]byte("test"))
+			r, err := http.NewRequest("POST", "broker.com/proxy", data)
+			r.Header.Set("X-Session-ID", "test")
+			So(err, ShouldBeNil)
+
+			Convey("with a client offer if available.", func() {
+				go func(ctx *BrokerContext) {
+					proxyHandler(ctx, w, r)
+					done <- true
+				}(ctx)
+				// Pass a fake client offer to this proxy
+				p := <-ctx.createChan
+				So(p.id, ShouldEqual, "test")
+				p.offerChan <- []byte("fake offer")
+				<-done
+				So(w.Code, ShouldEqual, http.StatusOK)
+				So(w.Body.String(), ShouldEqual, "fake offer")
+			})
+
+			Convey("times out when no client offer is available.", func() {
+				go func(ctx *BrokerContext) {
+					proxyHandler(ctx, w, r)
+					done <- true
+				}(ctx)
+				p := <-ctx.createChan
+				So(p.id, ShouldEqual, "test")
+				// nil means timeout
+				p.offerChan <- nil
+				<-done
+				So(w.Body.String(), ShouldEqual, "")
+				So(w.Code, ShouldEqual, http.StatusGatewayTimeout)
+			})
 		})
 	})
 }
