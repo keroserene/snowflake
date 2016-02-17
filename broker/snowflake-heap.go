@@ -4,6 +4,10 @@ Keeping track of pending available snowflake proxies.
 
 package snowflake_broker
 
+/*
+The Snowflake struct contains a single interaction
+over the offer and answer channels.
+*/
 type Snowflake struct {
 	id            string
 	offerChannel  chan []byte

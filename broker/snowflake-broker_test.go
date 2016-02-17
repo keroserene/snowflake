@@ -22,6 +22,19 @@ func TestBroker(t *testing.T) {
 			So(len(ctx.snowflakeMap), ShouldEqual, 1)
 		})
 
+		Convey("Broker goroutine matches clients with proxies", func() {
+			p := new(ProxyPoll)
+			p.id = "test"
+			p.offerChannel = make(chan []byte)
+			go func() {
+				ctx.proxyPolls <- p
+				close(ctx.proxyPolls)
+			}()
+			ctx.Broker()
+			So(ctx.snowflakes.Len(), ShouldEqual, 1)
+			So(ctx.snowflakes.Len(), ShouldEqual, 1)
+		})
+
 		Convey("Responds to client offers...", func() {
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte("test"))
@@ -83,9 +96,9 @@ func TestBroker(t *testing.T) {
 					done <- true
 				}(ctx)
 				// Pass a fake client offer to this proxy
-				p := <-ctx.createChannel
+				p := <-ctx.proxyPolls
 				So(p.id, ShouldEqual, "test")
-				p.offerChan <- []byte("fake offer")
+				p.offerChannel <- []byte("fake offer")
 				<-done
 				So(w.Code, ShouldEqual, http.StatusOK)
 				So(w.Body.String(), ShouldEqual, "fake offer")
@@ -96,10 +109,10 @@ func TestBroker(t *testing.T) {
 					proxyHandler(ctx, w, r)
 					done <- true
 				}(ctx)
-				p := <-ctx.createChannel
+				p := <-ctx.proxyPolls
 				So(p.id, ShouldEqual, "test")
 				// nil means timeout
-				p.offerChan <- nil
+				p.offerChannel <- nil
 				<-done
 				So(w.Body.String(), ShouldEqual, "")
 				So(w.Code, ShouldEqual, http.StatusGatewayTimeout)
@@ -159,12 +172,12 @@ func TestBroker(t *testing.T) {
 		}()
 
 		// Manually do the Broker goroutine action here for full control.
-		p := <-ctx.createChannel
+		p := <-ctx.proxyPolls
 		So(p.id, ShouldEqual, "test")
 		s := ctx.AddSnowflake(p.id)
 		go func() {
 			offer := <-s.offerChannel
-			p.offerChan <- offer
+			p.offerChannel <- offer
 		}()
 		So(ctx.snowflakeMap["test"], ShouldNotBeNil)
 

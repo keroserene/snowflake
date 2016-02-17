@@ -28,17 +28,17 @@ type BrokerContext struct {
 	snowflakes *SnowflakeHeap
 	// Map keeping track of snowflakeIDs required to match SDP answers from
 	// the second http POST.
-	snowflakeMap  map[string]*Snowflake
-	createChannel chan *ProxyRequest
+	snowflakeMap map[string]*Snowflake
+	proxyPolls   chan *ProxyPoll
 }
 
 func NewBrokerContext() *BrokerContext {
 	snowflakes := new(SnowflakeHeap)
 	heap.Init(snowflakes)
 	return &BrokerContext{
-		snowflakes:    snowflakes,
-		snowflakeMap:  make(map[string]*Snowflake),
-		createChannel: make(chan *ProxyRequest),
+		snowflakes:   snowflakes,
+		snowflakeMap: make(map[string]*Snowflake),
+		proxyPolls:   make(chan *ProxyPoll),
 	}
 }
 
@@ -51,44 +51,56 @@ func (sh SnowflakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sh.h(sh.BrokerContext, w, r)
 }
 
-type ProxyRequest struct {
-	id        string
-	offerChan chan []byte
+// Proxies may poll for client offers concurrently.
+type ProxyPoll struct {
+	id           string
+	offerChannel chan []byte
+}
+
+// Registers a Snowflake and waits for some Client to send an offer,
+// as part of the polling logic of the proxy handler.
+func (ctx *BrokerContext) RequestOffer(id string) []byte {
+	request := new(ProxyPoll)
+	request.id = id
+	request.offerChannel = make(chan []byte)
+	ctx.proxyPolls <- request
+	// Block until an offer is available...
+	offer := <-request.offerChannel
+	return offer
+}
+
+// goroutine which match proxies to clients.
+// Safely processes proxy requests, responding to them with either an available
+// client offer or nil on timeout / none are available.
+func (ctx *BrokerContext) Broker() {
+	for request := range ctx.proxyPolls {
+		snowflake := ctx.AddSnowflake(request.id)
+		// Wait for a client to avail an offer to the snowflake.
+		go func(request *ProxyPoll) {
+			select {
+			case offer := <-snowflake.offerChannel:
+				log.Println("Passing client offer to snowflake proxy.")
+				request.offerChannel <- offer
+			case <-time.After(time.Second * ProxyTimeout):
+				// This snowflake is no longer available to serve clients.
+				heap.Remove(ctx.snowflakes, snowflake.index)
+				delete(ctx.snowflakeMap, snowflake.id)
+				request.offerChannel <- nil
+			}
+		}(request)
+	}
 }
 
 // Create and add a Snowflake to the heap.
-func (sc *BrokerContext) AddSnowflake(id string) *Snowflake {
+func (ctx *BrokerContext) AddSnowflake(id string) *Snowflake {
 	snowflake := new(Snowflake)
 	snowflake.id = id
 	snowflake.clients = 0
 	snowflake.offerChannel = make(chan []byte)
 	snowflake.answerChannel = make(chan []byte)
-	heap.Push(sc.snowflakes, snowflake)
-	sc.snowflakeMap[id] = snowflake
+	heap.Push(ctx.snowflakes, snowflake)
+	ctx.snowflakeMap[id] = snowflake
 	return snowflake
-}
-
-// Match proxies to clients.
-// func (ctx *BrokerContext) Broker(proxies <-chan *ProxyRequest) {
-func (ctx *BrokerContext) Broker() {
-	// for p := range proxies {
-	for p := range ctx.createChannel {
-		snowflake := ctx.AddSnowflake(p.id)
-		// Wait for a client to avail an offer to the snowflake, or timeout
-		// and ask the snowflake to poll later.
-		go func(p *ProxyRequest) {
-			select {
-			case offer := <-snowflake.offerChannel:
-				log.Println("Passing client offer to snowflake.")
-				p.offerChan <- offer
-			case <-time.After(time.Second * ProxyTimeout):
-				// This snowflake is no longer available to serve clients.
-				heap.Remove(ctx.snowflakes, snowflake.index)
-				delete(ctx.snowflakeMap, snowflake.id)
-				p.offerChan <- nil
-			}
-		}(p)
-	}
 }
 
 func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
@@ -145,14 +157,15 @@ func clientHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	case answer := <-snowflake.answerChannel:
 		log.Println("Client: Retrieving answer")
 		w.Write(answer)
-		// Only remove from the snowflake map once the answer is set.
-		delete(ctx.snowflakeMap, snowflake.id)
 
 	case <-time.After(time.Second * ClientTimeout):
 		log.Println("Client: Timed out.")
 		w.WriteHeader(http.StatusGatewayTimeout)
 		w.Write([]byte("timed out waiting for answer!"))
 	}
+	// Remove from the snowflake map whether answer was sent or not, because
+	// this client request is now over.
+	delete(ctx.snowflakeMap, snowflake.id)
 }
 
 /*
@@ -172,17 +185,9 @@ func proxyHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if string(body) != id { // Mismatched IDs!
 		w.WriteHeader(http.StatusBadRequest)
 	}
-	// Maybe confirm that X-Session-ID is the same.
 	log.Println("Received snowflake: ", id)
-
-	p := new(ProxyRequest)
-	p.id = id
-	p.offerChan = make(chan []byte)
-	ctx.createChannel <- p
-
-	// Wait for a client to avail an offer to the snowflake, or timeout
-	// and ask the snowflake to poll later.
-	offer := <-p.offerChan
+	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
+	offer := ctx.RequestOffer(id)
 	if nil == offer {
 		log.Println("Proxy " + id + " did not receive a Client offer.")
 		w.WriteHeader(http.StatusGatewayTimeout)
