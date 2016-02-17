@@ -22,20 +22,35 @@ func TestBroker(t *testing.T) {
 			So(len(ctx.idToSnowflake), ShouldEqual, 1)
 		})
 
-		/*
 		Convey("Broker goroutine matches clients with proxies", func() {
-			ctx2 := NewBrokerContext()
 			p := new(ProxyPoll)
 			p.id = "test"
-			go func() {
-				ctx2.proxyPolls <- p
-				close(ctx2.proxyPolls)
-			}()
-			ctx2.Broker()
-			So(ctx2.snowflakes.Len(), ShouldEqual, 1)
-			So(ctx2.idToSnowflake["test"], ShouldNotBeNil)
+			p.offerChannel = make(chan []byte)
+			go func(ctx *BrokerContext) {
+				ctx.proxyPolls <- p
+				close(ctx.proxyPolls)
+			}(ctx)
+			ctx.Broker()
+			So(ctx.snowflakes.Len(), ShouldEqual, 1)
+			snowflake := heap.Pop(ctx.snowflakes).(*Snowflake)
+			snowflake.offerChannel <- []byte("test offer")
+			offer := <-p.offerChannel
+			So(ctx.idToSnowflake["test"], ShouldNotBeNil)
+			So(offer, ShouldResemble, []byte("test offer"))
+			So(ctx.snowflakes.Len(), ShouldEqual, 0)
 		})
-		*/
+
+		Convey("Request an offer from the Snowflake Heap", func() {
+			done := make(chan []byte)
+			go func() {
+				offer := ctx.RequestOffer("test")
+				done <- offer
+			}()
+			request := <-ctx.proxyPolls
+			request.offerChannel <- []byte("test offer")
+			offer := <-done
+			So(offer, ShouldResemble, []byte("test offer"))
+		})
 
 		Convey("Responds to client offers...", func() {
 			w := httptest.NewRecorder()
