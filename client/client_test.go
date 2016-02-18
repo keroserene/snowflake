@@ -38,6 +38,10 @@ func TestConnect(t *testing.T) {
 				So(c.buffer.Bytes(), ShouldEqual, nil)
 				So(mock.destination.Bytes(), ShouldResemble, []byte("test"))
 			})
+
+			Convey("Connect Loop", func() {
+				// TODO
+			})
 		})
 
 	})
