@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/keroserene/go-webrtc"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -41,8 +42,9 @@ func TestConnect(t *testing.T) {
 
 			Convey("Receive answer fails on nil answer", func() {
 				c.reset = make(chan struct{})
+				c.answerChannel = make(chan *webrtc.SessionDescription)
 				c.ReceiveAnswer()
-				answerChannel <- nil
+				c.answerChannel <- nil
 				<-c.reset
 			})
 
