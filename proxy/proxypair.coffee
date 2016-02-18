@@ -63,7 +63,7 @@ class ProxyPair
       @connectRelay()
     channel.onclose = ->
       log 'WebRTC DataChannel closed.'
-      snowflake.ui.setStatus 'disconnected.'
+      snowflake.ui.setStatus 'disconnected by webrtc.'
       snowflake.ui.setActive false
       snowflake.state = MODE.INIT
       # Change this for multiplexing.
@@ -105,6 +105,9 @@ class ProxyPair
   onClose: (event) =>
     ws = event.target
     log ws.label + ' closed.'
+    snowflake.ui.setStatus 'disconnected.'
+    snowflake.ui.setActive false
+    snowflake.state = MODE.INIT
     @flush()
     @maybeCleanup()
 
