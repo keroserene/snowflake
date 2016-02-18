@@ -39,6 +39,13 @@ func TestConnect(t *testing.T) {
 				So(mock.destination.Bytes(), ShouldResemble, []byte("test"))
 			})
 
+			Convey("Receive answer fails on nil answer", func() {
+				c.reset = make(chan struct{})
+				c.ReceiveAnswer()
+				answerChannel <- nil
+				<-c.reset
+			})
+
 			Convey("Connect Loop", func() {
 				// TODO
 			})

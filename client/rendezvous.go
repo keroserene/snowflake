@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -66,6 +67,9 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	}
 	defer resp.Body.Close()
 	log.Printf("BrokerChannel Response:\n%s\n\n", resp.Status)
+	if http.StatusOK != resp.StatusCode {
+		return nil, errors.New("no answer from broker.")
+	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if nil != err {
 		return nil, err

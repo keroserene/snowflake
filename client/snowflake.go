@@ -58,7 +58,7 @@ type SnowflakeChannel interface {
 
 // Implements net.Conn interface
 type webRTCConn struct {
-	config			 *webrtc.Configuration
+	config       *webrtc.Configuration
 	pc           *webrtc.PeerConnection
 	snowflake    SnowflakeChannel // Interface holding the WebRTC DataChannel.
 	broker       *BrokerChannel
@@ -108,7 +108,6 @@ func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
 
 func (c *webRTCConn) PreparePeerConnection() {
 	if nil != c.pc {
-		log.Printf("PeerConnection already exists.")
 		c.pc.Close()
 		c.pc = nil
 	}
@@ -135,12 +134,12 @@ func (c *webRTCConn) PreparePeerConnection() {
 		}()
 	}
 	pc.OnIceCandidate = func(candidate webrtc.IceCandidate) {
-		log.Printf("OnIceCandidate %s", candidate.Serialize())
+		log.Printf("WebRTC: OnIceCandidate %s", candidate.Serialize())
 		// Allow candidates to accumulate until OnIceComplete.
 	}
 	// TODO: This may soon be deprecated, consider OnIceGatheringStateChange.
 	pc.OnIceComplete = func() {
-		log.Printf("OnIceComplete")
+		log.Printf("WebRTC: OnIceComplete")
 		c.offerChannel <- pc.LocalDescription()
 	}
 	// This callback is not expected, as the Client initiates the creation
@@ -150,6 +149,7 @@ func (c *webRTCConn) PreparePeerConnection() {
 		panic("Unexpected OnDataChannel!")
 	}
 	c.pc = pc
+	log.Println("WebRTC: PeerConnection created.")
 }
 
 // Create a WebRTC DataChannel locally.
@@ -189,6 +189,7 @@ func (c *webRTCConn) EstablishDataChannel() error {
 			panic("short write")
 		}
 	}
+	log.Println("WebRTC: DataChannel created.")
 	return nil
 }
 
@@ -209,15 +210,9 @@ func (c *webRTCConn) SendOffer() error {
 			log.Println("Sending offer via BrokerChannel...\nTarget URL: ", brokerURL,
 				"\nFront URL:  ", frontDomain)
 			answer, err := c.broker.Negotiate(c.pc.LocalDescription())
-			if nil != err {
-				log.Printf("BrokerChannel signaling error: %s", err)
-				return
-			}
-			if nil == answer {
-				log.Printf("BrokerChannel: No answer received.")
-				// TODO: Should try again here.
-				c.reset <- struct{}{}
-				return
+			if nil != err || nil == answer {
+				log.Printf("BrokerChannel error: %s", err)
+				answer = nil
 			}
 			answerChannel <- answer
 		}()
@@ -228,17 +223,21 @@ func (c *webRTCConn) SendOffer() error {
 	return nil
 }
 
-func (c *webRTCConn) ReceiveAnswer() error {
-	log.Printf("waiting for answer...")
-	answer, ok := <-answerChannel
-	if !ok {
-		// TODO: Don't just fail, try again!
-		c.pc.Close()
-		// connection.errorChannel <- errors.New("Bad answer")
-		return errors.New("Bad answer")
-	}
-	log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
-	return c.pc.SetRemoteDescription(answer)
+func (c *webRTCConn) ReceiveAnswer() {
+	go func() {
+		answer, ok := <-answerChannel
+		if !ok || nil == answer {
+			log.Printf("Failed to retrieve answer. Retrying in %d seconds", ReconnectTimeout)
+			<-time.After(time.Second * ReconnectTimeout)
+			c.reset <- struct{}{}
+			return
+		}
+		log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
+		err := c.pc.SetRemoteDescription(answer)
+		if nil != err {
+			c.errorChannel <- err
+		}
+	}()
 }
 
 func (c *webRTCConn) sendData(data []byte) {
@@ -259,10 +258,11 @@ func (c *webRTCConn) ConnectLoop() {
 		// TODO: When go-webrtc is more stable, it's possible that a new
 		// PeerConnection won't need to be recreated each time.
 		// called once.
-  	c.PreparePeerConnection()
+		c.PreparePeerConnection()
 		c.EstablishDataChannel()
 		c.SendOffer()
 		c.ReceiveAnswer()
+
 		<-c.reset
 		log.Println(" --- snowflake connection reset ---")
 	}
