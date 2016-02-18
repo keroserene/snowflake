@@ -67,6 +67,7 @@ type webRTCConn struct {
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
 	reset         chan struct{}
+	*BytesInfo
 }
 
 var webrtcRemote *webRTCConn
@@ -164,12 +165,12 @@ func (c *webRTCConn) EstablishDataChannel() error {
 	dc.OnOpen = func() {
 		log.Println("WebRTC: DataChannel.OnOpen")
 		// if nil != c.snowflake {
-			// panic("PeerConnection snowflake already exists.")
+		// panic("PeerConnection snowflake already exists.")
 		// }
 		// Flush the buffer, then enable datachannel.
 		// TODO: Make this more safe
 		dc.Send(c.buffer.Bytes())
-		log.Println("Flushed ", c.buffer.Len(), " bytes")
+		log.Println("Flushed", c.buffer.Len(), "bytes")
 		c.buffer.Reset()
 		c.snowflake = dc
 	}
@@ -184,7 +185,7 @@ func (c *webRTCConn) EstablishDataChannel() error {
 		}
 	}
 	dc.OnMessage = func(msg []byte) {
-		log.Printf("OnMessage <--- %d bytes", len(msg))
+		c.BytesInfo.AddInbound(len(msg))
 		n, err := c.writePipe.Write(msg)
 		if err != nil {
 			// TODO: Maybe shouldn't actually close.
@@ -247,6 +248,7 @@ func (c *webRTCConn) ReceiveAnswer() {
 }
 
 func (c *webRTCConn) sendData(data []byte) {
+	c.BytesInfo.AddOutbound(len(data))
 	// Buffer the data in case datachannel isn't available yet.
 	if nil == c.snowflake {
 		log.Printf("Buffered %d bytes --> WebRTC", len(data))
@@ -256,10 +258,9 @@ func (c *webRTCConn) sendData(data []byte) {
 	// Otherwise, flush buffer if necessary.
 	for c.buffer.Len() > 0 {
 		c.snowflake.Send(c.buffer.Bytes())
-		log.Println("Flushed ", c.buffer.Len(), " bytes")
+		log.Println("Flushed", c.buffer.Len(), "bytes")
 		c.buffer.Reset()
 	}
-	log.Printf("Write %d bytes --> WebRTC", len(data))
 	c.snowflake.Send(data)
 }
 
@@ -297,6 +298,12 @@ func dialWebRTC(config *webrtc.Configuration, broker *BrokerChannel) (
 	connection.answerChannel = make(chan *webrtc.SessionDescription)
 	connection.errorChannel = make(chan error)
 	connection.reset = make(chan struct{})
+	connection.BytesInfo = &BytesInfo{
+		inboundChan: make(chan int), outboundChan: make(chan int),
+		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
+	}
+	go connection.BytesInfo.Log()
+
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
 

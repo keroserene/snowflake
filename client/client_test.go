@@ -24,6 +24,10 @@ func TestConnect(t *testing.T) {
 
 		Convey("WebRTC Connection", func() {
 			c := new(webRTCConn)
+			c.BytesInfo = &BytesInfo{
+				inboundChan: make(chan int), outboundChan: make(chan int),
+				inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
+			}
 			So(c.buffer.Bytes(), ShouldEqual, nil)
 
 			Convey("SendData buffers when datachannel is nil", func() {
