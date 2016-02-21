@@ -51,6 +51,17 @@ func TestConnect(t *testing.T) {
 				So(mock.destination.Bytes(), ShouldResemble, []byte("test"))
 			})
 
+			Convey("Receive answer sets remote description", func() {
+				c.answerChannel = make(chan *webrtc.SessionDescription)
+				c.config = webrtc.NewConfiguration()
+				c.PreparePeerConnection()
+				c.ReceiveAnswer()
+				sdp := webrtc.DeserializeSessionDescription("test")
+				c.answerChannel <- sdp
+				So(c.pc.RemoteDescription(), ShouldEqual, sdp)
+
+			})
+
 			Convey("Receive answer fails on nil answer", func() {
 				c.reset = make(chan struct{})
 				c.answerChannel = make(chan *webrtc.SessionDescription)
