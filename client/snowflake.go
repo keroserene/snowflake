@@ -36,7 +36,7 @@ const (
 func copyLoop(a, b net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	// TODO fix the copy loop.
+	// TODO fix copy loop recovery
 	go func() {
 		io.Copy(b, a)
 		log.Println("copy loop b-a break")
@@ -168,24 +168,22 @@ func (c *webRTCConn) EstablishDataChannel() error {
 	}
 	dc.OnOpen = func() {
 		log.Println("WebRTC: DataChannel.OnOpen")
-		// if nil != c.snowflake {
-		// panic("PeerConnection snowflake already exists.")
-		// }
+		if nil != c.snowflake {
+			panic("PeerConnection snowflake already exists.")
+		}
 		// Flush the buffer, then enable datachannel.
-		// TODO: Make this more safe
-		// dc.Send(c.buffer.Bytes())
-		// log.Println("Flushed", c.buffer.Len(), "bytes")
-		// c.buffer.Reset()
+		dc.Send(c.buffer.Bytes())
+		log.Println("Flushed", c.buffer.Len(), "bytes")
+		c.buffer.Reset()
 		c.snowflake = dc
-		c.SendData(nil)
 	}
 	dc.OnClose = func() {
 		// Disable the DataChannel as a write destination.
 		// Future writes will go to the buffer until a new DataChannel is available.
 		log.Println("WebRTC: DataChannel.OnClose")
+		// Only reset if this OnClose was triggered remotely.
 		if nil != c.snowflake {
 			c.snowflake = nil
-			// Only reset if this OnClose was triggered remotely.
 			c.Reset()
 		}
 	}
@@ -253,15 +251,14 @@ func (c *webRTCConn) ReceiveAnswer() {
 }
 
 func (c *webRTCConn) SendData(data []byte) {
+	c.BytesInfo.AddOutbound(len(data))
 	// Buffer the data in case datachannel isn't available yet.
 	if nil == c.snowflake {
 		log.Printf("Buffered %d bytes --> WebRTC", len(data))
 		c.buffer.Write(data)
 		return
 	}
-	go func() {
-		c.writeChannel <- data
-	}()
+	c.writeChannel <- data
 }
 
 // Expected in own goroutine.
@@ -274,8 +271,6 @@ func (c *webRTCConn) SendLoop() {
 			log.Println("Flushed", c.buffer.Len(), "bytes")
 			c.buffer.Reset()
 		}
-
-		c.BytesInfo.AddOutbound(len(data))
 		c.snowflake.Send(data)
 	}
 }
@@ -293,6 +288,8 @@ func (c *webRTCConn) ConnectLoop() {
 			c.ReceiveAnswer()
 			<-c.reset
 			log.Println(" --- snowflake connection reset ---")
+		} else {
+			log.Println("WebRTC: Could not establish DataChannel.")
 		}
 	}
 }
@@ -353,7 +350,7 @@ func handler(conn *pt.SocksConn) error {
 		handlerChan <- -1
 	}()
 	defer conn.Close()
-	log.Println("handler", conn)
+	log.Println("handler fired:", conn)
 
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
@@ -377,6 +374,8 @@ func handler(conn *pt.SocksConn) error {
 		return err
 	}
 
+	// TODO: Make SOCKS acceptance more independent from WebRTC so they can
+	// be more easily interchanged.
 	copyLoop(conn, remote)
 	log.Println("----END---")
 	return nil
