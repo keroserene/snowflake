@@ -70,7 +70,6 @@ func dialWebRTC() (*webRTCConn, error) {
 
 	connection := NewWebRTCConnection(config, broker)
 	go connection.ConnectLoop()
-	go connection.SendLoop()
 
 	return connection, nil
 }

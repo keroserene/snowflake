@@ -33,19 +33,17 @@ func TestConnect(t *testing.T) {
 			}
 			So(c.buffer.Bytes(), ShouldEqual, nil)
 
-			Convey("sendData buffers when datachannel is nil", func() {
-				c.sendData([]byte("test"))
+			Convey("Write buffers when datachannel is nil", func() {
+				c.Write([]byte("test"))
 				c.snowflake = nil
 				So(c.buffer.Bytes(), ShouldResemble, []byte("test"))
 			})
 
-			Convey("sendData sends to datachannel when not nil", func() {
+			Convey("Write sends to datachannel when not nil", func() {
 				mock := new(MockDataChannel)
-				mock.done = make(chan bool)
-				go c.SendLoop()
-				c.writeChannel = make(chan []byte)
 				c.snowflake = mock
-				c.sendData([]byte("test"))
+				mock.done = make(chan bool, 1)
+				c.Write([]byte("test"))
 				<-mock.done
 				So(c.buffer.Bytes(), ShouldEqual, nil)
 				So(mock.destination.Bytes(), ShouldResemble, []byte("test"))
@@ -54,7 +52,7 @@ func TestConnect(t *testing.T) {
 			Convey("Receive answer sets remote description", func() {
 				c.answerChannel = make(chan *webrtc.SessionDescription)
 				c.config = webrtc.NewConfiguration()
-				c.PreparePeerConnection()
+				c.preparePeerConnection()
 				c.receiveAnswer()
 				sdp := webrtc.DeserializeSessionDescription("test")
 				c.answerChannel <- sdp

@@ -19,7 +19,6 @@ type webRTCConn struct {
 	offerChannel  chan *webrtc.SessionDescription
 	answerChannel chan *webrtc.SessionDescription
 	errorChannel  chan error
-	writeChannel  chan []byte
 	recvPipe      *io.PipeReader
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
@@ -33,8 +32,15 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 	return c.recvPipe.Read(b)
 }
 
+// Writes bytes out to the snowflake proxy.
 func (c *webRTCConn) Write(b []byte) (int, error) {
-	c.sendData(b)
+	c.BytesInfo.AddOutbound(len(b))
+	if nil == c.snowflake {
+		log.Printf("Buffered %d bytes --> WebRTC", len(b))
+		c.buffer.Write(b)
+	} else {
+		c.snowflake.Send(b)
+	}
 	return len(b), nil
 }
 
@@ -64,19 +70,18 @@ func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
 }
 
 func NewWebRTCConnection(config *webrtc.Configuration,
-		broker *BrokerChannel) *webRTCConn {
+	broker *BrokerChannel) *webRTCConn {
 	connection := new(webRTCConn)
 	connection.config = config
 	connection.broker = broker
-	connection.offerChannel = make(chan *webrtc.SessionDescription)
-	connection.answerChannel = make(chan *webrtc.SessionDescription)
-	connection.writeChannel = make(chan []byte)
-	connection.errorChannel = make(chan error)
-	connection.reset = make(chan struct{})
+	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
+	connection.answerChannel = make(chan *webrtc.SessionDescription, 1)
+	connection.errorChannel = make(chan error, 1)
+	connection.reset = make(chan struct{}, 1)
 
 	// Log every few seconds.
 	connection.BytesInfo = &BytesInfo{
-		inboundChan: make(chan int), outboundChan: make(chan int),
+		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
 		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
 	}
 	go connection.BytesInfo.Log()
@@ -103,20 +108,6 @@ func (c *webRTCConn) ConnectLoop() {
 		} else {
 			log.Println("WebRTC: Could not establish DataChannel.")
 		}
-	}
-}
-
-// Expected in own goroutine.
-func (c *webRTCConn) SendLoop() {
-	log.Println("send loop")
-	for data := range c.writeChannel {
-		// Flush buffer if necessary.
-		for c.buffer.Len() > 0 {
-			c.snowflake.Send(c.buffer.Bytes())
-			log.Println("Flushed", c.buffer.Len(), "bytes")
-			c.buffer.Reset()
-		}
-		c.snowflake.Send(data)
 	}
 }
 
@@ -185,6 +176,7 @@ func (c *webRTCConn) establishDataChannel() error {
 		dc.Send(c.buffer.Bytes())
 		log.Println("Flushed", c.buffer.Len(), "bytes")
 		c.buffer.Reset()
+
 		c.snowflake = dc
 	}
 	dc.OnClose = func() {
@@ -198,6 +190,9 @@ func (c *webRTCConn) establishDataChannel() error {
 		}
 	}
 	dc.OnMessage = func(msg []byte) {
+		if len(msg) <= 0 {
+			log.Println("0 length---")
+		}
 		c.BytesInfo.AddInbound(len(msg))
 		n, err := c.writePipe.Write(msg)
 		if err != nil {
@@ -259,17 +254,6 @@ func (c *webRTCConn) receiveAnswer() {
 			c.errorChannel <- err
 		}
 	}()
-}
-
-func (c *webRTCConn) sendData(data []byte) {
-	c.BytesInfo.AddOutbound(len(data))
-	// Buffer the data in case datachannel isn't available yet.
-	if nil == c.snowflake {
-		log.Printf("Buffered %d bytes --> WebRTC", len(data))
-		c.buffer.Write(data)
-		return
-	}
-	c.writeChannel <- data
 }
 
 func (c *webRTCConn) Reset() {
