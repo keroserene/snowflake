@@ -1,9 +1,23 @@
-# snowflake-pt
+# Snowflake
 
 [![Build Status](https://travis-ci.org/keroserene/snowflake.svg?branch=master)](https://travis-ci.org/keroserene/snowflake)
 
 A Pluggable Transport using WebRTC
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Status](#status)
+- [Usage](#usage)
+  - [Dependencies](#dependencies)
+  - [More Info](#more-info)
+  - [Building a Snowflake](#building-a-snowflake)
+- [Appendix](#appendix)
+    - [-- Testing directly via WebRTC Server --](#---testing-directly-via-webrtc-server---)
+    - [-- Via Browser Proxy --](#---via-browser-proxy---)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ### Status
 
@@ -23,8 +37,14 @@ This should start the client plugin, bootstrapping to 100% using WebRTC.
 
 #### Dependencies
 
+Client:
 - [go-webrtc](https://github.com/keroserene/go-webrtc).
-- Go 1.5+
+- Go 1.5.* (1.6 is not yet supported. See [Issue #22](https://github.com/keroserene/snowflake/issues/22))
+
+Proxy:
+- [CoffeeScript](coffeescript.org)
+
+---
 
 #### More Info
 
