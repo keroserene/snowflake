@@ -34,7 +34,7 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 }
 
 func (c *webRTCConn) Write(b []byte) (int, error) {
-	c.SendData(b)
+	c.sendData(b)
 	return len(b), nil
 }
 
@@ -63,7 +63,64 @@ func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
 	return fmt.Errorf("SetWriteDeadline not implemented")
 }
 
-func (c *webRTCConn) PreparePeerConnection() {
+func NewWebRTCConnection(config *webrtc.Configuration,
+		broker *BrokerChannel) *webRTCConn {
+	connection := new(webRTCConn)
+	connection.config = config
+	connection.broker = broker
+	connection.offerChannel = make(chan *webrtc.SessionDescription)
+	connection.answerChannel = make(chan *webrtc.SessionDescription)
+	connection.writeChannel = make(chan []byte)
+	connection.errorChannel = make(chan error)
+	connection.reset = make(chan struct{})
+
+	// Log every few seconds.
+	connection.BytesInfo = &BytesInfo{
+		inboundChan: make(chan int), outboundChan: make(chan int),
+		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
+	}
+	go connection.BytesInfo.Log()
+
+	// Pipes remain the same even when DataChannel gets switched.
+	connection.recvPipe, connection.writePipe = io.Pipe()
+
+	return connection
+}
+
+// WebRTC re-establishment loop. Expected in own goroutine.
+func (c *webRTCConn) ConnectLoop() {
+	for {
+		log.Println("Establishing WebRTC connection...")
+		// TODO: When go-webrtc is more stable, it's possible that a new
+		// PeerConnection won't need to be re-prepared each time.
+		c.preparePeerConnection()
+		err := c.establishDataChannel()
+		if err == nil {
+			c.sendOffer()
+			c.receiveAnswer()
+			<-c.reset
+			log.Println(" --- snowflake connection reset ---")
+		} else {
+			log.Println("WebRTC: Could not establish DataChannel.")
+		}
+	}
+}
+
+// Expected in own goroutine.
+func (c *webRTCConn) SendLoop() {
+	log.Println("send loop")
+	for data := range c.writeChannel {
+		// Flush buffer if necessary.
+		for c.buffer.Len() > 0 {
+			c.snowflake.Send(c.buffer.Bytes())
+			log.Println("Flushed", c.buffer.Len(), "bytes")
+			c.buffer.Reset()
+		}
+		c.snowflake.Send(data)
+	}
+}
+
+func (c *webRTCConn) preparePeerConnection() {
 	if nil != c.pc {
 		c.pc.Close()
 		c.pc = nil
@@ -110,7 +167,7 @@ func (c *webRTCConn) PreparePeerConnection() {
 }
 
 // Create a WebRTC DataChannel locally.
-func (c *webRTCConn) EstablishDataChannel() error {
+func (c *webRTCConn) establishDataChannel() error {
 	dc, err := c.pc.CreateDataChannel("snowflake", webrtc.Init{})
 	// Triggers "OnNegotiationNeeded" on the PeerConnection, which will prepare
 	// an SDP offer while other goroutines operating on this struct handle the
@@ -158,13 +215,14 @@ func (c *webRTCConn) EstablishDataChannel() error {
 
 // Block until an offer is available, then send it to either
 // the Broker or signal pipe.
-func (c *webRTCConn) SendOffer() error {
+func (c *webRTCConn) sendOffer() error {
+	log.Println("sendOffer...")
 	select {
 	case offer := <-c.offerChannel:
 		if "" == brokerURL {
 			log.Printf("Please Copy & Paste the following to the peer:")
 			log.Printf("----------------")
-			fmt.Fprintln(logFile, "\n"+offer.Serialize()+"\n")
+			log.Printf("\n" + offer.Serialize() + "\n")
 			log.Printf("----------------")
 			return nil
 		}
@@ -186,7 +244,7 @@ func (c *webRTCConn) SendOffer() error {
 	return nil
 }
 
-func (c *webRTCConn) ReceiveAnswer() {
+func (c *webRTCConn) receiveAnswer() {
 	go func() {
 		answer, ok := <-c.answerChannel
 		if !ok || nil == answer {
@@ -203,7 +261,7 @@ func (c *webRTCConn) ReceiveAnswer() {
 	}()
 }
 
-func (c *webRTCConn) SendData(data []byte) {
+func (c *webRTCConn) sendData(data []byte) {
 	c.BytesInfo.AddOutbound(len(data))
 	// Buffer the data in case datachannel isn't available yet.
 	if nil == c.snowflake {
@@ -212,39 +270,6 @@ func (c *webRTCConn) SendData(data []byte) {
 		return
 	}
 	c.writeChannel <- data
-}
-
-// Expected in own goroutine.
-func (c *webRTCConn) SendLoop() {
-	log.Println("send loop")
-	for data := range c.writeChannel {
-		// Flush buffer if necessary.
-		for c.buffer.Len() > 0 {
-			c.snowflake.Send(c.buffer.Bytes())
-			log.Println("Flushed", c.buffer.Len(), "bytes")
-			c.buffer.Reset()
-		}
-		c.snowflake.Send(data)
-	}
-}
-
-// WebRTC re-establishment loop. Expected in own goroutine.
-func (c *webRTCConn) ConnectLoop() {
-	for {
-		log.Println("Establishing WebRTC connection...")
-		// TODO: When go-webrtc is more stable, it's possible that a new
-		// PeerConnection won't need to be re-prepared each time.
-		c.PreparePeerConnection()
-		err := c.EstablishDataChannel()
-		if err == nil {
-			c.SendOffer()
-			c.ReceiveAnswer()
-			<-c.reset
-			log.Println(" --- snowflake connection reset ---")
-		} else {
-			log.Println("WebRTC: Could not establish DataChannel.")
-		}
-	}
 }
 
 func (c *webRTCConn) Reset() {

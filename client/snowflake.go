@@ -18,7 +18,8 @@ import (
 )
 
 var ptInfo pt.ClientInfo
-var logFile *os.File
+
+// var logFile *os.File
 var brokerURL string
 var frontDomain string
 
@@ -35,13 +36,13 @@ func copyLoop(a, b net.Conn) {
 	wg.Add(2)
 	// TODO fix copy loop recovery
 	go func() {
-		io.Copy(b, a)
-		log.Println("copy loop b-a break")
+		written, err := io.Copy(b, a)
+		log.Println("copy loop b-a break", err, written)
 		wg.Done()
 	}()
 	go func() {
-		io.Copy(a, b)
-		log.Println("copy loop a-b break")
+		written, err := io.Copy(a, b)
+		log.Println("copy loop a-b break", err, written)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -55,27 +56,22 @@ type SnowflakeChannel interface {
 }
 
 // Initialize a WebRTC Connection.
-func dialWebRTC(config *webrtc.Configuration, broker *BrokerChannel) (
-	*webRTCConn, error) {
-	connection := new(webRTCConn)
-	connection.config = config
-	connection.broker = broker
-	connection.offerChannel = make(chan *webrtc.SessionDescription)
-	connection.answerChannel = make(chan *webrtc.SessionDescription)
-	connection.writeChannel = make(chan []byte)
-	connection.errorChannel = make(chan error)
-	connection.reset = make(chan struct{})
-	connection.BytesInfo = &BytesInfo{
-		inboundChan: make(chan int), outboundChan: make(chan int),
-		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
+func dialWebRTC() (*webRTCConn, error) {
+
+	// TODO: [#3] Fetch ICE server information from Broker.
+	// TODO: [#18] Consider TURN servers here too.
+	config := webrtc.NewConfiguration(
+		webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
+
+	broker := NewBrokerChannel(brokerURL, frontDomain)
+	if nil == broker {
+		return nil, errors.New("Failed to prepare BrokerChannel")
 	}
-	go connection.BytesInfo.Log()
 
-	// Pipes remain the same even when DataChannel gets switched.
-	connection.recvPipe, connection.writePipe = io.Pipe()
-
+	connection := NewWebRTCConnection(config, broker)
 	go connection.ConnectLoop()
 	go connection.SendLoop()
+
 	return connection, nil
 }
 
@@ -105,16 +101,7 @@ func handler(conn *pt.SocksConn) error {
 	defer conn.Close()
 	log.Println("handler fired:", conn)
 
-	// TODO: [#3] Fetch ICE server information from Broker.
-	// TODO: [#18] Consider TURN servers here too.
-	config := webrtc.NewConfiguration(
-		webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
-	broker := NewBrokerChannel(brokerURL, frontDomain)
-	if nil == broker {
-		conn.Reject()
-		return errors.New("Failed to prepare BrokerChannel")
-	}
-	remote, err := dialWebRTC(config, broker)
+	remote, err := dialWebRTC()
 	if err != nil {
 		conn.Reject()
 		return err
@@ -174,12 +161,12 @@ func readSignalingMessages(f *os.File) {
 }
 
 func main() {
-	var err error
+	// var err error
 	webrtc.SetLoggingVerbosity(1)
 	flag.StringVar(&brokerURL, "url", "", "URL of signaling broker")
 	flag.StringVar(&frontDomain, "front", "", "front domain")
 	flag.Parse()
-	logFile, err = os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	logFile, err := os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal(err)
 	}

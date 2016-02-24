@@ -33,19 +33,19 @@ func TestConnect(t *testing.T) {
 			}
 			So(c.buffer.Bytes(), ShouldEqual, nil)
 
-			Convey("SendData buffers when datachannel is nil", func() {
-				c.SendData([]byte("test"))
+			Convey("sendData buffers when datachannel is nil", func() {
+				c.sendData([]byte("test"))
 				c.snowflake = nil
 				So(c.buffer.Bytes(), ShouldResemble, []byte("test"))
 			})
 
-			Convey("SendData sends to datachannel when not nil", func() {
+			Convey("sendData sends to datachannel when not nil", func() {
 				mock := new(MockDataChannel)
 				mock.done = make(chan bool)
 				go c.SendLoop()
 				c.writeChannel = make(chan []byte)
 				c.snowflake = mock
-				c.SendData([]byte("test"))
+				c.sendData([]byte("test"))
 				<-mock.done
 				So(c.buffer.Bytes(), ShouldEqual, nil)
 				So(mock.destination.Bytes(), ShouldResemble, []byte("test"))
@@ -55,7 +55,7 @@ func TestConnect(t *testing.T) {
 				c.answerChannel = make(chan *webrtc.SessionDescription)
 				c.config = webrtc.NewConfiguration()
 				c.PreparePeerConnection()
-				c.ReceiveAnswer()
+				c.receiveAnswer()
 				sdp := webrtc.DeserializeSessionDescription("test")
 				c.answerChannel <- sdp
 				So(c.pc.RemoteDescription(), ShouldEqual, sdp)
@@ -65,7 +65,7 @@ func TestConnect(t *testing.T) {
 			Convey("Receive answer fails on nil answer", func() {
 				c.reset = make(chan struct{})
 				c.answerChannel = make(chan *webrtc.SessionDescription)
-				c.ReceiveAnswer()
+				c.receiveAnswer()
 				c.answerChannel <- nil
 				<-c.reset
 			})
