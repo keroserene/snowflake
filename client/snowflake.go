@@ -101,7 +101,7 @@ func handler(conn *pt.SocksConn) error {
 	log.Println("handler fired:", conn)
 
 	remote, err := dialWebRTC()
-	if err != nil {
+	if err != nil || remote == nil {
 		conn.Reject()
 		return err
 	}
@@ -123,6 +123,7 @@ func handler(conn *pt.SocksConn) error {
 func acceptLoop(ln *pt.SocksListener) error {
 	defer ln.Close()
 	for {
+		log.Println("SOCKS listening...")
 		conn, err := ln.AcceptSocks()
 		if err != nil {
 			if e, ok := err.(net.Error); ok && e.Temporary() {

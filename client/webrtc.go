@@ -172,11 +172,13 @@ func (c *webRTCConn) establishDataChannel() error {
 		if nil != c.snowflake {
 			panic("PeerConnection snowflake already exists.")
 		}
-		// Flush the buffer, then enable datachannel.
-		dc.Send(c.buffer.Bytes())
-		log.Println("Flushed", c.buffer.Len(), "bytes")
-		c.buffer.Reset()
-
+		// Flush the buffer if necessary.
+		if c.buffer.Len() > 0 {
+			dc.Send(c.buffer.Bytes())
+			log.Println("Flushed", c.buffer.Len(), "bytes.")
+			c.buffer.Reset()
+		}
+		// Then enable the datachannel.
 		c.snowflake = dc
 	}
 	dc.OnClose = func() {
@@ -190,6 +192,7 @@ func (c *webRTCConn) establishDataChannel() error {
 		}
 	}
 	dc.OnMessage = func(msg []byte) {
+		// log.Println("ONMESSAGE: ", len(msg))
 		if len(msg) <= 0 {
 			log.Println("0 length---")
 		}
