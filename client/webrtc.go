@@ -19,6 +19,7 @@ type webRTCConn struct {
 	offerChannel  chan *webrtc.SessionDescription
 	answerChannel chan *webrtc.SessionDescription
 	errorChannel  chan error
+	endChannel    chan struct{}
 	recvPipe      *io.PipeReader
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
@@ -45,8 +46,25 @@ func (c *webRTCConn) Write(b []byte) (int, error) {
 }
 
 func (c *webRTCConn) Close() error {
-	// Data channel closed implicitly?
-	return c.pc.Close()
+	var err error = nil
+	log.Printf("WebRTC: Closing")
+	if nil != c.snowflake {
+		s := c.snowflake
+		c.snowflake = nil
+		log.Printf("WebRTC: closing DataChannel")
+		s.Close()
+	}
+	if nil != c.pc {
+		log.Printf("WebRTC: closing PeerConnection")
+		err = c.pc.Close()
+		c.pc = nil
+	}
+	close(c.offerChannel)
+	close(c.answerChannel)
+	close(c.errorChannel)
+	// c.writePipe.Close()
+	// c.recvPipe.Close()
+	return err
 }
 
 func (c *webRTCConn) LocalAddr() net.Addr {
@@ -77,6 +95,7 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
 	connection.answerChannel = make(chan *webrtc.SessionDescription, 1)
 	connection.errorChannel = make(chan error, 1)
+	connection.endChannel = make(chan struct{}, 1)
 	connection.reset = make(chan struct{}, 1)
 
 	// Log every few seconds.
@@ -100,13 +119,13 @@ func (c *webRTCConn) ConnectLoop() {
 		// PeerConnection won't need to be re-prepared each time.
 		c.preparePeerConnection()
 		err := c.establishDataChannel()
-		if err == nil {
+		if err != nil {
+			log.Println("WebRTC: Could not establish DataChannel.")
+		} else {
 			c.sendOffer()
 			c.receiveAnswer()
 			<-c.reset
 			log.Println(" --- snowflake connection reset ---")
-		} else {
-			log.Println("WebRTC: Could not establish DataChannel.")
 		}
 	}
 }
@@ -172,7 +191,7 @@ func (c *webRTCConn) establishDataChannel() error {
 		if nil != c.snowflake {
 			panic("PeerConnection snowflake already exists.")
 		}
-		// Flush the buffer if necessary.
+		// Flush buffered outgoing SOCKS data if necessary.
 		if c.buffer.Len() > 0 {
 			dc.Send(c.buffer.Bytes())
 			log.Println("Flushed", c.buffer.Len(), "bytes.")
@@ -186,10 +205,16 @@ func (c *webRTCConn) establishDataChannel() error {
 		// Future writes will go to the buffer until a new DataChannel is available.
 		log.Println("WebRTC: DataChannel.OnClose")
 		// Only reset if this OnClose was triggered remotely.
-		if nil != c.snowflake {
-			c.snowflake = nil
-			c.Reset()
+		if nil == c.snowflake {
+			panic("Should not have nil snowflake before closing. ")
 		}
+		c.snowflake = nil
+		// TODO: Need a way to update the circuit so that when a new WebRTC
+		// data channel is available, the relay actually recognizes the new
+		// snowflake?
+		c.Reset()
+		// c.Close()
+		// c.endChannel <- struct{}{}
 	}
 	dc.OnMessage = func(msg []byte) {
 		// log.Println("ONMESSAGE: ", len(msg))
@@ -214,7 +239,6 @@ func (c *webRTCConn) establishDataChannel() error {
 // Block until an offer is available, then send it to either
 // the Broker or signal pipe.
 func (c *webRTCConn) sendOffer() error {
-	log.Println("sendOffer...")
 	select {
 	case offer := <-c.offerChannel:
 		if "" == brokerURL {
@@ -254,6 +278,7 @@ func (c *webRTCConn) receiveAnswer() {
 		log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
 		err := c.pc.SetRemoteDescription(answer)
 		if nil != err {
+			log.Printf("webrtc: Unable to SetRemoteDescription.")
 			c.errorChannel <- err
 		}
 	}()

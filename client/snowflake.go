@@ -46,6 +46,8 @@ func copyLoop(a, b net.Conn) {
 		wg.Done()
 	}()
 	wg.Wait()
+	// a.Close()
+	// b.Close()
 	log.Println("copy loop ended")
 }
 
@@ -79,16 +81,8 @@ func endWebRTC() {
 	if nil == webrtcRemote {
 		return
 	}
-	if nil != webrtcRemote.snowflake {
-		s := webrtcRemote.snowflake
-		webrtcRemote.snowflake = nil
-		log.Printf("WebRTC: closing DataChannel")
-		s.Close()
-	}
-	if nil != webrtcRemote.pc {
-		log.Printf("WebRTC: closing PeerConnection")
-		webrtcRemote.pc.Close()
-	}
+	webrtcRemote.Close()
+	webrtcRemote = nil
 }
 
 // Establish a WebRTC channel for SOCKS connections.
@@ -116,6 +110,7 @@ func handler(conn *pt.SocksConn) error {
 	// TODO: Make SOCKS acceptance more independent from WebRTC so they can
 	// be more easily interchanged.
 	copyLoop(conn, remote)
+	// <-remote.endChannel
 	log.Println("----END---")
 	return nil
 }
@@ -123,8 +118,9 @@ func handler(conn *pt.SocksConn) error {
 func acceptLoop(ln *pt.SocksListener) error {
 	defer ln.Close()
 	for {
-		log.Println("SOCKS listening...")
+		log.Println("SOCKS listening...", ln)
 		conn, err := ln.AcceptSocks()
+		log.Println("accepting", conn, err)
 		if err != nil {
 			if e, ok := err.(net.Error); ok && e.Temporary() {
 				continue
