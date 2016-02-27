@@ -18,9 +18,10 @@ import (
 type BrokerChannel struct {
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
-	Host      string
-	url       *url.URL
-	transport http.Transport // Used to make all requests.
+	Host string
+	url  *url.URL
+	// transport http.Transport // Used to make all requests.
+	transport http.RoundTripper // Used to make all requests.
 }
 
 // Construct a new BrokerChannel, where:
@@ -41,8 +42,9 @@ func NewBrokerChannel(broker string, front string) *BrokerChannel {
 	// We make a copy of DefaultTransport because we want the default Dial
 	// and TLSHandshakeTimeout settings. But we want to disable the default
 	// ProxyFromEnvironment setting.
-	bc.transport = *http.DefaultTransport.(*http.Transport)
-	bc.transport.Proxy = nil
+	transport := http.DefaultTransport.(*http.Transport)
+	transport.Proxy = nil
+	bc.transport = transport
 	return bc
 }
 

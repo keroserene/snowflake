@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"github.com/keroserene/go-webrtc"
 	. "github.com/smartystreets/goconvey/convey"
+	"net/http"
+	// "net/http/httptest"
+	"io/ioutil"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +23,29 @@ func (m *MockDataChannel) Send(data []byte) {
 
 func (*MockDataChannel) Close() error {
 	return nil
+}
+
+type MockResponse struct{}
+
+func (m *MockResponse) Read(p []byte) (int, error) {
+	p = []byte(`{"type":"answer","sdp":"fake"}`)
+	return 0, nil
+}
+func (m *MockResponse) Close() error {
+	return nil
+}
+
+type MockTransport struct {
+}
+
+// Just returns a response with fake SDP answer.
+func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	s := ioutil.NopCloser(strings.NewReader(`{"type":"answer","sdp":"fake"}`))
+	r := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       s,
+	}
+	return r, nil
 }
 
 func TestConnect(t *testing.T) {
@@ -71,6 +98,35 @@ func TestConnect(t *testing.T) {
 			Convey("Connect Loop", func() {
 				// TODO
 			})
+		})
+	})
+
+	Convey("Rendezvous", t, func() {
+
+		Convey("BrokerChannel with no front domain", func() {
+			b := NewBrokerChannel("test.broker", "")
+			So(b.url, ShouldNotBeNil)
+			So(b.url.Path, ShouldResemble, "test.broker")
+			So(b.transport, ShouldNotBeNil)
+		})
+
+		Convey("BrokerChannel with front domain", func() {
+			b := NewBrokerChannel("test.broker", "front")
+			So(b.url, ShouldNotBeNil)
+			So(b.url.Path, ShouldResemble, "test.broker")
+			So(b.url.Host, ShouldResemble, "front")
+			So(b.transport, ShouldNotBeNil)
+		})
+
+		Convey("BrokerChannel Negotiate responds with answer", func() {
+			b := NewBrokerChannel("test.broker", "")
+			sdp := webrtc.DeserializeSessionDescription("test")
+			// Replace transport with a mock.
+			b.transport = &MockTransport{}
+			answer, err := b.Negotiate(sdp)
+			So(err, ShouldBeNil)
+			So(answer, ShouldNotBeNil)
+			So(answer.Sdp, ShouldResemble, "fake")
 		})
 
 	})
