@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+const (
+	LogTimeInterval = 5
+)
+
 type BytesInfo struct {
 	outboundChan chan int
 	inboundChan  chan int
@@ -33,18 +37,18 @@ func (b *BytesInfo) Log() {
 			b.outbound += amount
 			b.outEvents++
 			last := time.Now()
-			if time.Since(last) > time.Second*5 {
+			if time.Since(last) > time.Second*LogTimeInterval {
 				last = time.Now()
 				output()
 			}
 		case amount = <-b.inboundChan:
 			b.inbound += amount
 			b.inEvents++
-			if time.Since(last) > time.Second*5 {
+			if time.Since(last) > time.Second*LogTimeInterval {
 				last = time.Now()
 				output()
 			}
-		case <-time.After(time.Second * 5):
+		case <-time.After(time.Second * LogTimeInterval):
 			if b.inEvents > 0 || b.outEvents > 0 {
 				output()
 			}
