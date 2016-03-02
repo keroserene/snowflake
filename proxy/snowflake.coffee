@@ -44,6 +44,8 @@ MODE =
   WEBRTC_CONNECTING: 1
   WEBRTC_READY:      2
 
+CONFIRMATION_MESSAGE = "You're currently serving a Tor user via Snowflake."
+
 # Minimum viable snowflake for now - just 1 client.
 class Snowflake
 
@@ -199,5 +201,12 @@ init = ->
   relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
   snowflake.setRelayAddr relayAddr
   snowflake.beginWebRTC()
+
+# Notification of closing tab with active proxy.
+# TODO: Opt-in/out parameter or cookie
+window.onbeforeunload = ->
+  if MODE.WEBRTC_READY == snowflake.state
+    return CONFIRMATION_MESSAGE
+  null
 
 window.onload = init if window

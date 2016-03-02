@@ -23,6 +23,7 @@ snowflake =
   ui: fakeUI
   broker:
     sendAnswer: ->
+  state: MODE.INIT
 
 describe 'Snowflake', ->
 
@@ -58,3 +59,14 @@ describe 'Snowflake', ->
     s = new Snowflake(new FakeBroker(), fakeUI)
     s.makeProxyPair()
     expect(s.proxyPairs.length).toBe 2
+
+  it 'gives a dialog when closing, only while active', ->
+    snowflake.state = MODE.WEBRTC_READY
+    msg = window.onbeforeunload()
+    expect(snowflake.state).toBe MODE.WEBRTC_READY
+    expect(msg).toBe CONFIRMATION_MESSAGE
+
+    snowflake.state = MODE.INIT
+    msg = window.onbeforeunload()
+    expect(snowflake.state).toBe MODE.INIT
+    expect(msg).toBe null
