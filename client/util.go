@@ -1,13 +1,29 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
 const (
 	LogTimeInterval = 5
 )
+
+type IceServerList []string
+
+func (i *IceServerList) String() string {
+	return fmt.Sprint(*i)
+}
+
+func (i *IceServerList) Set(s string) error {
+	for _, server := range strings.Split(s, ",") {
+		// TODO: STUN / TURN url format validation?
+		*i = append(*i, server)
+	}
+	return nil
+}
 
 type BytesInfo struct {
 	outboundChan chan int

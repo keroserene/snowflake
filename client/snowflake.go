@@ -22,6 +22,7 @@ var ptInfo pt.ClientInfo
 // var logFile *os.File
 var brokerURL string
 var frontDomain string
+var iceServers IceServerList
 
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
@@ -109,6 +110,7 @@ func handler(conn *pt.SocksConn) error {
 
 	// TODO: Make SOCKS acceptance more independent from WebRTC so they can
 	// be more easily interchanged.
+
 	copyLoop(conn, remote)
 	// <-remote.endChannel
 	log.Println("----END---")
@@ -161,6 +163,7 @@ func main() {
 	webrtc.SetLoggingVerbosity(1)
 	flag.StringVar(&brokerURL, "url", "", "URL of signaling broker")
 	flag.StringVar(&frontDomain, "front", "", "front domain")
+	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
 	flag.Parse()
 	logFile, err := os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
