@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/keroserene/go-webrtc"
 	"log"
 	"strings"
 	"time"
@@ -11,7 +12,7 @@ const (
 	LogTimeInterval = 5
 )
 
-type IceServerList []string
+type IceServerList []webrtc.ConfigurationOption
 
 func (i *IceServerList) String() string {
 	return fmt.Sprint(*i)
@@ -20,7 +21,8 @@ func (i *IceServerList) String() string {
 func (i *IceServerList) Set(s string) error {
 	for _, server := range strings.Split(s, ",") {
 		// TODO: STUN / TURN url format validation?
-		*i = append(*i, server)
+		option := webrtc.OptionIceServer(server)
+		*i = append(*i, option)
 	}
 	return nil
 }

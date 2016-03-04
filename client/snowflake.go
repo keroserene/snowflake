@@ -63,8 +63,7 @@ func dialWebRTC() (*webRTCConn, error) {
 
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
-	config := webrtc.NewConfiguration(
-		webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
+	config := webrtc.NewConfiguration(iceServers...)
 
 	broker := NewBrokerChannel(brokerURL, frontDomain)
 	if nil == broker {
