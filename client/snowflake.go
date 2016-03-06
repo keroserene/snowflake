@@ -64,7 +64,6 @@ func dialWebRTC() (*webRTCConn, error) {
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
 	config := webrtc.NewConfiguration(iceServers...)
-
 	broker := NewBrokerChannel(brokerURL, frontDomain)
 	if nil == broker {
 		return nil, errors.New("Failed to prepare BrokerChannel")
@@ -160,10 +159,6 @@ func readSignalingMessages(f *os.File) {
 func main() {
 	// var err error
 	webrtc.SetLoggingVerbosity(1)
-	flag.StringVar(&brokerURL, "url", "", "URL of signaling broker")
-	flag.StringVar(&frontDomain, "front", "", "front domain")
-	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
-	flag.Parse()
 	logFile, err := os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal(err)
@@ -171,6 +166,11 @@ func main() {
 	defer logFile.Close()
 	log.SetOutput(logFile)
 	log.Println("\nStarting Snowflake Client...")
+
+	flag.StringVar(&brokerURL, "url", "", "URL of signaling broker")
+	flag.StringVar(&frontDomain, "front", "", "front domain")
+	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
+	flag.Parse()
 
 	// Expect user to copy-paste if
 	// TODO: Maybe just get rid of copy-paste entirely.
