@@ -48,17 +48,7 @@ func (c *webRTCConn) Write(b []byte) (int, error) {
 func (c *webRTCConn) Close() error {
 	var err error = nil
 	log.Printf("WebRTC: Closing")
-	if nil != c.snowflake {
-		s := c.snowflake
-		c.snowflake = nil
-		log.Printf("WebRTC: closing DataChannel")
-		s.Close()
-	}
-	if nil != c.pc {
-		log.Printf("WebRTC: closing PeerConnection")
-		err = c.pc.Close()
-		c.pc = nil
-	}
+	c.cleanup()
 	close(c.offerChannel)
 	close(c.answerChannel)
 	close(c.errorChannel)
@@ -127,9 +117,12 @@ func (c *webRTCConn) ConnectLoop() {
 			<-c.reset
 			log.Println(" --- snowflake connection reset ---")
 		}
+		<-time.After(time.Second * 1)
+		c.cleanup()
 	}
 }
 
+// Create and prepare callbacks on a new WebRTC PeerConnection.
 func (c *webRTCConn) preparePeerConnection() {
 	if nil != c.pc {
 		c.pc.Close()
@@ -178,6 +171,9 @@ func (c *webRTCConn) preparePeerConnection() {
 
 // Create a WebRTC DataChannel locally.
 func (c *webRTCConn) establishDataChannel() error {
+	if c.snowflake != nil {
+		panic("Unexpected datachannel already exists!")
+	}
 	dc, err := c.pc.CreateDataChannel("snowflake", webrtc.Init{})
 	// Triggers "OnNegotiationNeeded" on the PeerConnection, which will prepare
 	// an SDP offer while other goroutines operating on this struct handle the
@@ -201,20 +197,20 @@ func (c *webRTCConn) establishDataChannel() error {
 		c.snowflake = dc
 	}
 	dc.OnClose = func() {
-		// Disable the DataChannel as a write destination.
 		// Future writes will go to the buffer until a new DataChannel is available.
-		log.Println("WebRTC: DataChannel.OnClose")
-		// Only reset if this OnClose was triggered remotely.
 		if nil == c.snowflake {
-			panic("Should not have nil snowflake before closing. ")
+			// Closed locally, as part of a reset.
+			log.Println("WebRTC: DataChannel.OnClose [locally]")
+			return
 		}
+		// Closed remotely, need to reset everything.
+		// Disable the DataChannel as a write destination.
+		log.Println("WebRTC: DataChannel.OnClose [remotely]")
 		c.snowflake = nil
 		// TODO: Need a way to update the circuit so that when a new WebRTC
 		// data channel is available, the relay actually recognizes the new
 		// snowflake?
 		c.Reset()
-		// c.Close()
-		// c.endChannel <- struct{}{}
 	}
 	dc.OnMessage = func(msg []byte) {
 		// log.Println("ONMESSAGE: ", len(msg))
@@ -289,4 +285,20 @@ func (c *webRTCConn) Reset() {
 		c.reset <- struct{}{} // Attempt to negotiate a new datachannel..
 		log.Println("WebRTC resetting...")
 	}()
+}
+
+func (c *webRTCConn) cleanup() {
+	if nil != c.snowflake {
+		s := c.snowflake
+		log.Printf("WebRTC: closing DataChannel")
+		// Setting snowflak to nil *before* Close indicates to OnClose that it
+		// was locally triggered.
+		c.snowflake = nil
+		s.Close()
+	}
+	if nil != c.pc {
+		log.Printf("WebRTC: closing PeerConnection")
+		c.pc.Close()
+		c.pc = nil
+	}
 }
