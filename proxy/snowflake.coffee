@@ -14,6 +14,7 @@ DEFAULT_RELAY =
 COPY_PASTE_ENABLED = false
 
 DEBUG = false
+silenceNotifications = false
 query = null
 if 'undefined' != typeof window && window.location
   query = Query.parse(window.location.search.substr(1))
@@ -190,6 +191,7 @@ dbg = (msg) -> log msg if true == snowflake.ui.debug
 
 init = ->
   ui = new UI()
+  silenceNotifications = Params.getBool(query, 'silent', false)
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
   broker = new Broker brokerUrl
   snowflake = new Snowflake broker, ui
@@ -205,7 +207,7 @@ init = ->
 # Notification of closing tab with active proxy.
 # TODO: Opt-in/out parameter or cookie
 window.onbeforeunload = ->
-  if MODE.WEBRTC_READY == snowflake.state
+  if !silenceNotifications && MODE.WEBRTC_READY == snowflake.state
     return CONFIRMATION_MESSAGE
   null
 

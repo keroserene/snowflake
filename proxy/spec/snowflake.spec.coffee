@@ -61,6 +61,7 @@ describe 'Snowflake', ->
     expect(s.proxyPairs.length).toBe 2
 
   it 'gives a dialog when closing, only while active', ->
+    silenceNotifications = false
     snowflake.state = MODE.WEBRTC_READY
     msg = window.onbeforeunload()
     expect(snowflake.state).toBe MODE.WEBRTC_READY
@@ -69,4 +70,11 @@ describe 'Snowflake', ->
     snowflake.state = MODE.INIT
     msg = window.onbeforeunload()
     expect(snowflake.state).toBe MODE.INIT
+    expect(msg).toBe null
+
+  it 'does not give a dialog when silent flag is on', ->
+    silenceNotifications = true
+    snowflake.state = MODE.WEBRTC_READY
+    msg = window.onbeforeunload()
+    expect(snowflake.state).toBe MODE.WEBRTC_READY
     expect(msg).toBe null
