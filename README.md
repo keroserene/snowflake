@@ -39,7 +39,7 @@ This should start the client plugin, bootstrapping to 100% using WebRTC.
 
 Client:
 - [go-webrtc](https://github.com/keroserene/go-webrtc).
-- Go 1.5.* (1.6 is not yet supported. See [Issue #22](https://github.com/keroserene/snowflake/issues/22))
+- Go 1.5+
 
 Proxy:
 - [CoffeeScript](coffeescript.org)
