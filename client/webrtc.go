@@ -19,7 +19,6 @@ type webRTCConn struct {
 	offerChannel  chan *webrtc.SessionDescription
 	answerChannel chan *webrtc.SessionDescription
 	errorChannel  chan error
-	endChannel    chan struct{}
 	recvPipe      *io.PipeReader
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
@@ -52,8 +51,6 @@ func (c *webRTCConn) Close() error {
 	close(c.offerChannel)
 	close(c.answerChannel)
 	close(c.errorChannel)
-	// c.writePipe.Close()
-	// c.recvPipe.Close()
 	return err
 }
 
@@ -85,7 +82,6 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
 	connection.answerChannel = make(chan *webrtc.SessionDescription, 1)
 	connection.errorChannel = make(chan error, 1)
-	connection.endChannel = make(chan struct{}, 1)
 	connection.reset = make(chan struct{}, 1)
 
 	// Log every few seconds.
@@ -112,8 +108,7 @@ func (c *webRTCConn) ConnectLoop() {
 		if err != nil {
 			log.Println("WebRTC: Could not establish DataChannel.")
 		} else {
-			c.sendOffer()
-			c.receiveAnswer()
+			go c.exchangeSDP()
 			<-c.reset
 			log.Println(" --- snowflake connection reset ---")
 		}
@@ -185,6 +180,7 @@ func (c *webRTCConn) establishDataChannel() error {
 	dc.OnOpen = func() {
 		log.Println("WebRTC: DataChannel.OnOpen")
 		if nil != c.snowflake {
+			log.Println("PeerConnection snowflake already exists.")
 			panic("PeerConnection snowflake already exists.")
 		}
 		// Flush buffered outgoing SOCKS data if necessary.
@@ -207,15 +203,14 @@ func (c *webRTCConn) establishDataChannel() error {
 		// Disable the DataChannel as a write destination.
 		log.Println("WebRTC: DataChannel.OnClose [remotely]")
 		c.snowflake = nil
-		// TODO: Need a way to update the circuit so that when a new WebRTC
+		// TODO(issue #12): Need a way to update the circuit so that when a new WebRTC
 		// data channel is available, the relay actually recognizes the new
-		// snowflake?
+		// snowflake.
 		c.Reset()
 	}
 	dc.OnMessage = func(msg []byte) {
-		// log.Println("ONMESSAGE: ", len(msg))
 		if len(msg) <= 0 {
-			log.Println("0 length---")
+			log.Println("0 length message---")
 		}
 		c.BytesInfo.AddInbound(len(msg))
 		n, err := c.writePipe.Write(msg)
@@ -225,6 +220,7 @@ func (c *webRTCConn) establishDataChannel() error {
 			c.writePipe.CloseWithError(err)
 		}
 		if n != len(msg) {
+			log.Println("Error: short write")
 			panic("short write")
 		}
 	}
@@ -232,57 +228,63 @@ func (c *webRTCConn) establishDataChannel() error {
 	return nil
 }
 
-// Block until an offer is available, then send it to either
-// the Broker or signal pipe.
-func (c *webRTCConn) sendOffer() error {
+func (c *webRTCConn) sendOfferToBroker() {
+	if "" == brokerURL {
+		return
+	}
+	offer := c.pc.LocalDescription()
+	log.Println("Sending offer via BrokerChannel...\nTarget URL: ", brokerURL,
+		"\nFront URL:  ", frontDomain)
+	answer, err := c.broker.Negotiate(offer)
+	if nil != err || nil == answer {
+		log.Printf("BrokerChannel error: %s", err)
+		answer = nil
+	}
+	c.answerChannel <- answer
+}
+
+// Block until an SDP offer is available, send it to either
+// the Broker or signal pipe, then await for the SDP answer.
+func (c *webRTCConn) exchangeSDP() error {
 	select {
 	case offer := <-c.offerChannel:
+		// Display for copy-paste, when no broker available.
 		if "" == brokerURL {
 			log.Printf("Please Copy & Paste the following to the peer:")
 			log.Printf("----------------")
 			log.Printf("\n" + offer.Serialize() + "\n")
 			log.Printf("----------------")
-			return nil
 		}
-		// Otherwise, use Broker.
-		go func() {
-			log.Println("Sending offer via BrokerChannel...\nTarget URL: ", brokerURL,
-				"\nFront URL:  ", frontDomain)
-			answer, err := c.broker.Negotiate(c.pc.LocalDescription())
-			if nil != err || nil == answer {
-				log.Printf("BrokerChannel error: %s", err)
-				answer = nil
-			}
-			c.answerChannel <- answer
-		}()
 	case err := <-c.errorChannel:
-		c.pc.Close()
+		log.Println("Failed to prepare offer", err)
+		c.Reset()
 		return err
+	}
+	// Keep trying the same offer until a valid answer arrives.
+	var ok bool
+	var answer *webrtc.SessionDescription = nil
+	for nil == answer {
+		go c.sendOfferToBroker()
+		answer, ok = <-c.answerChannel // Blocks...
+		if !ok || nil == answer {
+			log.Printf("Failed to retrieve answer. Retrying in %d seconds", ReconnectTimeout)
+			<-time.After(time.Second * ReconnectTimeout)
+			answer = nil
+		}
+	}
+
+	log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
+	err := c.pc.SetRemoteDescription(answer)
+	if nil != err {
+		log.Println("webrtc: Unable to SetRemoteDescription:", err)
+		// c.errorChannel <- err
 	}
 	return nil
 }
 
-func (c *webRTCConn) receiveAnswer() {
-	go func() {
-		answer, ok := <-c.answerChannel
-		if !ok || nil == answer {
-			log.Printf("Failed to retrieve answer. Retrying in %d seconds", ReconnectTimeout)
-			<-time.After(time.Second * ReconnectTimeout)
-			c.Reset()
-			return
-		}
-		log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
-		err := c.pc.SetRemoteDescription(answer)
-		if nil != err {
-			log.Printf("webrtc: Unable to SetRemoteDescription.")
-			c.errorChannel <- err
-		}
-	}()
-}
-
 func (c *webRTCConn) Reset() {
 	go func() {
-		c.reset <- struct{}{} // Attempt to negotiate a new datachannel..
+		c.reset <- struct{}{}
 		log.Println("WebRTC resetting...")
 	}()
 }
@@ -298,7 +300,10 @@ func (c *webRTCConn) cleanup() {
 	}
 	if nil != c.pc {
 		log.Printf("WebRTC: closing PeerConnection")
-		c.pc.Close()
+		err := c.pc.Close()
+		if nil != err {
+			log.Printf("Error closing peerconnection...")
+		}
 		c.pc = nil
 	}
 }

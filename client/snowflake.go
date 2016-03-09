@@ -47,8 +47,6 @@ func copyLoop(a, b net.Conn) {
 		wg.Done()
 	}()
 	wg.Wait()
-	// a.Close()
-	// b.Close()
 	log.Println("copy loop ended")
 }
 
@@ -108,9 +106,7 @@ func handler(conn *pt.SocksConn) error {
 
 	// TODO: Make SOCKS acceptance more independent from WebRTC so they can
 	// be more easily interchanged.
-
 	copyLoop(conn, remote)
-	// <-remote.endChannel
 	log.Println("----END---")
 	return nil
 }
