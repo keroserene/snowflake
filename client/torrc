@@ -4,6 +4,6 @@ DataDirectory datadir
 ClientTransportPlugin snowflake exec ./client \
 -url https://snowflake-reg.appspot.com/ \
 -front www.google.com \
--ice stun:stun.l.google.com:19302,stun:s1.taraba.net
+-ice stun:stun.l.google.com:19302
 
 Bridge snowflake 0.0.3.0:1

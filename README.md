@@ -51,8 +51,9 @@ Proxy:
 The client uses the following `torrc` options:
 ```
 ClientTransportPlugin snowflake exec ./client \
---url https://snowflake-reg.appspot.com/ \
---front www.google.com
+-url https://snowflake-reg.appspot.com/ \
+-front www.google.com \
+-ice stun:stun.l.google.com:19302
 ```
 
 Which allows it to speak to the Broker,
@@ -93,18 +94,21 @@ cd build/
 python -m http.server
 ```
 
-Open a browser tab to `0.0.0.0:8000/snowflake.html`.
-
-TODO: Turn the snowflake proxy into a more deployable badge.
+Then, open a browser tab to `0.0.0.0:8000/snowflake.html`,
+which causes you to act as an ephemeral Tor bridge.
 
 ### Appendix
 
 ##### -- Testing directly via WebRTC Server --
 
-Using the server plugin uses an HTTP server that simulates the interaction
-that a client would have with a broker.
-Using the browser proxy (which will soon be the only way) requires copy and
-pasting between 3 terminals and a browser tab.
+Ordinarily, the WebrTC client plugin speaks with a Broker which helps
+match and signal with a browser proxy, which ultimately speaks with a default
+websocket server.
+
+
+However, there is a WebRTC server plugin which uses an HTTP server that
+simulates the interaction that a client would have with the broker, for
+direct testing.
 
 Edit server/torrc and add "-http 127.0.0.1:8080" to the end of the
 ServerTransportPlugin line:
@@ -124,11 +128,11 @@ ClientTransportPlugin line:
 ClientTransportPlugin snowflake exec ./client -url http://127.0.0.1:8080/
 ```
 
-##### -- Via Browser Proxy --
+##### -- Testing Copy-Paste Via Browser Proxy --
 
 Open up three terminals for the **client:**
 
-A: `tor -f torrc SOCKSPort auto`
+A: `tor -f torrc-manual SOCKSPort auto`
 
 B: `cat > signal`
 
