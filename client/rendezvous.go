@@ -69,13 +69,21 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	}
 	defer resp.Body.Close()
 	log.Printf("BrokerChannel Response:\n%s\n\n", resp.Status)
-	if http.StatusOK != resp.StatusCode {
-		return nil, errors.New("no answer from broker.")
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		body, err := ioutil.ReadAll(resp.Body)
+		if nil != err {
+			return nil, err
+		}
+		answer := webrtc.DeserializeSessionDescription(string(body))
+		return answer, nil
+
+	case http.StatusServiceUnavailable:
+		return nil, errors.New("No snowflake proxies currently available.")
+	case http.StatusBadRequest:
+		return nil, errors.New("You sent an invalid offer in the request.")
+	default:
+		return nil, errors.New("Unexpected error, no answer.")
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if nil != err {
-		return nil, err
-	}
-	answer := webrtc.DeserializeSessionDescription(string(body))
-	return answer, nil
 }

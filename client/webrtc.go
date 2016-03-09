@@ -237,7 +237,7 @@ func (c *webRTCConn) sendOfferToBroker() {
 		"\nFront URL:  ", frontDomain)
 	answer, err := c.broker.Negotiate(offer)
 	if nil != err || nil == answer {
-		log.Printf("BrokerChannel error: %s", err)
+		log.Printf("BrokerChannel Error: %s", err)
 		answer = nil
 	}
 	c.answerChannel <- answer
