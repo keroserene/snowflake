@@ -81,6 +81,8 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	connection.broker = broker
 	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
 	connection.answerChannel = make(chan *webrtc.SessionDescription, 1)
+	// Error channel is mostly for reporting during the initial SDP offer
+	// creation & local description setting, which happens asynchronously.
 	connection.errorChannel = make(chan error, 1)
 	connection.reset = make(chan struct{}, 1)
 
@@ -103,8 +105,12 @@ func (c *webRTCConn) ConnectLoop() {
 		log.Println("Establishing WebRTC connection...")
 		// TODO: When go-webrtc is more stable, it's possible that a new
 		// PeerConnection won't need to be re-prepared each time.
-		c.preparePeerConnection()
-		err := c.establishDataChannel()
+		err := c.preparePeerConnection()
+		if err != nil {
+			log.Println("WebRTC: Could not create PeerConnection.")
+			break
+		}
+		err = c.establishDataChannel()
 		if err != nil {
 			log.Println("WebRTC: Could not establish DataChannel.")
 		} else {
@@ -115,18 +121,19 @@ func (c *webRTCConn) ConnectLoop() {
 		<-time.After(time.Second * 1)
 		c.cleanup()
 	}
+	log.Println("WebRTC cannot connect.")
 }
 
 // Create and prepare callbacks on a new WebRTC PeerConnection.
-func (c *webRTCConn) preparePeerConnection() {
+func (c *webRTCConn) preparePeerConnection() error {
 	if nil != c.pc {
 		c.pc.Close()
 		c.pc = nil
 	}
 	pc, err := webrtc.NewPeerConnection(c.config)
 	if err != nil {
-		log.Printf("NewPeerConnection: %s", err)
-		c.errorChannel <- err
+		log.Printf("NewPeerConnection ERROR: %s", err)
+		return err
 	}
 	// Prepare PeerConnection callbacks.
 	pc.OnNegotiationNeeded = func() {
@@ -162,6 +169,7 @@ func (c *webRTCConn) preparePeerConnection() {
 	}
 	c.pc = pc
 	log.Println("WebRTC: PeerConnection created.")
+	return nil
 }
 
 // Create a WebRTC DataChannel locally.
@@ -174,7 +182,7 @@ func (c *webRTCConn) establishDataChannel() error {
 	// an SDP offer while other goroutines operating on this struct handle the
 	// signaling. Eventually fires "OnOpen".
 	if err != nil {
-		log.Printf("CreateDataChannel: %s", err)
+		log.Printf("CreateDataChannel ERROR: %s", err)
 		return err
 	}
 	dc.OnOpen = func() {
@@ -276,8 +284,8 @@ func (c *webRTCConn) exchangeSDP() error {
 	log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
 	err := c.pc.SetRemoteDescription(answer)
 	if nil != err {
-		log.Println("webrtc: Unable to SetRemoteDescription:", err)
-		// c.errorChannel <- err
+		log.Println("WebRTC: Unable to SetRemoteDescription:", err)
+		return err
 	}
 	return nil
 }
