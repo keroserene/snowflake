@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/keroserene/snowflake.svg?branch=master)](https://travis-ci.org/keroserene/snowflake)
 
-A Pluggable Transport using WebRTC
+A Pluggable Transport using WebRTC, inspired by Flashproxy
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -96,6 +96,41 @@ python -m http.server
 
 Then, open a browser tab to `0.0.0.0:8000/snowflake.html`,
 which causes you to act as an ephemeral Tor bridge.
+
+### FAQ
+
+**Q: How does it work?**
+
+In the Tor use-case:
+
+1. Volunteers visit websites which host the "snowflake" proxy. (just
+like flashproxy)
+2. Tor clients automatically find available browser proxies via the Broker
+(the domain fronted signaling channel).
+3. Tor client and browser proxy establish a WebRTC peer connection.
+4. Proxy connects to some relay.
+5. Tor occurs.
+
+More detailed information about how clients, snowflake proxies, and the Broker
+fit together on the way...
+
+**Q: What are the benefits of this PT compared with other PTs?**
+
+Snowflake combines the advantages of flashproxy and meek. Primarily:
+
+- It has the convenience of Meek, but can support magnitudes more
+users with negligible CDN costs. (Domain fronting is only used for brief
+signalling / NAT-piercing to setup the P2P WebRTC DataChannels which handle
+the actual traffic.)
+
+- Arbitrarily high numbers of volunteer proxies are possible like in
+flashproxy, but NATs are no longer a usability barrier - no need for
+manual port forwarding!
+
+**Q: Why is this called Snowflake?**
+
+It utilizes the "ICE" negotiation via WebRTC, and also involves a great
+abundance of ephemeral and short-lived (and special!) volunteer proxies...
 
 ### Appendix
 
