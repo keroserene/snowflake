@@ -49,10 +49,10 @@ describe 'Snowflake', ->
 
   it 'receives SDP offer', ->
     s = new Snowflake(new FakeBroker(), fakeUI)
-    s.proxyPair = { receiveWebRTCOffer: -> }
-    spyOn(s.proxyPair, 'receiveWebRTCOffer').and.returnValue true
+    s.proxyPairs[0] = { receiveWebRTCOffer: -> }
+    spyOn(s.proxyPairs[0], 'receiveWebRTCOffer').and.returnValue true
     spyOn(s, 'sendAnswer')
-    s.receiveOffer 'foo'
+    s.receiveOffer { 'type': 'offer', 'sdp': 'foo' }
     expect(s.sendAnswer).toHaveBeenCalled()
 
   it 'can make a proxypair', ->

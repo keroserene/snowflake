@@ -33,7 +33,7 @@ class Broker
     @url += '/' if '/' != @url.substr -1
 
   # Promises some client SDP Offer.
-  # Registers this Snowfalke with the broker using an HTTP POST request, and
+  # Registers this Snowflake with the broker using an HTTP POST request, and
   # waits for a response containing some client offer that the Broker chooses
   # for this proxy..
   # TODO: Actually support multiple clients.

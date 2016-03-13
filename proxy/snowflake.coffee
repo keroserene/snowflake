@@ -51,10 +51,7 @@ CONFIRMATION_MESSAGE = "You're currently serving a Tor user via Snowflake."
 class Snowflake
 
   relayAddr: null
-  # TODO: Actually support multiple ProxyPairs. (makes more sense once meek-
-  # signalling is ready)
   proxyPairs: []
-  proxyPair: null
 
   rateLimit: null
   state: MODE.INIT
@@ -86,7 +83,6 @@ class Snowflake
     @state = MODE.WEBRTC_CONNECTING
     for i in [1..CONNECTIONS_PER_CLIENT]
       @makeProxyPair @relayAddr
-    @proxyPair = @proxyPairs[0]
     return if COPY_PASTE_ENABLED
     timer = null
     # Temporary countdown.
@@ -114,17 +110,19 @@ class Snowflake
 
     findClients()
 
-  # Receive an SDP offer from some client assigned by the Broker.
+  # Receive an SDP offer from some client assigned by the Broker,
   receiveOffer: (desc) =>
     sdp = new RTCSessionDescription desc
-    if @proxyPair.receiveWebRTCOffer sdp
-      @sendAnswer() if 'offer' == sdp.type
+    # Use the first proxyPair that's available.
+    pair = @proxyPairs.find (pp, i, arr) -> return !pp.active
+    if pair.receiveWebRTCOffer sdp
+      @sendAnswer pair if 'offer' == sdp.type
 
-  sendAnswer: =>
-    next = (sdp) =>
+  sendAnswer: (pair) ->
+    next = (sdp) ->
       dbg 'webrtc: Answer ready.'
-      @proxyPair.pc.setLocalDescription sdp
-    promise = @proxyPair.pc.createAnswer next
+      pair.pc.setLocalDescription sdp
+    promise = pair.pc.createAnswer next
     promise.then next if promise
 
   makeProxyPair: (relay) ->

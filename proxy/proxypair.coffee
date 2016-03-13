@@ -8,15 +8,17 @@ Represents a single:
 class ProxyPair
 
   MAX_BUFFER: 10 * 1024 * 1024
-  pc: null
+  pc:          null
   c2rSchedule: []
   r2cSchedule: []
-  client: null  # WebRTC Data channel
-  relay: null   # websocket
-  running: true
+  client:      null  # WebRTC Data channel
+  relay:       null   # websocket
+  running:     true
+  active:      false  # Whether serving a client.
   flush_timeout_id: null
 
   constructor: (@clientAddr, @relayAddr, @rateLimit) ->
+    @active = false
 
   # Prepare a WebRTC PeerConnection and await for an SDP offer.
   begin: ->
@@ -51,6 +53,7 @@ class ProxyPair
       log 'Invalid SDP message.'
       return false
     dbg 'SDP ' + offer.type + ' successfully received.'
+    @active = true
     true
 
   prepareDataChannel: (channel) =>
