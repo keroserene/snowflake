@@ -131,13 +131,9 @@ class Snowflake
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.
       @proxyPairs.splice(@proxyPairs.indexOf(pair), 1)
-    try
-      pair.begin()
-    catch err
-      log 'ERROR: ProxyPair exception while connecting.'
-      log err
-      return
+    pair.begin()
 
+  # Stop all proxypairs.
   cease: ->
     while @proxyPairs.length > 0
       @proxyPairs.pop().close()

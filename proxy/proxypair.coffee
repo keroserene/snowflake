@@ -16,6 +16,7 @@ class ProxyPair
   running:     true
   active:      false  # Whether serving a client.
   flush_timeout_id: null
+  onCleanup:  null
 
   constructor: (@clientAddr, @relayAddr, @rateLimit) ->
     @active = false
@@ -56,6 +57,7 @@ class ProxyPair
     @active = true
     true
 
+  # Given a WebRTC DataChannel, prepare callbacks.
   prepareDataChannel: (channel) =>
     channel.onopen = =>
       log 'WebRTC DataChannel opened!'
@@ -64,12 +66,14 @@ class ProxyPair
       # This is the point when the WebRTC datachannel is done, so the next step
       # is to establish websocket to the server.
       @connectRelay()
-    channel.onclose = ->
+    channel.onclose = =>
       log 'WebRTC DataChannel closed.'
       snowflake.ui.setStatus 'disconnected by webrtc.'
       snowflake.ui.setActive false
       snowflake.state = MODE.INIT
-      # Change this for multiplexing.
+      @flush()
+      @close()
+      # TODO: Change this for multiplexing.
       snowflake.reset()
     channel.onerror = -> log 'Data channel error!'
     channel.onmessage = @onClientToRelayMessage
@@ -82,7 +86,14 @@ class ProxyPair
     @relay.onopen = =>
       log @relay.label + ' connected!'
       snowflake.ui.setStatus 'connected'
-    @relay.onclose = @onClose
+    @relay.onclose = (event) =>
+      ws = event.target
+      log ws.label + ' closed.'
+      snowflake.ui.setStatus 'disconnected.'
+      snowflake.ui.setActive false
+      snowflake.state = MODE.INIT
+      @flush()
+      @close()
     @relay.onerror = @onError
     @relay.onmessage = @onRelayToClientMessage
 
@@ -105,47 +116,25 @@ class ProxyPair
     # log 'websocket-->WebRTC data: ' + event.data
     @flush()
 
-  onClose: (event) =>
-    ws = event.target
-    log ws.label + ' closed.'
-    snowflake.ui.setStatus 'disconnected.'
-    snowflake.ui.setActive false
-    snowflake.state = MODE.INIT
-    @flush()
-    @maybeCleanup()
-
   onError: (event) =>
     ws = event.target
     log ws.label + ' error.'
     @close()
-    # we can't rely on onclose_callback to cleanup, since one common error
-    # case is when the client fails to connect and the relay never starts.
-    # in that case close() is a NOP and onclose_callback is never called.
-    @maybeCleanup()
 
-  webrtcIsReady: -> null != @client && 'open' == @client.readyState
-  relayIsReady: -> (null != @relay) && (WebSocket.OPEN == @relay.readyState)
-  isClosed: (ws) -> undefined == ws || WebSocket.CLOSED == ws.readyState
+  # Close both WebRTC and websocket.
   close: ->
+    @running = false
     @client.close() if @webrtcIsReady()
     @relay.close() if @relayIsReady()
     relay = null
 
-  maybeCleanup: =>
-    if @running
-      @running = false
-      # TODO: Call external callback
-      true
-    false
-
-  # Send as much data as the rate limit currently allows.
+  # Send as much data in both directions as the rate limit currently allows.
   flush: =>
     clearTimeout @flush_timeout_id if @flush_timeout_id
     @flush_timeout_id = null
     busy = true
     checkChunks = =>
       busy = false
-
       # WebRTC --> websocket
       if @relayIsReady() &&
          @relay.bufferedAmount < @MAX_BUFFER &&
@@ -154,7 +143,6 @@ class ProxyPair
         @rateLimit.update chunk.length
         @relay.send chunk
         busy = true
-
       # websocket --> WebRTC
       if @webrtcIsReady() &&
          @client.bufferedAmount < @MAX_BUFFER &&
@@ -170,3 +158,8 @@ class ProxyPair
        (@relayIsReady()  && @relay.bufferedAmount > 0) ||
        (@webrtcIsReady() && @client.bufferedAmount > 0)
       @flush_timeout_id = setTimeout @flush,  @rateLimit.when() * 1000
+
+  webrtcIsReady: -> null != @client && 'open' == @client.readyState
+  relayIsReady: -> (null != @relay) && (WebSocket.OPEN == @relay.readyState)
+  isClosed: (ws) -> undefined == ws || WebSocket.CLOSED == ws.readyState
+
