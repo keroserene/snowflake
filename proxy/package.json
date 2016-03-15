@@ -1,0 +1,22 @@
+{
+  "name": "snowflake-pt",
+  "version": "0.0.0-git",
+  "description": "WebRTC Pluggable Transport",
+  "main": "snowflake.coffee",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "cake test",
+    "lint": "cake lint"
+  },
+  "author": "Serene Han",
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "coffeelint": "^1.15.0",
+    "jasmine": "^2.4.1"
+  },
+  "dependencies": {
+    "coffee-script": "^1.10.0"
+  }
+}

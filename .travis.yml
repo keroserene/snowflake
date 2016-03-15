@@ -1,22 +1,36 @@
 language: go
 
+sudo: required
+dist: trusty
+
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - g++-5
+            - gcc-5
+
 go:
-  - 1.5
-  - 1.6
+    - 1.6
 
 env:
-  - TRAVIS_NODE_VERSION="4.1"
+    - TRAVIS_NODE_VERSION="4.2" CC="gcc-5" CXX="g++-5"
+
+before_install:
+    - nvm install $TRAVIS_NODE_VERSION
 
 install:
-  - rm -rf ~/.nvm && git clone https://github.com/creationix/nvm.git ~/.nvm && (cd ~/.nvm && git checkout `git describe --abbrev=0 --tags`) && source ~/.nvm/nvm.sh && nvm install $TRAVIS_NODE_VERSION
-  - go get -u github.com/smartystreets/goconvey
-
-before_script:
-  npm install -g coffee-script coffeelint jasmine
+    - go get -u github.com/smartystreets/goconvey
+    - go get -u github.com/keroserene/go-webrtc
+    - go get -u git.torproject.org/pluggable-transports/goptlib.git
+    - pushd proxy
+    - npm install
+    - popd
 
 script:
-  - make check
-  - go test -v -race ./broker
-  - cd proxy
-  - cake lint
-  - cake test
+    - make check
+    - go test -v -race ./broker ./client
+    - cd proxy
+    - npm run-script lint
+    - npm test
