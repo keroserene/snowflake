@@ -84,6 +84,9 @@ class Snowflake
     for i in [1..CONNECTIONS_PER_CLIENT]
       @makeProxyPair @relayAddr
     return if COPY_PASTE_ENABLED
+    log 'ProxyPair Slots: ' + @proxyPairs.length
+    log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
+
     timer = null
     # Temporary countdown.
     countdown = (msg, sec) =>
@@ -99,22 +102,37 @@ class Snowflake
       msg = 'polling for client... '
       msg += '[retries: ' + @retries + ']' if @retries > 0
       @ui.setStatus msg
-      recv = @broker.getClientOffer()
-      @retries++
+      # Pick an available ProxyPair to poll with.
+      pair = @nextAvailableProxyPair()
+      if !pair
+        log 'No more available ProxyPair slots.'
+        countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
+        return
+      log 'Polling for ' + pair.id
+      recv = @broker.getClientOffer pair.id
       recv.then (desc) =>
         offer = JSON.parse desc
         dbg 'Received:\n\n' + offer.sdp + '\n'
-        @receiveOffer offer
+        console.log desc
+        sdp = new RTCSessionDescription offer
+        # @receiveOffer offer
+        if pair.receiveWebRTCOffer sdp
+          @sendAnswer pair if 'offer' == sdp.type
       , (err) ->
         countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
+      @retries++
 
     findClients()
 
+  # Returns the first ProxyPair that's available to connect.
+  nextAvailableProxyPair: ->
+    return @proxyPairs.find (pp, i, arr) -> return !pp.active
+
   # Receive an SDP offer from some client assigned by the Broker,
+  # TODO: remove
   receiveOffer: (desc) =>
     sdp = new RTCSessionDescription desc
-    # Use the first proxyPair that's available.
-    pair = @proxyPairs.find (pp, i, arr) -> return !pp.active
+    pair = @nextAvailableProxyPair()
     if pair.receiveWebRTCOffer sdp
       @sendAnswer pair if 'offer' == sdp.type
 
@@ -190,7 +208,7 @@ init = ->
   broker = new Broker brokerUrl
   snowflake = new Snowflake broker, ui
 
-  dbg 'Contacting Broker at ' + broker.url + '\nSnowflake ID: ' + broker.id
+  dbg 'Contacting Broker at ' + broker.url
   log '== snowflake proxy =='
   log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
 

@@ -3,6 +3,8 @@ Represents a single:
 
    client <-- webrtc --> snowflake <-- websocket --> relay
 
+Every ProxyPair has a Snowflake ID, which is necessary when responding to the
+Broker with an WebRTC answer.
 ###
 
 class ProxyPair
@@ -16,10 +18,12 @@ class ProxyPair
   running:     true
   active:      false  # Whether serving a client.
   flush_timeout_id: null
-  onCleanup:  null
+  onCleanup:   null
+  id:          null
 
   constructor: (@clientAddr, @relayAddr, @rateLimit) ->
     @active = false
+    @id = genSnowflakeID()
 
   # Prepare a WebRTC PeerConnection and await for an SDP offer.
   begin: ->
@@ -38,7 +42,7 @@ class ProxyPair
         if COPY_PASTE_ENABLED
           Signalling.send @pc.localDescription
         else
-          snowflake.broker.sendAnswer @pc.localDescription
+          snowflake.broker.sendAnswer @id, @pc.localDescription
     # OnDataChannel triggered remotely from the client when connection succeeds.
     @pc.ondatachannel = (dc) =>
       channel = dc.channel

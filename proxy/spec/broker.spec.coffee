@@ -76,9 +76,9 @@ describe 'Broker', ->
   it 'responds to the broker with answer', ->
     b = new Broker 'fake'
     spyOn(b, '_postRequest')
-    b.sendAnswer 123
+    b.sendAnswer 'fake id', 123
     expect(b._postRequest).toHaveBeenCalledWith(
-      jasmine.any(Object), 'answer', '123')
+      'fake id', jasmine.any(Object), 'answer', '123')
 
   it 'POST XMLHttpRequests to the broker', ->
     b = new Broker 'fake'
@@ -86,7 +86,7 @@ describe 'Broker', ->
     spyOn(b._xhr, 'open')
     spyOn(b._xhr, 'setRequestHeader')
     spyOn(b._xhr, 'send')
-    b._postRequest b._xhr, 'test', 'data'
+    b._postRequest 0, b._xhr, 'test', 'data'
     expect(b._xhr.open).toHaveBeenCalled()
     expect(b._xhr.setRequestHeader).toHaveBeenCalled()
     expect(b._xhr.send).toHaveBeenCalled()

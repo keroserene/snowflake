@@ -5,6 +5,10 @@ Contains helpers for parsing query strings and other utilities.
 ###
 
 
+genSnowflakeID = ->
+  Math.random().toString(36).substring(2)
+
+
 Query =
   ###
   Parse a URL query string or application/x-www-form-urlencoded body. The
