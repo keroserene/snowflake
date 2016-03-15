@@ -11,9 +11,9 @@ See [keroserene.net/snowflake](http://keroserene.net/snowflake) for more info:
 
 Unit testing with Jasmine are available with:
 ```
-cake test
+npm install
+npm test
 ```
-Requires jasmine. (`npm install -g jasmine`)
 
 To run locally, either:
 - Navigate to `proxy/build/embed.html`
