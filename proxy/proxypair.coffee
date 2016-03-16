@@ -51,7 +51,9 @@ class ProxyPair
       @client = channel
 
   receiveWebRTCOffer: (offer) ->
-    console.assert 'offer' == offer.type
+    if 'offer' != offer.type
+      log 'Invalid SDP received -- was not an offer.'
+      return false
     try
       err = @pc.setRemoteDescription offer
     catch e

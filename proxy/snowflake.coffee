@@ -50,12 +50,11 @@ CONFIRMATION_MESSAGE = "You're currently serving a Tor user via Snowflake."
 # Minimum viable snowflake for now - just 1 client.
 class Snowflake
 
-  relayAddr: null
+  relayAddr:  null
   proxyPairs: []
-
-  rateLimit: null
-  state: MODE.INIT
-  retries: 0
+  rateLimit:  null
+  state:      MODE.INIT
+  retries:    0
 
   constructor: (@broker, @ui) ->
     rateLimitBytes = undefined
@@ -108,16 +107,8 @@ class Snowflake
         log 'No more available ProxyPair slots.'
         countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
         return
-      log 'Polling for ' + pair.id
       recv = @broker.getClientOffer pair.id
-      recv.then (desc) =>
-        offer = JSON.parse desc
-        dbg 'Received:\n\n' + offer.sdp + '\n'
-        console.log desc
-        sdp = new RTCSessionDescription offer
-        # @receiveOffer offer
-        if pair.receiveWebRTCOffer sdp
-          @sendAnswer pair if 'offer' == sdp.type
+      recv.then (desc) => @receiveOffer pair, desc
       , (err) ->
         countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
       @retries++
@@ -129,12 +120,16 @@ class Snowflake
     return @proxyPairs.find (pp, i, arr) -> return !pp.active
 
   # Receive an SDP offer from some client assigned by the Broker,
-  # TODO: remove
-  receiveOffer: (desc) =>
-    sdp = new RTCSessionDescription desc
-    pair = @nextAvailableProxyPair()
-    if pair.receiveWebRTCOffer sdp
-      @sendAnswer pair if 'offer' == sdp.type
+  # |pair| - an available ProxyPair.
+  receiveOffer: (pair, desc) =>
+    console.assert !pair.active
+    try
+      offer = JSON.parse desc
+      dbg 'Received:\n\n' + offer.sdp + '\n'
+      sdp = new RTCSessionDescription offer
+      @sendAnswer pair if pair.receiveWebRTCOffer sdp
+    catch e
+      log 'ERROR: Unable to receive Offer: ' + e
 
   sendAnswer: (pair) ->
     next = (sdp) ->

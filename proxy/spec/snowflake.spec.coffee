@@ -47,13 +47,21 @@ describe 'Snowflake', ->
     expect(s.retries).toBe 1
     expect(s.broker.getClientOffer).toHaveBeenCalled()
 
-  it 'receives SDP offer', ->
+  it 'receives SDP offer and sends answer', ->
     s = new Snowflake(new FakeBroker(), fakeUI)
-    s.proxyPairs[0] = { receiveWebRTCOffer: -> }
-    spyOn(s.proxyPairs[0], 'receiveWebRTCOffer').and.returnValue true
+    pair = { receiveWebRTCOffer: -> }
+    spyOn(pair, 'receiveWebRTCOffer').and.returnValue true
     spyOn(s, 'sendAnswer')
-    s.receiveOffer { 'type': 'offer', 'sdp': 'foo' }
+    s.receiveOffer pair, '{"type":"offer","sdp":"foo"}'
     expect(s.sendAnswer).toHaveBeenCalled()
+
+  it 'does not send answer when receiving invalid offer', ->
+    s = new Snowflake(new FakeBroker(), fakeUI)
+    pair = { receiveWebRTCOffer: -> }
+    spyOn(pair, 'receiveWebRTCOffer').and.returnValue false
+    spyOn(s, 'sendAnswer')
+    s.receiveOffer pair, '{"type":"not a good offer","sdp":"foo"}'
+    expect(s.sendAnswer).not.toHaveBeenCalled()
 
   it 'can make a proxypair', ->
     s = new Snowflake(new FakeBroker(), fakeUI)
