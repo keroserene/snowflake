@@ -85,11 +85,14 @@ class Snowflake
     return if COPY_PASTE_ENABLED
     log 'ProxyPair Slots: ' + @proxyPairs.length
     log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
+    @pollBroker()
 
-    timer = null
-    # Temporary countdown.
+  # Regularly poll Broker for clients to serve until this snowflake is
+  # serving at capacity, at which point stop polling.
+  pollBroker: ->
+    # Temporary countdown. TODO: Simplify
     countdown = (msg, sec) =>
-      @ui.setStatus msg + ' (Retrying in ' + sec + ' seconds...)'
+      @ui.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
       sec--
       if sec >= 0
         setTimeout((-> countdown(msg, sec)), 1000)
@@ -97,18 +100,18 @@ class Snowflake
         findClients()
     # Poll broker for clients.
     findClients = =>
-      clearTimeout timer
+      pair = @nextAvailableProxyPair()
+      if !pair
+        log 'At client capacity.'
+        # Do nothing until a new proxyPair is available.
+        return
       msg = 'polling for client... '
       msg += '[retries: ' + @retries + ']' if @retries > 0
       @ui.setStatus msg
-      # Pick an available ProxyPair to poll with.
-      pair = @nextAvailableProxyPair()
-      if !pair
-        log 'No more available ProxyPair slots.'
-        countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
-        return
       recv = @broker.getClientOffer pair.id
-      recv.then (desc) => @receiveOffer pair, desc
+      recv.then (desc) =>
+        @receiveOffer pair, desc
+        countdown('Serving 1 new client.', DEFAULT_BROKER_POLL_INTERVAL / 1000)
       , (err) ->
         countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
       @retries++
@@ -144,6 +147,7 @@ class Snowflake
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.
       @proxyPairs.splice(@proxyPairs.indexOf(pair), 1)
+      @pollBroker()
     pair.begin()
 
   # Stop all proxypairs.
