@@ -191,7 +191,11 @@ Signalling =
     if !desc
       log 'Invalid SDP.'
       return false
-    snowflake.receiveOffer recv if desc
+    pair = snowflake.nextAvailableProxyPair()
+    if !pair
+      log 'At client capacity.'
+      return false
+    snowflake.receiveOffer pair, msg
 
 # Log to both console and UI if applicable.
 log = (msg) ->
