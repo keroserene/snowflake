@@ -22,7 +22,7 @@ class UI
     @$msglog.value = ''
 
     @$send = document.getElementById('send')
-    @$send.onclick = => { @acceptInput }
+    @$send.onclick = @acceptInput
 
     @$input = document.getElementById('input')
     @$input.focus()

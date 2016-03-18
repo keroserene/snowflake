@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "cake test",
-    "lint": "cake lint"
+    "lint": "cake lint",
+    "build": "cake build"
   },
   "author": "Serene Han",
   "license": "BSD-3-Clause",

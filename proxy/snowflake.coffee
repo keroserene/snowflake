@@ -207,9 +207,9 @@ init = ->
   broker = new Broker brokerUrl
   snowflake = new Snowflake broker, ui
 
-  dbg 'Contacting Broker at ' + broker.url
   log '== snowflake proxy =='
   log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
+  dbg 'Contacting Broker at ' + broker.url if not COPY_PASTE_ENABLED
 
   relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
   snowflake.setRelayAddr relayAddr
