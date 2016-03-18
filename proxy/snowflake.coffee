@@ -226,4 +226,8 @@ window.onbeforeunload = ->
     return CONFIRMATION_MESSAGE
   null
 
+window.onunload = ->
+  pair.close() for pair in snowflake.proxyPairs
+  null
+
 window.onload = init if window
