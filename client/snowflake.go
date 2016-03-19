@@ -99,6 +99,12 @@ func handler(conn *pt.SocksConn) error {
 	defer remote.Close()
 	webrtcRemote = remote
 
+	// Induce another call to handler
+	go func() {
+		<-remote.reset
+		conn.Close()
+	}()
+
 	err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		return err

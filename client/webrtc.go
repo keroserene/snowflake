@@ -101,27 +101,24 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 
 // WebRTC re-establishment loop. Expected in own goroutine.
 func (c *webRTCConn) ConnectLoop() {
-	for {
-		log.Println("Establishing WebRTC connection...")
-		// TODO: When go-webrtc is more stable, it's possible that a new
-		// PeerConnection won't need to be re-prepared each time.
-		err := c.preparePeerConnection()
-		if err != nil {
-			log.Println("WebRTC: Could not create PeerConnection.")
-			break
-		}
-		err = c.establishDataChannel()
-		if err != nil {
-			log.Println("WebRTC: Could not establish DataChannel.")
-		} else {
-			go c.exchangeSDP()
-			<-c.reset
-			log.Println(" --- snowflake connection reset ---")
-		}
-		<-time.After(time.Second * 1)
-		c.cleanup()
+	log.Println("Establishing WebRTC connection...")
+	// TODO: When go-webrtc is more stable, it's possible that a new
+	// PeerConnection won't need to be re-prepared each time.
+	err := c.preparePeerConnection()
+	if err != nil {
+		log.Println("WebRTC: Could not create PeerConnection.")
+		return
 	}
-	log.Println("WebRTC cannot connect.")
+	err = c.establishDataChannel()
+	if err != nil {
+		log.Println("WebRTC: Could not establish DataChannel.")
+	} else {
+		go c.exchangeSDP()
+		<-c.reset
+		log.Println(" --- snowflake connection reset ---")
+	}
+	<-time.After(time.Second * 1)
+	c.cleanup()
 }
 
 // Create and prepare callbacks on a new WebRTC PeerConnection.
