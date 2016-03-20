@@ -55,7 +55,6 @@ type SnowflakeChannel interface {
 
 // Initialize a WebRTC Connection.
 func dialWebRTC() (*webRTCConn, error) {
-
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
 	config := webrtc.NewConfiguration(iceServers...)
@@ -92,7 +91,6 @@ func handler(conn *pt.SocksConn) error {
 		return err
 	}
 	defer remote.Close()
-	defer conn.Close()
 	webrtcRemote = remote
 
 	err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
