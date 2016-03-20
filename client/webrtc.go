@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/keroserene/go-webrtc"
 	"io"
@@ -99,26 +100,24 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	return connection
 }
 
-// WebRTC re-establishment loop. Expected in own goroutine.
-func (c *webRTCConn) ConnectLoop() {
+// TODO: Multiplex.
+func (c *webRTCConn) Connect() error {
 	log.Println("Establishing WebRTC connection...")
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
 	err := c.preparePeerConnection()
 	if err != nil {
-		log.Println("WebRTC: Could not create PeerConnection.")
-		return
+		return err
 	}
 	err = c.establishDataChannel()
 	if err != nil {
-		log.Println("WebRTC: Could not establish DataChannel.")
-	} else {
-		go c.exchangeSDP()
-		<-c.reset
-		log.Println(" --- snowflake connection reset ---")
+		return errors.New("WebRTC: Could not establish DataChannel.")
 	}
-	<-time.After(time.Second * 1)
-	c.cleanup()
+	err = c.exchangeSDP()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Create and prepare callbacks on a new WebRTC PeerConnection.
@@ -277,7 +276,6 @@ func (c *webRTCConn) exchangeSDP() error {
 			answer = nil
 		}
 	}
-
 	log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
 	err := c.pc.SetRemoteDescription(answer)
 	if nil != err {

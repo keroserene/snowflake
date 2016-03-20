@@ -35,15 +35,12 @@ const (
 func copyLoop(a, b net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	// TODO fix copy loop recovery
 	go func() {
-		written, err := io.Copy(b, a)
-		log.Println("copy loop b-a break", err, written)
+		io.Copy(b, a)
 		wg.Done()
 	}()
 	go func() {
-		written, err := io.Copy(a, b)
-		log.Println("copy loop a-b break", err, written)
+		io.Copy(a, b)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -66,11 +63,9 @@ func dialWebRTC() (*webRTCConn, error) {
 	if nil == broker {
 		return nil, errors.New("Failed to prepare BrokerChannel")
 	}
-
 	connection := NewWebRTCConnection(config, broker)
-	go connection.ConnectLoop()
-
-	return connection, nil
+	err := connection.Connect()
+	return connection, err
 }
 
 func endWebRTC() {
@@ -97,13 +92,8 @@ func handler(conn *pt.SocksConn) error {
 		return err
 	}
 	defer remote.Close()
+	defer conn.Close()
 	webrtcRemote = remote
-
-	// Induce another call to handler
-	go func() {
-		<-remote.reset
-		conn.Close()
-	}()
 
 	err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
@@ -112,8 +102,10 @@ func handler(conn *pt.SocksConn) error {
 
 	// TODO: Make SOCKS acceptance more independent from WebRTC so they can
 	// be more easily interchanged.
-	copyLoop(conn, remote)
-	log.Println("----END---")
+	go copyLoop(conn, remote)
+	// When WebRTC resets, close the SOCKS connection, which induces new handler.
+	<-remote.reset
+	log.Println("---- Closed ---")
 	return nil
 }
 
@@ -159,7 +151,6 @@ func readSignalingMessages(f *os.File) {
 }
 
 func main() {
-	// var err error
 	webrtc.SetLoggingVerbosity(1)
 	logFile, err := os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
@@ -174,8 +165,7 @@ func main() {
 	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
 	flag.Parse()
 
-	// Expect user to copy-paste if
-	// TODO: Maybe just get rid of copy-paste entirely.
+	// TODO: Maybe just get rid of copy-paste option entirely.
 	if "" != brokerURL {
 		log.Println("Rendezvous using Broker at: ", brokerURL)
 		if "" != frontDomain {
