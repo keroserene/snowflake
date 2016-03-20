@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/keroserene/go-webrtc"
@@ -19,10 +20,10 @@ import (
 
 var ptInfo pt.ClientInfo
 
-// var logFile *os.File
 var brokerURL string
 var frontDomain string
 var iceServers IceServerList
+var snowflakes []*webRTCConn
 
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
@@ -30,6 +31,7 @@ var handlerChan = make(chan int)
 
 const (
 	ReconnectTimeout = 5
+	SnowflakeCapacity = 1
 )
 
 func copyLoop(a, b net.Conn) {
@@ -51,6 +53,20 @@ func copyLoop(a, b net.Conn) {
 type SnowflakeChannel interface {
 	Send([]byte)
 	Close() error
+}
+
+// Maintain |WebRTCSlots| number of open connections to
+// transfer to SOCKS when needed. TODO: complete
+func SnowflakeConnectLoop() {
+	for len(snowflakes) < SnowflakeCapacity {
+		s, err := dialWebRTC()
+		if err != nil {
+			snowflakes = append(snowflakes, s)
+			continue
+		}
+		log.Println("WebRTC Error: ", err)
+		<-time.After(time.Second * ReconnectTimeout)
+	}
 }
 
 // Initialize a WebRTC Connection.
@@ -82,8 +98,6 @@ func handler(conn *pt.SocksConn) error {
 	defer func() {
 		handlerChan <- -1
 	}()
-	defer conn.Close()
-	log.Println("handler fired:", conn)
 
 	remote, err := dialWebRTC()
 	if err != nil || remote == nil {
@@ -91,6 +105,7 @@ func handler(conn *pt.SocksConn) error {
 		return err
 	}
 	defer remote.Close()
+	defer conn.Close()
 	webrtcRemote = remote
 
 	err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})

@@ -207,9 +207,6 @@ func (c *webRTCConn) establishDataChannel() error {
 		// Disable the DataChannel as a write destination.
 		log.Println("WebRTC: DataChannel.OnClose [remotely]")
 		c.snowflake = nil
-		// TODO(issue #12): Need a way to update the circuit so that when a new WebRTC
-		// data channel is available, the relay actually recognizes the new
-		// snowflake.
 		c.Reset()
 	}
 	dc.OnMessage = func(msg []byte) {
