@@ -24,6 +24,7 @@ type webRTCConn struct {
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
 	reset         chan struct{}
+	active        bool
 	*BytesInfo
 }
 
@@ -86,6 +87,7 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	// creation & local description setting, which happens asynchronously.
 	connection.errorChannel = make(chan error, 1)
 	connection.reset = make(chan struct{}, 1)
+	connection.active = false
 
 	// Log every few seconds.
 	connection.BytesInfo = &BytesInfo{

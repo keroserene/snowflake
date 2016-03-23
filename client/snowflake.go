@@ -20,19 +20,19 @@ import (
 
 var ptInfo pt.ClientInfo
 
+const (
+	ReconnectTimeout  = 5
+	SnowflakeCapacity = 1
+)
+
 var brokerURL string
 var frontDomain string
 var iceServers IceServerList
-var snowflakes []*webRTCConn
+var snowflakeChan = make(chan *webRTCConn, 1)
 
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
 var handlerChan = make(chan int)
-
-const (
-	ReconnectTimeout = 5
-	SnowflakeCapacity = 1
-)
 
 func copyLoop(a, b net.Conn) {
 	var wg sync.WaitGroup
@@ -58,14 +58,22 @@ type SnowflakeChannel interface {
 // Maintain |WebRTCSlots| number of open connections to
 // transfer to SOCKS when needed. TODO: complete
 func SnowflakeConnectLoop() {
-	for len(snowflakes) < SnowflakeCapacity {
-		s, err := dialWebRTC()
-		if err != nil {
-			snowflakes = append(snowflakes, s)
+	for {
+		if len(snowflakeChan) >= SnowflakeCapacity {
+			log.Println("At Capacity: ", len(snowflakeChan), "snowflake. Re-checking in 10s")
+			<-time.After(time.Second * 10)
 			continue
 		}
-		log.Println("WebRTC Error: ", err)
-		<-time.After(time.Second * ReconnectTimeout)
+		s, err := dialWebRTC()
+		if nil == s || nil != err {
+			log.Println("WebRTC Error: ", err, " retrying...")
+			<-time.After(time.Second * ReconnectTimeout)
+			continue
+		}
+
+		log.Println("Created a snowflake.")
+		// TODO: Better handling of multiplex snowflakes.
+		snowflakeChan <- s
 	}
 }
 
@@ -99,16 +107,18 @@ func handler(conn *pt.SocksConn) error {
 		handlerChan <- -1
 	}()
 
-	remote, err := dialWebRTC()
-	if err != nil || remote == nil {
+	remote, ok := <-snowflakeChan
+	if remote == nil || !ok {
 		conn.Reject()
-		return err
+		return errors.New("handler: Received invalid Snowflake")
 	}
 	defer remote.Close()
 	defer conn.Close()
+	// TODO: Fix this global
 	webrtcRemote = remote
+	log.Println("handler: Snowflake assigned.")
 
-	err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
+	err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		return err
 	}
@@ -200,6 +210,8 @@ func main() {
 		defer signalFile.Close()
 		go readSignalingMessages(signalFile)
 	}
+
+	go SnowflakeConnectLoop()
 
 	ptInfo, err = pt.ClientSetup(nil)
 	if err != nil {
