@@ -24,11 +24,12 @@ type webRTCConn struct {
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
 	reset         chan struct{}
-	active        bool
+	index         int
 	*BytesInfo
 }
 
-var webrtcRemote *webRTCConn
+var webrtcRemotes map[int]*webRTCConn
+var remoteIndex int = 0
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
 	return c.recvPipe.Read(b)
@@ -53,6 +54,7 @@ func (c *webRTCConn) Close() error {
 	close(c.offerChannel)
 	close(c.answerChannel)
 	close(c.errorChannel)
+	delete(webrtcRemotes, c.index)
 	return err
 }
 
@@ -87,7 +89,6 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	// creation & local description setting, which happens asynchronously.
 	connection.errorChannel = make(chan error, 1)
 	connection.reset = make(chan struct{}, 1)
-	connection.active = false
 
 	// Log every few seconds.
 	connection.BytesInfo = &BytesInfo{
@@ -98,13 +99,14 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
-
+	connection.index = remoteIndex
+	webrtcRemotes[connection.index] = connection
+	remoteIndex++
 	return connection
 }
 
-// TODO: Multiplex.
 func (c *webRTCConn) Connect() error {
-	log.Println("Establishing WebRTC connection...")
+	log.Printf("Establishing WebRTC connection #%d...", c.index)
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
 	err := c.preparePeerConnection()

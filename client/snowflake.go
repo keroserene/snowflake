@@ -22,7 +22,7 @@ var ptInfo pt.ClientInfo
 
 const (
 	ReconnectTimeout  = 5
-	SnowflakeCapacity = 1
+	SnowflakeCapacity = 3
 )
 
 var brokerURL string
@@ -55,12 +55,13 @@ type SnowflakeChannel interface {
 	Close() error
 }
 
-// Maintain |WebRTCSlots| number of open connections to
-// transfer to SOCKS when needed. TODO: complete
+// Maintain |SnowflakeCapacity| number of available WebRTC connections, to
+// transfer to the Tor SOCKS handler when needed.
 func SnowflakeConnectLoop() {
 	for {
-		if len(snowflakeChan) >= SnowflakeCapacity {
-			log.Println("At Capacity: ", len(snowflakeChan), "snowflake. Re-checking in 10s")
+		numRemotes := len(snowflakeChan)
+		if numRemotes >= SnowflakeCapacity {
+			log.Println("At Capacity: ", numRemotes, "snowflake. Re-checking in 10s")
 			<-time.After(time.Second * 10)
 			continue
 		}
@@ -70,9 +71,6 @@ func SnowflakeConnectLoop() {
 			<-time.After(time.Second * ReconnectTimeout)
 			continue
 		}
-
-		log.Println("Created a snowflake.")
-		// TODO: Better handling of multiplex snowflakes.
 		snowflakeChan <- s
 	}
 }
@@ -93,11 +91,9 @@ func dialWebRTC() (*webRTCConn, error) {
 
 func endWebRTC() {
 	log.Printf("WebRTC: interruped")
-	if nil == webrtcRemote {
-		return
+	for _, r := range webrtcRemotes {
+		r.Close()
 	}
-	webrtcRemote.Close()
-	webrtcRemote = nil
 }
 
 // Establish a WebRTC channel for SOCKS connections.
@@ -106,7 +102,7 @@ func handler(conn *pt.SocksConn) error {
 	defer func() {
 		handlerChan <- -1
 	}()
-
+	// Wait for an available WebRTC remote...
 	remote, ok := <-snowflakeChan
 	if remote == nil || !ok {
 		conn.Reject()
@@ -114,8 +110,6 @@ func handler(conn *pt.SocksConn) error {
 	}
 	defer remote.Close()
 	defer conn.Close()
-	// TODO: Fix this global
-	webrtcRemote = remote
 	log.Println("handler: Snowflake assigned.")
 
 	err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
@@ -123,8 +117,6 @@ func handler(conn *pt.SocksConn) error {
 		return err
 	}
 
-	// TODO: Make SOCKS acceptance more independent from WebRTC so they can
-	// be more easily interchanged.
 	go copyLoop(conn, remote)
 	// When WebRTC resets, close the SOCKS connection, which induces new handler.
 	<-remote.reset
@@ -164,10 +156,10 @@ func readSignalingMessages(f *os.File) {
 			log.Printf("ignoring invalid signal message %+q", msg)
 			continue
 		}
-		webrtcRemote.answerChannel <- sdp
+		webrtcRemotes[0].answerChannel <- sdp
 	}
 	log.Printf("close answerChannel")
-	close(webrtcRemote.answerChannel)
+	close(webrtcRemotes[0].answerChannel)
 	if err := s.Err(); err != nil {
 		log.Printf("signal FIFO: %s", err)
 	}
@@ -211,6 +203,7 @@ func main() {
 		go readSignalingMessages(signalFile)
 	}
 
+	webrtcRemotes = make(map[int]*webRTCConn)
 	go SnowflakeConnectLoop()
 
 	ptInfo, err = pt.ClientSetup(nil)
