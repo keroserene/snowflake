@@ -1,8 +1,10 @@
-// Tor websocket server transport plugin.
+// Snowflake-specific websocket server plugin. This is the same as the websocket
+// server used by flash proxy, except that it reports the transport name as
+// "snowflake" and does not forward the remote address to the ExtORPort.
 //
 // Usage in torrc:
 // 	ExtORPort 6669
-// 	ServerTransportPlugin websocket exec ./websocket-server --port 9901
+// 	ServerTransportPlugin snowflake exec server --port 9901
 package main
 
 import (
@@ -24,7 +26,7 @@ import (
 	"git.torproject.org/pluggable-transports/websocket.git/websocket"
 )
 
-const ptMethodName = "websocket"
+const ptMethodName = "snowflake"
 const requestTimeout = 10 * time.Second
 
 // "4/3+1" accounts for possible base64 encoding.
@@ -166,7 +168,10 @@ func webSocketHandler(ws *websocket.WebSocket) {
 		handlerChan <- -1
 	}()
 
-	or, err := pt.DialOr(&ptInfo, ws.Conn.RemoteAddr().String(), ptMethodName)
+	// Pass an empty string for the client address. The remote address on
+	// the incoming connection reflects that of the browser proxy, not of
+	// the client. See https://bugs.torproject.org/18628.
+	or, err := pt.DialOr(&ptInfo, "", ptMethodName)
 	if err != nil {
 		log.Printf("Failed to connect to ORPort: " + err.Error())
 		return
