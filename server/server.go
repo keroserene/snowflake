@@ -3,7 +3,7 @@
 // "snowflake" and does not forward the remote address to the ExtORPort.
 //
 // Usage in torrc:
-// 	ExtORPort 6669
+// 	ExtORPort auto
 // 	ServerTransportPlugin snowflake exec server --port 9901
 package main
 
