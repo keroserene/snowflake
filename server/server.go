@@ -20,9 +20,8 @@ import (
 	"syscall"
 	"time"
 
-	"../websocket"
-
 	"git.torproject.org/pluggable-transports/goptlib.git"
+	"git.torproject.org/pluggable-transports/websocket.git/websocket"
 )
 
 const ptMethodName = "websocket"

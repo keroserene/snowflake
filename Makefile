@@ -2,4 +2,4 @@
 .PHONY: check
 check:
 	! gofmt -l . 2>&1 | read
-	go vet ./broker ./client ./server-webrtc
+	go vet ./broker ./client ./server ./server-webrtc

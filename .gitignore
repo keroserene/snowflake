@@ -6,6 +6,7 @@
 datadir/
 client/client
 server-webrtc/server-webrtc
+server/server
 snowflake.log
 proxy/test
 proxy/build
