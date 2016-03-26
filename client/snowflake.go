@@ -59,7 +59,7 @@ type SnowflakeChannel interface {
 // transfer to the Tor SOCKS handler when needed.
 func SnowflakeConnectLoop() {
 	for {
-		numRemotes := len(snowflakeChan)
+		numRemotes := len(webrtcRemotes)
 		if numRemotes >= SnowflakeCapacity {
 			log.Println("At Capacity: ", numRemotes, "snowflake. Re-checking in 10s")
 			<-time.After(time.Second * 10)
