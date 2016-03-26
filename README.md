@@ -165,6 +165,9 @@ ClientTransportPlugin snowflake exec ./client -url http://127.0.0.1:8080/
 
 ##### -- Testing Copy-Paste Via Browser Proxy --
 
+Open a browser proxy, passing the `manual` parameter; e.g.
+`http://127.0.0.1:8000/snowflake.html?manual=1`,
+
 Open up three terminals for the **client:**
 
 A: `tor -f torrc-manual SOCKSPort auto`
