@@ -47,7 +47,6 @@ buildUrl = (scheme, host, port, path, params) ->
 
 makeWebsocket = (addr) ->
   url = buildUrl 'ws', addr.host, addr.port, '/'
-  # TODO: Do we need to worry about the base64 version?
   ws = new WebSocket url
   ###
   'User agents can use this as a hint for how to handle incoming binary data: if
