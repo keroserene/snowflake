@@ -94,7 +94,7 @@ cd build/
 python -m http.server
 ```
 
-Then, open a browser tab to `0.0.0.0:8000/snowflake.html`,
+Then, open a browser tab to `http://127.0.0.1:8000/snowflake.html`,
 which causes you to act as an ephemeral Tor bridge.
 
 ### FAQ
