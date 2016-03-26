@@ -136,7 +136,7 @@ abundance of ephemeral and short-lived (and special!) volunteer proxies...
 
 ##### -- Testing directly via WebRTC Server --
 
-Ordinarily, the WebrTC client plugin speaks with a Broker which helps
+Ordinarily, the WebRTC client plugin speaks with a Broker which helps
 match and signal with a browser proxy, which ultimately speaks with a default
 websocket server.
 
