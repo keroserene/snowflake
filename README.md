@@ -70,9 +70,6 @@ method (see `torrc-manual`):
 ClientTransportPlugin snowflake exec ./client --meek
 ```
 
-Also, it is possible to connect directly to the go-webrtc server plugin
-(skipping all the browser snowflake / broker stuff - see appendix)
-
 
 #### Building a Snowflake
 
@@ -134,35 +131,6 @@ abundance of ephemeral and short-lived (and special!) volunteer proxies...
 
 ### Appendix
 
-##### -- Testing directly via WebRTC Server --
-
-Ordinarily, the WebRTC client plugin speaks with a Broker which helps
-match and signal with a browser proxy, which ultimately speaks with a default
-websocket server.
-
-
-However, there is a WebRTC server plugin which uses an HTTP server that
-simulates the interaction that a client would have with the broker, for
-direct testing.
-
-Edit server/torrc and add "-http 127.0.0.1:8080" to the end of the
-ServerTransportPlugin line:
-```
-ServerTransportPlugin snowflake exec ./server -http 127.0.0.1:8080
-```
-
-```
-cd server/
-go build
-tor -f torrc
-```
-
-Edit client/torrc and add "-url http://127.0.0.1:8080" to the end of the
-ClientTransportPlugin line:
-```
-ClientTransportPlugin snowflake exec ./client -url http://127.0.0.1:8080/
-```
-
 ##### -- Testing Copy-Paste Via Browser Proxy --
 
 Open a browser proxy, passing the `manual` parameter; e.g.
@@ -182,6 +150,11 @@ Then, in the browser proxy:
 - Copy and paste the answer generated in the browser back to terminal B.
 - Once WebRTC successfully connects, the browser terminal should turn green.
   Shortly after, the tor client should bootstrap to 100%.
+
+##### -- Testing directly via WebRTC Server --
+
+See server-webrtc/README.md for information on connecting directly to a
+WebRTC server transport plugin, bypassing the Broker and browser proxy.
 
 More documentation on the way.
 

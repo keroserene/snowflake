@@ -5,7 +5,7 @@
 .DS_Store
 datadir/
 client/client
-server/server
+server-webrtc/server-webrtc
 snowflake.log
 proxy/test
 proxy/build
