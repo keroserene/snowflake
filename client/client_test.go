@@ -49,6 +49,7 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func TestConnect(t *testing.T) {
 	Convey("Snowflake", t, func() {
+		webrtcRemotes = make(map[int]*webRTCConn)
 
 		Convey("WebRTC Connection", func() {
 			c := new(webRTCConn)
@@ -57,6 +58,19 @@ func TestConnect(t *testing.T) {
 				inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
 			}
 			So(c.buffer.Bytes(), ShouldEqual, nil)
+
+			Convey("Create and remove from WebRTCConn set", func() {
+				So(len(webrtcRemotes), ShouldEqual, 0)
+				So(remoteIndex, ShouldEqual, 0)
+				s := NewWebRTCConnection(nil, nil)
+				So(s, ShouldNotBeNil)
+				So(s.index, ShouldEqual, 0)
+				So(len(webrtcRemotes), ShouldEqual, 1)
+				So(remoteIndex, ShouldEqual, 1)
+				s.Close()
+				So(len(webrtcRemotes), ShouldEqual, 0)
+				So(remoteIndex, ShouldEqual, 1)
+			})
 
 			Convey("Write buffers when datachannel is nil", func() {
 				c.Write([]byte("test"))
