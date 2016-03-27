@@ -4,7 +4,7 @@
 //
 // Usage in torrc:
 // 	ExtORPort auto
-// 	ServerTransportPlugin snowflake exec server --port 9901
+// 	ServerTransportPlugin snowflake exec server --port 9902
 package main
 
 import (

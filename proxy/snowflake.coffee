@@ -10,7 +10,7 @@ this must always act as the answerer.
 DEFAULT_BROKER = 'snowflake-reg.appspot.com'
 DEFAULT_RELAY =
   host: '192.81.135.242'
-  port: 9901
+  port: 9902
 COPY_PASTE_ENABLED = false
 
 DEBUG = false
