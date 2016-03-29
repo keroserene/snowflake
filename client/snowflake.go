@@ -29,6 +29,7 @@ var brokerURL string
 var frontDomain string
 var iceServers IceServerList
 var snowflakeChan = make(chan *webRTCConn, 1)
+var broker *BrokerChannel
 
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
@@ -49,7 +50,7 @@ func copyLoop(a, b net.Conn) {
 	log.Println("copy loop ended")
 }
 
-// Interface that matches both webrc.DataChannel and for testing.
+// Interface that matches both webrtc.DataChannel and for testing.
 type SnowflakeChannel interface {
 	Send([]byte)
 	Close() error
@@ -58,6 +59,7 @@ type SnowflakeChannel interface {
 // Maintain |SnowflakeCapacity| number of available WebRTC connections, to
 // transfer to the Tor SOCKS handler when needed.
 func SnowflakeConnectLoop() {
+	broker = NewBrokerChannel(brokerURL, frontDomain)
 	for {
 		numRemotes := len(webrtcRemotes)
 		if numRemotes >= SnowflakeCapacity {
@@ -80,7 +82,6 @@ func dialWebRTC() (*webRTCConn, error) {
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
 	config := webrtc.NewConfiguration(iceServers...)
-	broker := NewBrokerChannel(brokerURL, frontDomain)
 	if nil == broker {
 		return nil, errors.New("Failed to prepare BrokerChannel")
 	}
