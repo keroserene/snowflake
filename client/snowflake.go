@@ -21,7 +21,7 @@ import (
 var ptInfo pt.ClientInfo
 
 const (
-	ReconnectTimeout  = 5
+	ReconnectTimeout  = 10
 	SnowflakeCapacity = 3
 )
 
@@ -109,7 +109,6 @@ func handler(conn *pt.SocksConn) error {
 		conn.Reject()
 		return errors.New("handler: Received invalid Snowflake")
 	}
-	defer remote.Close()
 	defer conn.Close()
 	log.Println("handler: Snowflake assigned.")
 

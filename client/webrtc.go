@@ -291,13 +291,14 @@ func (c *webRTCConn) Reset() {
 		c.reset <- struct{}{}
 		log.Println("WebRTC resetting...")
 	}()
+	c.Close()
 }
 
 func (c *webRTCConn) cleanup() {
 	if nil != c.snowflake {
 		s := c.snowflake
 		log.Printf("WebRTC: closing DataChannel")
-		// Setting snowflak to nil *before* Close indicates to OnClose that it
+		// Setting snowflake to nil *before* Close indicates to OnClose that it
 		// was locally triggered.
 		c.snowflake = nil
 		s.Close()
