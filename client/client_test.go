@@ -95,15 +95,11 @@ func TestConnect(t *testing.T) {
 				c.config = webrtc.NewConfiguration()
 				c.preparePeerConnection()
 
-				// offer := webrtc.DeserializeSessionDescription(
-				// `{"type":"offer","sdp":"test offer"}`)
-				// c.pc.SetLocalDescription(offer)
 				c.offerChannel <- nil
 				answer := webrtc.DeserializeSessionDescription(
 					`{"type":"answer","sdp":""}`)
 				c.answerChannel <- answer
 				c.exchangeSDP()
-				// So(c.pc.RemoteDescription(), ShouldEqual, answer)
 			})
 
 			SkipConvey("Exchange SDP fails on nil answer", func() {

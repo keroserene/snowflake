@@ -20,7 +20,6 @@ type BrokerChannel struct {
 	// different from the host name in URL).
 	Host string
 	url  *url.URL
-	// transport http.Transport // Used to make all requests.
 	transport http.RoundTripper // Used to make all requests.
 }
 
