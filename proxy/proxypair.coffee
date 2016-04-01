@@ -102,6 +102,10 @@ class ProxyPair
       @close()
     @relay.onerror = @onError
     @relay.onmessage = @onRelayToClientMessage
+    # TODO: Better websocket timeout handling.
+    setTimeout((=>
+      log ws.label + ' timed out connecting.'
+      @relay.onclose()), 5000)
 
   # WebRTC --> websocket
   onClientToRelayMessage: (msg) =>
