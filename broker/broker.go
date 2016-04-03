@@ -2,10 +2,6 @@
 Broker acts as the HTTP signaling channel.
 It matches clients and snowflake proxies by passing corresponding
 SessionDescriptions in order to negotiate a WebRTC connection.
-
-TODO(serene): This code is currently the absolute minimum required to
-cause a successful negotiation.
-It's otherwise very unsafe and problematic, and needs quite some work...
 */
 package snowflake_broker
 
@@ -82,8 +78,6 @@ func (ctx *BrokerContext) RequestOffer(id string) []byte {
 func (ctx *BrokerContext) Broker() {
 	for request := range ctx.proxyPolls {
 		snowflake := ctx.AddSnowflake(request.id)
-		// defer heap.Remove(ctx.snowflakes, snowflake.index)
-		// defer delete(ctx.idToSnowflake, snowflake.id)
 		// Wait for a client to avail an offer to the snowflake.
 		go func(request *ProxyPoll) {
 			select {
