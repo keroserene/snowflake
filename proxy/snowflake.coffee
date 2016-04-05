@@ -15,13 +15,9 @@ COPY_PASTE_ENABLED = false
 
 DEBUG = false
 silenceNotifications = false
-query = null
-if 'undefined' != typeof window && window.location
-  query = Query.parse(window.location.search.substr(1))
-  DEBUG = Params.getBool(query, 'debug', false)
-  COPY_PASTE_ENABLED = Params.getBool(query, 'manual', false)
-else
-  window = {}
+query = Query.parse(location)
+DEBUG = Params.getBool(query, 'debug', false)
+COPY_PASTE_ENABLED = Params.getBool(query, 'manual', false)
 
 # Bytes per second. Set to undefined to disable limit.
 DEFAULT_RATE_LIMIT = DEFAULT_RATE_LIMIT || undefined
@@ -129,7 +125,7 @@ class Snowflake
     try
       offer = JSON.parse desc
       dbg 'Received:\n\n' + offer.sdp + '\n'
-      sdp = new RTCSessionDescription offer
+      sdp = new SessionDescription offer
       @sendAnswer pair if pair.receiveWebRTCOffer sdp
     catch e
       log 'ERROR: Unable to receive Offer: ' + e
@@ -230,4 +226,4 @@ window.onunload = ->
   pair.close() for pair in snowflake.proxyPairs
   null
 
-window.onload = init if window
+window.onload = init

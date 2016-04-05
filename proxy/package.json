@@ -9,15 +9,16 @@
   "scripts": {
     "test": "cake test",
     "lint": "cake lint",
-    "build": "cake build"
+    "build": "cake build",
+    "clean": "cake clean",
+    "modern": "modernizr -c modernizr-config.json -d lib/"
   },
   "author": "Serene Han",
   "license": "BSD-3-Clause",
   "devDependencies": {
+    "coffee-script": "^1.10.0",
     "coffeelint": "^1.15.0",
-    "jasmine": "^2.4.1"
-  },
-  "dependencies": {
-    "coffee-script": "^1.10.0"
+    "jasmine": "^2.4.1",
+    "modernizr": "^3.3.1"
   }
 }

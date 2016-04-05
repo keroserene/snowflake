@@ -19,32 +19,31 @@ FILES_SPEC = [
   'spec/snowflake.spec.coffee'
 ]
 FILES_ALL = FILES.concat FILES_SPEC
-OUTFILE = 'build/snowflake.coffee'
+OUTFILE = 'build/snowflake.js'
 STATIC = 'static'
 
-concatCoffeeFiles = -> exec 'cat ' + FILES.join(' ') + ' | cat > ' + OUTFILE
-
-copyStaticFiles = -> exec 'cp ' + STATIC + '/* build/'
+copyStaticFiles = ->
+  exec 'cp ' + STATIC + '/* build/'
+  exec 'cp lib/modernizr.js build/'
 
 compileCoffee = ->
-  exec 'coffee -o build -cb ' + OUTFILE, (err, stdout, stderr) ->
+  exec 'cat ' + FILES.join(' ') + ' | coffee -cs > ' + OUTFILE, (err, stdout, stderr) ->
     throw err if err
 
 task 'test', 'snowflake unit tests', ->
-  exec 'mkdir -p build'
+  exec 'mkdir -p test'
   exec 'jasmine init >&-'
   # Simply concat all the files because we're not using node exports.
-  jasmineFiles = FILES.concat FILES_SPEC
-  outFile = 'build/bundle.spec.coffee'
+  jasmineFiles = FILES_ALL
+  outFile = 'test/bundle.spec.coffee'
   exec 'cat ' + jasmineFiles.join(' ') +  ' | cat > ' + outFile
   execSync 'coffee -cb ' + outFile
-  spawn 'jasmine', ['build/bundle.spec.js'], {
+  spawn 'jasmine', ['test/bundle.spec.js'], {
     stdio: 'inherit'
   }
 
 task 'build', 'build the snowflake proxy', ->
   exec 'mkdir -p build'
-  concatCoffeeFiles()
   copyStaticFiles()
   compileCoffee()
   console.log 'Snowflake prepared.'

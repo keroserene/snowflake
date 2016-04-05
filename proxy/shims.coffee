@@ -2,13 +2,19 @@
 WebrTC shims for multiple browsers.
 ###
 
-if 'undefined' != typeof module && 'undefined' != typeof module.exports
-  console.log 'not in browser.'
+if typeof module isnt 'undefined' and module.exports
+  window = {}
 else
-  window.PeerConnection = window.RTCPeerConnection ||
-                          window.mozRTCPeerConnection ||
-                          window.webkitRTCPeerConnection
-  window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate
-  window.RTCSessionDescription = window.RTCSessionDescription ||
-                                 window.mozRTCSessionDescription
+  window = this
+  prop = Modernizr.prefixed 'RTCPeerConnection', window, false
+  if not prop
+    console.log 'webrtc feature not detected. shutting down'
+    return;
 
+  PeerConnection = window[prop]
+
+  ### FIXME: push these upstream ###
+  IceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate
+  SessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription
+
+location = if window.location then window.location.search.substr(1) else ""

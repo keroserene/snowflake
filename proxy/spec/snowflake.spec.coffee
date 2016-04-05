@@ -5,7 +5,7 @@ jasmine tests for Snowflake
 query = {}
 # Fake browser functionality:
 class PeerConnection
-class RTCSessionDescription
+class SessionDescription
   type: 'offer'
 class WebSocket
   OPEN: 1

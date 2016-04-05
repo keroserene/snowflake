@@ -1,0 +1,11 @@
+{
+  "minify": true,
+  "options": [
+    "prefixed"
+  ],
+  "feature-detects": [
+    "test/websockets",
+    "test/webrtc/datachannel",
+    "test/webrtc/peerconnection"
+  ]
+}
