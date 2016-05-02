@@ -134,7 +134,9 @@ class Snowflake
     next = (sdp) ->
       dbg 'webrtc: Answer ready.'
       pair.pc.setLocalDescription sdp
-    promise = pair.pc.createAnswer next
+    fail = ->
+      dbg 'webrtc: Failed to create Answer'
+    promise = pair.pc.createAnswer next, fail
     promise.then next if promise
 
   makeProxyPair: (relay) ->
