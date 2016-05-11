@@ -118,8 +118,10 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if string(body) != id { // Mismatched IDs!
+	if string(body) != id {
+		log.Println("Mismatched IDs!")
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 	log.Println("Received snowflake: ", id)
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
@@ -162,7 +164,6 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	case answer := <-snowflake.answerChannel:
 		log.Println("Client: Retrieving answer")
 		w.Write(answer)
-
 	case <-time.After(time.Second * ClientTimeout):
 		log.Println("Client: Timed out.")
 		w.WriteHeader(http.StatusGatewayTimeout)
