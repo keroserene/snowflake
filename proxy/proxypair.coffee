@@ -92,9 +92,8 @@ class ProxyPair
     @relay.onopen = =>
       log @relay.label + ' connected!'
       snowflake.ui.setStatus 'connected'
-    @relay.onclose = (event) =>
-      ws = event.target
-      log ws.label + ' closed.'
+    @relay.onclose = =>
+      log @relay.label + ' closed.'
       snowflake.ui.setStatus 'disconnected.'
       snowflake.ui.setActive false
       snowflake.state = MODE.INIT
@@ -104,7 +103,7 @@ class ProxyPair
     @relay.onmessage = @onRelayToClientMessage
     # TODO: Better websocket timeout handling.
     setTimeout((=>
-      log ws.label + ' timed out connecting.'
+      log @relay.label + ' timed out connecting.'
       @relay.onclose()), 5000)
 
   # WebRTC --> websocket
