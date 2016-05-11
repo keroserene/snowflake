@@ -15,6 +15,7 @@ class ProxyPair
   r2cSchedule: []
   client:      null  # WebRTC Data channel
   relay:       null   # websocket
+  timer:       0
   running:     true
   active:      false  # Whether serving a client.
   flush_timeout_id: null
@@ -90,6 +91,9 @@ class ProxyPair
     @relay = makeWebsocket @relayAddr
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
+      if @timer
+          clearTimeout @timer
+          @timer = 0
       log @relay.label + ' connected!'
       snowflake.ui.setStatus 'connected'
     @relay.onclose = =>
@@ -102,7 +106,7 @@ class ProxyPair
     @relay.onerror = @onError
     @relay.onmessage = @onRelayToClientMessage
     # TODO: Better websocket timeout handling.
-    setTimeout((=>
+    @timer = setTimeout((=>
       log @relay.label + ' timed out connecting.'
       @relay.onclose()), 5000)
 
@@ -132,6 +136,9 @@ class ProxyPair
 
   # Close both WebRTC and websocket.
   close: ->
+    if @timer
+      clearTimeout @timer
+      @timer = 0
     @running = false
     @client.close() if @webrtcIsReady()
     @relay.close() if @relayIsReady()
