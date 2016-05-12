@@ -92,8 +92,8 @@ class ProxyPair
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
       if @timer
-          clearTimeout @timer
-          @timer = 0
+        clearTimeout @timer
+        @timer = 0
       log @relay.label + ' connected!'
       snowflake.ui.setStatus 'connected'
     @relay.onclose = =>
