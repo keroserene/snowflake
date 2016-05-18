@@ -35,13 +35,14 @@ func (m *MockResponse) Close() error {
 }
 
 type MockTransport struct {
+	statusOverride int
 }
 
 // Just returns a response with fake SDP answer.
 func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	s := ioutil.NopCloser(strings.NewReader(`{"type":"answer","sdp":"fake"}`))
 	r := &http.Response{
-		StatusCode: http.StatusOK,
+		StatusCode: m.statusOverride,
 		Body:       s,
 	}
 	return r, nil
@@ -119,16 +120,19 @@ func TestConnect(t *testing.T) {
 	})
 
 	Convey("Rendezvous", t, func() {
+		webrtc.SetLoggingVerbosity(0)
+		transport := &MockTransport{http.StatusOK}
+		fakeOffer := webrtc.DeserializeSessionDescription("test")
 
 		Convey("BrokerChannel with no front domain", func() {
-			b := NewBrokerChannel("test.broker", "")
+			b := NewBrokerChannel("test.broker", "", transport)
 			So(b.url, ShouldNotBeNil)
 			So(b.url.Path, ShouldResemble, "test.broker")
 			So(b.transport, ShouldNotBeNil)
 		})
 
 		Convey("BrokerChannel with front domain", func() {
-			b := NewBrokerChannel("test.broker", "front")
+			b := NewBrokerChannel("test.broker", "front", transport)
 			So(b.url, ShouldNotBeNil)
 			So(b.url.Path, ShouldResemble, "test.broker")
 			So(b.url.Host, ShouldResemble, "front")
@@ -136,15 +140,38 @@ func TestConnect(t *testing.T) {
 		})
 
 		Convey("BrokerChannel Negotiate responds with answer", func() {
-			b := NewBrokerChannel("test.broker", "")
-			sdp := webrtc.DeserializeSessionDescription("test")
-			// Replace transport with a mock.
-			b.transport = &MockTransport{}
-			answer, err := b.Negotiate(sdp)
+			b := NewBrokerChannel("test.broker", "", transport)
+			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldBeNil)
 			So(answer, ShouldNotBeNil)
 			So(answer.Sdp, ShouldResemble, "fake")
 		})
 
+		Convey("BrokerChannel Negotiate fails with 503", func() {
+			b := NewBrokerChannel("test.broker", "",
+				&MockTransport{http.StatusServiceUnavailable})
+			answer, err := b.Negotiate(fakeOffer)
+			So(err, ShouldNotBeNil)
+			So(answer, ShouldBeNil)
+			So(err.Error(), ShouldResemble, BrokerError503)
+		})
+
+		Convey("BrokerChannel Negotiate fails with 400", func() {
+			b := NewBrokerChannel("test.broker", "",
+				&MockTransport{http.StatusBadRequest})
+			answer, err := b.Negotiate(fakeOffer)
+			So(err, ShouldNotBeNil)
+			So(answer, ShouldBeNil)
+			So(err.Error(), ShouldResemble, BrokerError400)
+		})
+
+		Convey("BrokerChannel Negotiate fails with unexpected", func() {
+			b := NewBrokerChannel("test.broker", "",
+				&MockTransport{123})
+			answer, err := b.Negotiate(fakeOffer)
+			So(err, ShouldNotBeNil)
+			So(answer, ShouldBeNil)
+			So(err.Error(), ShouldResemble, BrokerErrorUnexpected)
+		})
 	})
 }

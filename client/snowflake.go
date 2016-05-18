@@ -59,7 +59,8 @@ type SnowflakeChannel interface {
 // Maintain |SnowflakeCapacity| number of available WebRTC connections, to
 // transfer to the Tor SOCKS handler when needed.
 func SnowflakeConnectLoop() {
-	broker = NewBrokerChannel(brokerURL, frontDomain)
+	transport := CreateBrokerTransport()
+	broker = NewBrokerChannel(brokerURL, frontDomain, transport)
 	for {
 		numRemotes := len(webrtcRemotes)
 		if numRemotes >= SnowflakeCapacity {

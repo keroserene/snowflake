@@ -14,19 +14,34 @@ import (
 	"github.com/keroserene/go-webrtc"
 )
 
+const (
+	BrokerError503        string = "No snowflake proxies currently available."
+	BrokerError400        string = "You sent an invalid offer in the request."
+	BrokerErrorUnexpected string = "Unexpected error, no answer."
+)
+
 // Signalling Channel to the Broker.
 type BrokerChannel struct {
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
-	Host string
-	url  *url.URL
+	Host      string
+	url       *url.URL
 	transport http.RoundTripper // Used to make all requests.
+}
+
+// We make a copy of DefaultTransport because we want the default Dial
+// and TLSHandshakeTimeout settings. But we want to disable the default
+// ProxyFromEnvironment setting.
+func CreateBrokerTransport() http.RoundTripper {
+	transport := http.DefaultTransport.(*http.Transport)
+	transport.Proxy = nil
+	return transport
 }
 
 // Construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannel(broker string, front string) *BrokerChannel {
+func NewBrokerChannel(broker string, front string, transport http.RoundTripper) *BrokerChannel {
 	targetURL, err := url.Parse(broker)
 	if nil != err {
 		return nil
@@ -38,11 +53,6 @@ func NewBrokerChannel(broker string, front string) *BrokerChannel {
 		bc.url.Host = front
 	}
 
-	// We make a copy of DefaultTransport because we want the default Dial
-	// and TLSHandshakeTimeout settings. But we want to disable the default
-	// ProxyFromEnvironment setting.
-	transport := http.DefaultTransport.(*http.Transport)
-	transport.Proxy = nil
 	bc.transport = transport
 	return bc
 }
@@ -79,10 +89,10 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		return answer, nil
 
 	case http.StatusServiceUnavailable:
-		return nil, errors.New("No snowflake proxies currently available.")
+		return nil, errors.New(BrokerError503)
 	case http.StatusBadRequest:
-		return nil, errors.New("You sent an invalid offer in the request.")
+		return nil, errors.New(BrokerError400)
 	default:
-		return nil, errors.New("Unexpected error, no answer.")
+		return nil, errors.New(BrokerErrorUnexpected)
 	}
 }
