@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/keroserene/go-webrtc"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
@@ -48,9 +49,64 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return r, nil
 }
 
-func TestConnect(t *testing.T) {
+type FakeDialer struct{}
+
+func (w FakeDialer) Catch() (*webRTCConn, error) {
+	fmt.Println("Caught a dummy snowflake.")
+	return &webRTCConn{}, nil
+}
+
+func TestSnowflakeClient(t *testing.T) {
 	Convey("Snowflake", t, func() {
-		webrtcRemotes = make(map[int]*webRTCConn)
+
+		Convey("Peers", func() {
+
+			Convey("WebRTC ConnectLoop continues until capacity of 1.\n", func() {
+				peers := NewPeers(1)
+				peers.Tongue = FakeDialer{}
+
+				go ConnectLoop(peers)
+				<-peers.maxedChan
+
+				So(peers.Count(), ShouldEqual, 1)
+				r := <-peers.snowflakeChan
+				So(r, ShouldNotBeNil)
+				So(peers.Count(), ShouldEqual, 0)
+			})
+
+			Convey("WebRTC ConnectLoop continues until capacity of 3.\n", func() {
+				peers := NewPeers(3)
+				peers.Tongue = FakeDialer{}
+
+				go ConnectLoop(peers)
+				<-peers.maxedChan
+				So(peers.Count(), ShouldEqual, 3)
+				<-peers.snowflakeChan
+				<-peers.snowflakeChan
+				<-peers.snowflakeChan
+				So(peers.Count(), ShouldEqual, 0)
+			})
+
+			Convey("WebRTC ConnectLoop continues filling when Snowflakes disconnect.\n", func() {
+				peers := NewPeers(3)
+				peers.Tongue = FakeDialer{}
+
+				go ConnectLoop(peers)
+				<-peers.maxedChan
+				So(peers.Count(), ShouldEqual, 3)
+
+				r := <-peers.snowflakeChan
+				So(peers.Count(), ShouldEqual, 2)
+				r.Close()
+				<-peers.maxedChan
+				So(peers.Count(), ShouldEqual, 3)
+
+				<-peers.snowflakeChan
+				<-peers.snowflakeChan
+				<-peers.snowflakeChan
+				So(peers.Count(), ShouldEqual, 0)
+			})
+		})
 
 		Convey("WebRTC Connection", func() {
 			c := new(webRTCConn)
@@ -60,17 +116,13 @@ func TestConnect(t *testing.T) {
 			}
 			So(c.buffer.Bytes(), ShouldEqual, nil)
 
-			Convey("Create and remove from WebRTCConn set", func() {
-				So(len(webrtcRemotes), ShouldEqual, 0)
-				So(remoteIndex, ShouldEqual, 0)
+			Convey("Can construct a WebRTCConn", func() {
 				s := NewWebRTCConnection(nil, nil)
 				So(s, ShouldNotBeNil)
 				So(s.index, ShouldEqual, 0)
-				So(len(webrtcRemotes), ShouldEqual, 1)
-				So(remoteIndex, ShouldEqual, 1)
+				So(s.offerChannel, ShouldNotBeNil)
+				So(s.answerChannel, ShouldNotBeNil)
 				s.Close()
-				So(len(webrtcRemotes), ShouldEqual, 0)
-				So(remoteIndex, ShouldEqual, 1)
 			})
 
 			Convey("Write buffers when datachannel is nil", func() {
@@ -113,9 +165,6 @@ func TestConnect(t *testing.T) {
 				<-c.reset
 			})
 
-			Convey("Connect Loop", func() {
-				// TODO
-			})
 		})
 	})
 
@@ -124,14 +173,14 @@ func TestConnect(t *testing.T) {
 		transport := &MockTransport{http.StatusOK}
 		fakeOffer := webrtc.DeserializeSessionDescription("test")
 
-		Convey("BrokerChannel with no front domain", func() {
+		Convey("Construct BrokerChannel with no front domain", func() {
 			b := NewBrokerChannel("test.broker", "", transport)
 			So(b.url, ShouldNotBeNil)
 			So(b.url.Path, ShouldResemble, "test.broker")
 			So(b.transport, ShouldNotBeNil)
 		})
 
-		Convey("BrokerChannel with front domain", func() {
+		Convey("Construct BrokerChannel *with* front domain", func() {
 			b := NewBrokerChannel("test.broker", "front", transport)
 			So(b.url, ShouldNotBeNil)
 			So(b.url.Path, ShouldResemble, "test.broker")
@@ -139,7 +188,7 @@ func TestConnect(t *testing.T) {
 			So(b.transport, ShouldNotBeNil)
 		})
 
-		Convey("BrokerChannel Negotiate responds with answer", func() {
+		Convey("BrokerChannel.Negotiate responds with answer", func() {
 			b := NewBrokerChannel("test.broker", "", transport)
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldBeNil)
@@ -147,7 +196,7 @@ func TestConnect(t *testing.T) {
 			So(answer.Sdp, ShouldResemble, "fake")
 		})
 
-		Convey("BrokerChannel Negotiate fails with 503", func() {
+		Convey("BrokerChannel.Negotiate fails with 503", func() {
 			b := NewBrokerChannel("test.broker", "",
 				&MockTransport{http.StatusServiceUnavailable})
 			answer, err := b.Negotiate(fakeOffer)
@@ -156,7 +205,7 @@ func TestConnect(t *testing.T) {
 			So(err.Error(), ShouldResemble, BrokerError503)
 		})
 
-		Convey("BrokerChannel Negotiate fails with 400", func() {
+		Convey("BrokerChannel.Negotiate fails with 400", func() {
 			b := NewBrokerChannel("test.broker", "",
 				&MockTransport{http.StatusBadRequest})
 			answer, err := b.Negotiate(fakeOffer)
@@ -165,7 +214,7 @@ func TestConnect(t *testing.T) {
 			So(err.Error(), ShouldResemble, BrokerError400)
 		})
 
-		Convey("BrokerChannel Negotiate fails with unexpected", func() {
+		Convey("BrokerChannel.Negotiate fails with unexpected error", func() {
 			b := NewBrokerChannel("test.broker", "",
 				&MockTransport{123})
 			answer, err := b.Negotiate(fakeOffer)

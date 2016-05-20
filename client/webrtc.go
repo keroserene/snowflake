@@ -11,25 +11,26 @@ import (
 	"time"
 )
 
-// Implements net.Conn interface
+// Remote WebRTC peer.  Implements the |net.Conn| interface.
 type webRTCConn struct {
-	config        *webrtc.Configuration
-	pc            *webrtc.PeerConnection
-	snowflake     SnowflakeChannel // Interface holding the WebRTC DataChannel.
-	broker        *BrokerChannel
+	config    *webrtc.Configuration
+	pc        *webrtc.PeerConnection
+	snowflake SnowflakeChannel // Holds the WebRTC DataChannel.
+	broker    *BrokerChannel
+
 	offerChannel  chan *webrtc.SessionDescription
 	answerChannel chan *webrtc.SessionDescription
 	errorChannel  chan error
+	endChannel    chan struct{}
 	recvPipe      *io.PipeReader
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
 	reset         chan struct{}
-	index         int
+
+	index  int
+	closed bool
 	*BytesInfo
 }
-
-var webrtcRemotes map[int]*webRTCConn
-var remoteIndex int = 0
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
 	return c.recvPipe.Read(b)
@@ -51,10 +52,17 @@ func (c *webRTCConn) Close() error {
 	var err error = nil
 	log.Printf("WebRTC: Closing")
 	c.cleanup()
-	close(c.offerChannel)
-	close(c.answerChannel)
-	close(c.errorChannel)
-	delete(webrtcRemotes, c.index)
+	if nil != c.offerChannel {
+		close(c.offerChannel)
+	}
+	if nil != c.answerChannel {
+		close(c.answerChannel)
+	}
+	if nil != c.errorChannel {
+		close(c.errorChannel)
+	}
+	// Mark for deletion.
+	c.closed = true
 	return err
 }
 
@@ -78,6 +86,7 @@ func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
 	return fmt.Errorf("SetWriteDeadline not implemented")
 }
 
+// Construct a WebRTC PeerConnection.
 func NewWebRTCConnection(config *webrtc.Configuration,
 	broker *BrokerChannel) *webRTCConn {
 	connection := new(webRTCConn)
@@ -90,6 +99,7 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	connection.errorChannel = make(chan error, 1)
 	connection.reset = make(chan struct{}, 1)
 
+	// TODO: Separate out.
 	// Log every few seconds.
 	connection.BytesInfo = &BytesInfo{
 		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
@@ -99,9 +109,6 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
-	connection.index = remoteIndex
-	webrtcRemotes[connection.index] = connection
-	remoteIndex++
 	return connection
 }
 
@@ -296,12 +303,12 @@ func (c *webRTCConn) Reset() {
 
 func (c *webRTCConn) cleanup() {
 	if nil != c.snowflake {
-		s := c.snowflake
 		log.Printf("WebRTC: closing DataChannel")
+		dataChannel := c.snowflake
 		// Setting snowflake to nil *before* Close indicates to OnClose that it
 		// was locally triggered.
 		c.snowflake = nil
-		s.Close()
+		dataChannel.Close()
 	}
 	if nil != c.pc {
 		log.Printf("WebRTC: closing PeerConnection")
