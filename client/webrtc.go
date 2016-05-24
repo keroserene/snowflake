@@ -11,6 +11,24 @@ import (
 	"time"
 )
 
+// Implements the |Tongue| interface to catch snowflakes, using a BrokerChannel.
+type WebRTCDialer struct {
+	*BrokerChannel
+}
+
+// Initialize a WebRTC Connection by signaling through the broker.
+func (w WebRTCDialer) Catch() (*webRTCConn, error) {
+	if nil == w.BrokerChannel {
+		return nil, errors.New("Cannot Dial WebRTC without a BrokerChannel.")
+	}
+	// TODO: [#3] Fetch ICE server information from Broker.
+	// TODO: [#18] Consider TURN servers here too.
+	config := webrtc.NewConfiguration(iceServers...)
+	connection := NewWebRTCConnection(config, w.BrokerChannel)
+	err := connection.Connect()
+	return connection, err
+}
+
 // Remote WebRTC peer.  Implements the |net.Conn| interface.
 type webRTCConn struct {
 	config    *webrtc.Configuration

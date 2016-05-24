@@ -1,4 +1,5 @@
 // Client transport plugin for the Snowflake pluggable transport.
+// In the Client context, "Snowflake" refers to a remote browser proxy.
 package main
 
 import (
@@ -49,22 +50,12 @@ func copyLoop(a, b net.Conn) {
 	log.Println("copy loop ended")
 }
 
-// Interface for catching Snowflakes.
-type Tongue interface {
-	Catch() (*webRTCConn, error)
-}
-
-// Interface for the Snowflake transport. (usually a webrtc.DataChannel)
-type SnowflakeChannel interface {
-	Send([]byte)
-	Close() error
-}
-
-// Collect and track available remote WebRTC Peers, to switch between if the
-// current one disconnects.
-// Right now, it is only possible to use one remote in a circuit. This can be
-// updated once multiplexed transport on a single circuit is available.
-type Peers struct {
+// Collect and track available snowflakes. (Implements SnowflakeCollector)
+// Right now, it is only possible to use one active remote in a circuit.
+// This can be updated once multiplexed transport on a single circuit is available.
+// Keeping multiple WebRTC connections available allows for quicker recovery when
+// the current snowflake disconnects.
+type SnowflakeJar struct {
 	Tongue
 	BytesLogger
 
@@ -74,30 +65,42 @@ type Peers struct {
 	maxedChan     chan struct{}
 }
 
-func NewPeers(max int) *Peers {
-	p := &Peers{capacity: max}
+func NewSnowflakeJar(max int) *SnowflakeJar {
+	p := &SnowflakeJar{capacity: max}
 	p.snowflakeChan = make(chan *webRTCConn, max)
 	p.maxedChan = make(chan struct{}, 1)
 	return p
 }
 
-// Find, connect, and add a new peer to the internal collection.
-func (p *Peers) FindSnowflake() (*webRTCConn, error) {
-	if p.Count() >= p.capacity {
-		s := fmt.Sprintf("At capacity [%d/%d]", p.Count(), p.capacity)
-		p.maxedChan <- struct{}{}
+// Establish connection to some remote WebRTC peer, and keep it available for
+// later.
+func (jar *SnowflakeJar) Collect() (*webRTCConn, error) {
+	if jar.Count() >= jar.capacity {
+		s := fmt.Sprintf("At capacity [%d/%d]", jar.Count(), jar.capacity)
+		jar.maxedChan <- struct{}{}
 		return nil, errors.New(s)
 	}
-	connection, err := p.Catch()
-	connection.BytesLogger = p.BytesLogger
+	snowflake, err := jar.Catch()
 	if err != nil {
 		return nil, err
 	}
-	return connection, nil
+	jar.snowflakeChan <- snowflake
+	return snowflake, nil
+}
+
+// Prepare and present an available remote WebRTC peer for active use.
+func (jar *SnowflakeJar) Release() *webRTCConn {
+	snowflake, ok := <-jar.snowflakeChan
+	if !ok {
+		return nil
+	}
+	jar.current = snowflake
+	snowflake.BytesLogger = jar.BytesLogger
+	return snowflake
 }
 
 // TODO: Needs fixing.
-func (p *Peers) Count() int {
+func (p *SnowflakeJar) Count() int {
 	count := 0
 	if p.current != nil {
 		count = 1
@@ -106,7 +109,7 @@ func (p *Peers) Count() int {
 }
 
 // Close all remote peers.
-func (p *Peers) End() {
+func (p *SnowflakeJar) End() {
 	log.Printf("WebRTC: interruped")
 	if nil != p.current {
 		p.current.Close()
@@ -118,67 +121,23 @@ func (p *Peers) End() {
 
 // Maintain |SnowflakeCapacity| number of available WebRTC connections, to
 // transfer to the Tor SOCKS handler when needed.
-func ConnectLoop(peers *Peers) {
+func ConnectLoop(snowflakes SnowflakeCollector) {
 	for {
-		s, err := peers.FindSnowflake()
+		s, err := snowflakes.Collect()
 		if nil == s || nil != err {
 			log.Println("WebRTC Error:", err,
 				" Retrying in", ReconnectTimeout, "seconds...")
+			// Failed collections get a timeout.
 			<-time.After(time.Second * ReconnectTimeout)
 			continue
 		}
-		peers.snowflakeChan <- s
+		// Successful collection gets rate limited to once per second.
 		<-time.After(time.Second)
 	}
 }
 
-// Implements |Tongue|
-type WebRTCDialer struct {
-	*BrokerChannel
-}
-
-// Initialize a WebRTC Connection by signaling through the broker.
-func (w WebRTCDialer) Catch() (*webRTCConn, error) {
-	if nil == w.BrokerChannel {
-		return nil, errors.New("Cannot Dial WebRTC without a BrokerChannel.")
-	}
-	// TODO: [#3] Fetch ICE server information from Broker.
-	// TODO: [#18] Consider TURN servers here too.
-	config := webrtc.NewConfiguration(iceServers...)
-	connection := NewWebRTCConnection(config, w.BrokerChannel)
-	err := connection.Connect()
-	return connection, err
-}
-
-// Establish a WebRTC channel for SOCKS connections.
-func handler(conn *pt.SocksConn, peers *Peers) error {
-	handlerChan <- 1
-	defer func() {
-		handlerChan <- -1
-	}()
-	// Wait for an available WebRTC remote...
-	remote, ok := <-peers.snowflakeChan
-	peers.current = remote
-	if remote == nil || !ok {
-		conn.Reject()
-		return errors.New("handler: Received invalid Snowflake")
-	}
-	defer conn.Close()
-	log.Println("handler: Snowflake assigned.")
-
-	err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
-	if err != nil {
-		return err
-	}
-
-	go copyLoop(conn, remote)
-	// When WebRTC resets, close the SOCKS connection, which induces new handler.
-	<-remote.reset
-	log.Println("---- Closed ---")
-	return nil
-}
-
-func acceptLoop(ln *pt.SocksListener, peers *Peers) error {
+// Accept local SOCKS connections and pass them to the handler.
+func acceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error {
 	defer ln.Close()
 	for {
 		log.Println("SOCKS listening...", ln)
@@ -190,13 +149,41 @@ func acceptLoop(ln *pt.SocksListener, peers *Peers) error {
 			}
 			return err
 		}
-		go func() {
-			err := handler(conn, peers)
-			if err != nil {
-				log.Printf("handler error: %s", err)
-			}
-		}()
+		err = handler(conn, snowflakes)
+		if err != nil {
+			log.Printf("handler error: %s", err)
+		}
 	}
+}
+
+// Given an accepted SOCKS connection, establish a WebRTC connection to the
+// remote peer and exchange traffic.
+func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
+	handlerChan <- 1
+	defer func() {
+		handlerChan <- -1
+	}()
+	// Wait for an available WebRTC remote...
+	snowflake := snowflakes.Release()
+	if nil == snowflake {
+		socks.Reject()
+		return errors.New("handler: Received invalid Snowflake")
+	}
+	defer socks.Close()
+	log.Println("handler: Snowflake assigned.")
+	err := socks.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		return err
+	}
+
+	// Begin exchanging data.
+	go copyLoop(socks, snowflake)
+
+	// When WebRTC resets, close the SOCKS connection, which induces new handler.
+	// TODO: Double check this / fix it.
+	<-snowflake.reset
+	log.Println("---- Closed ---")
+	return nil
 }
 
 // TODO: Fix since multiplexing changes access to remotes.
@@ -258,19 +245,21 @@ func main() {
 		go readSignalingMessages(signalFile)
 	}
 
-	// Prepare WebRTC Peers and the Broker, then accumulate connections.
+	// Prepare WebRTC SnowflakeCollector and the Broker, then accumulate connections.
 	// TODO: Expose remote peer capacity as a flag?
-	remotes := NewPeers(SnowflakeCapacity)
-	broker := NewBrokerChannel(brokerURL, frontDomain, CreateBrokerTransport())
+	snowflakes := NewSnowflakeJar(SnowflakeCapacity)
 
-	remotes.BytesLogger = &BytesSyncLogger{
+	broker := NewBrokerChannel(brokerURL, frontDomain, CreateBrokerTransport())
+	snowflakes.Tongue = WebRTCDialer{broker}
+
+	// Use a real logger for traffic.
+	snowflakes.BytesLogger = &BytesSyncLogger{
 		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
 		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
 	}
-	go remotes.BytesLogger.Log()
 
-	remotes.Tongue = WebRTCDialer{broker}
-	go ConnectLoop(remotes)
+	go ConnectLoop(snowflakes)
+	go snowflakes.BytesLogger.Log()
 
 	ptInfo, err = pt.ClientSetup(nil)
 	if err != nil {
@@ -292,7 +281,7 @@ func main() {
 				pt.CmethodError(methodName, err.Error())
 				break
 			}
-			go acceptLoop(ln, remotes)
+			go acceptLoop(ln, snowflakes)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			listeners = append(listeners, ln)
 		default:
@@ -319,7 +308,7 @@ func main() {
 		ln.Close()
 	}
 
-	remotes.End()
+	snowflakes.End()
 
 	// wait for second signal or no more handlers
 	sig = nil

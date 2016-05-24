@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/keroserene/go-webrtc"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
+
+	// "git.torproject.org/pluggable-transports/goptlib.git"
+	"github.com/keroserene/go-webrtc"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 type MockDataChannel struct {
@@ -56,56 +59,93 @@ func (w FakeDialer) Catch() (*webRTCConn, error) {
 	return &webRTCConn{}, nil
 }
 
+type FakeSocksConn struct {
+	net.Conn
+	rejected bool
+}
+
+func (f FakeSocksConn) Reject() error {
+	f.rejected = true
+	return nil
+}
+func (f FakeSocksConn) Grant(addr *net.TCPAddr) error {
+	return nil
+}
+
+type FakeSnowflakeJar struct {
+	toRelease *webRTCConn
+}
+
+func (f FakeSnowflakeJar) Release() *webRTCConn {
+	return nil
+}
+
+func (f FakeSnowflakeJar) Collect() (*webRTCConn, error) {
+	return nil, nil
+}
+
 func TestSnowflakeClient(t *testing.T) {
+
+	Convey("WebRTC ConnectLoop", t, func() {
+
+		Convey("WebRTC ConnectLoop continues until capacity of 1.\n", func() {
+			snowflakes := NewSnowflakeJar(1)
+			snowflakes.Tongue = FakeDialer{}
+
+			go ConnectLoop(snowflakes)
+			<-snowflakes.maxedChan
+
+			So(snowflakes.Count(), ShouldEqual, 1)
+			r := <-snowflakes.snowflakeChan
+			So(r, ShouldNotBeNil)
+			So(snowflakes.Count(), ShouldEqual, 0)
+		})
+
+		Convey("WebRTC ConnectLoop continues until capacity of 3.\n", func() {
+			snowflakes := NewSnowflakeJar(3)
+			snowflakes.Tongue = FakeDialer{}
+
+			go ConnectLoop(snowflakes)
+			<-snowflakes.maxedChan
+			So(snowflakes.Count(), ShouldEqual, 3)
+			<-snowflakes.snowflakeChan
+			<-snowflakes.snowflakeChan
+			<-snowflakes.snowflakeChan
+			So(snowflakes.Count(), ShouldEqual, 0)
+		})
+
+		Convey("WebRTC ConnectLoop continues filling when Snowflakes disconnect.\n", func() {
+			snowflakes := NewSnowflakeJar(3)
+			snowflakes.Tongue = FakeDialer{}
+
+			go ConnectLoop(snowflakes)
+			<-snowflakes.maxedChan
+			So(snowflakes.Count(), ShouldEqual, 3)
+
+			r := <-snowflakes.snowflakeChan
+			So(snowflakes.Count(), ShouldEqual, 2)
+			r.Close()
+			<-snowflakes.maxedChan
+			So(snowflakes.Count(), ShouldEqual, 3)
+
+			<-snowflakes.snowflakeChan
+			<-snowflakes.snowflakeChan
+			<-snowflakes.snowflakeChan
+			So(snowflakes.Count(), ShouldEqual, 0)
+		})
+	})
+
 	Convey("Snowflake", t, func() {
 
-		Convey("Peers", func() {
+		SkipConvey("Handler Grants correctly", func() {
+			socks := &FakeSocksConn{}
+			snowflakes := &FakeSnowflakeJar{}
 
-			Convey("WebRTC ConnectLoop continues until capacity of 1.\n", func() {
-				peers := NewPeers(1)
-				peers.Tongue = FakeDialer{}
+			So(socks.rejected, ShouldEqual, false)
+			snowflakes.toRelease = nil
+			handler(socks, snowflakes)
+			So(socks.rejected, ShouldEqual, true)
 
-				go ConnectLoop(peers)
-				<-peers.maxedChan
-
-				So(peers.Count(), ShouldEqual, 1)
-				r := <-peers.snowflakeChan
-				So(r, ShouldNotBeNil)
-				So(peers.Count(), ShouldEqual, 0)
-			})
-
-			Convey("WebRTC ConnectLoop continues until capacity of 3.\n", func() {
-				peers := NewPeers(3)
-				peers.Tongue = FakeDialer{}
-
-				go ConnectLoop(peers)
-				<-peers.maxedChan
-				So(peers.Count(), ShouldEqual, 3)
-				<-peers.snowflakeChan
-				<-peers.snowflakeChan
-				<-peers.snowflakeChan
-				So(peers.Count(), ShouldEqual, 0)
-			})
-
-			Convey("WebRTC ConnectLoop continues filling when Snowflakes disconnect.\n", func() {
-				peers := NewPeers(3)
-				peers.Tongue = FakeDialer{}
-
-				go ConnectLoop(peers)
-				<-peers.maxedChan
-				So(peers.Count(), ShouldEqual, 3)
-
-				r := <-peers.snowflakeChan
-				So(peers.Count(), ShouldEqual, 2)
-				r.Close()
-				<-peers.maxedChan
-				So(peers.Count(), ShouldEqual, 3)
-
-				<-peers.snowflakeChan
-				<-peers.snowflakeChan
-				<-peers.snowflakeChan
-				So(peers.Count(), ShouldEqual, 0)
-			})
 		})
 
 		Convey("WebRTC Connection", func() {
