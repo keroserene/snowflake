@@ -66,6 +66,7 @@ type SnowflakeChannel interface {
 // updated once multiplexed transport on a single circuit is available.
 type Peers struct {
 	Tongue
+	BytesLogger
 
 	snowflakeChan chan *webRTCConn
 	current       *webRTCConn
@@ -88,6 +89,7 @@ func (p *Peers) FindSnowflake() (*webRTCConn, error) {
 		return nil, errors.New(s)
 	}
 	connection, err := p.Catch()
+	connection.BytesLogger = p.BytesLogger
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +98,11 @@ func (p *Peers) FindSnowflake() (*webRTCConn, error) {
 
 // TODO: Needs fixing.
 func (p *Peers) Count() int {
-	return len(p.snowflakeChan)
+	count := 0
+	if p.current != nil {
+		count = 1
+	}
+	return count + len(p.snowflakeChan)
 }
 
 // Close all remote peers.
@@ -256,6 +262,12 @@ func main() {
 	// TODO: Expose remote peer capacity as a flag?
 	remotes := NewPeers(SnowflakeCapacity)
 	broker := NewBrokerChannel(brokerURL, frontDomain, CreateBrokerTransport())
+
+	remotes.BytesLogger = &BytesSyncLogger{
+		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
+		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
+	}
+	go remotes.BytesLogger.Log()
 
 	remotes.Tongue = WebRTCDialer{broker}
 	go ConnectLoop(remotes)

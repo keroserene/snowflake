@@ -109,11 +109,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("WebRTC Connection", func() {
-			c := new(webRTCConn)
-			c.BytesInfo = &BytesInfo{
-				inboundChan: make(chan int), outboundChan: make(chan int),
-				inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
-			}
+			c := NewWebRTCConnection(nil, nil)
 			So(c.buffer.Bytes(), ShouldEqual, nil)
 
 			Convey("Can construct a WebRTCConn", func() {

@@ -29,7 +29,22 @@ func (i *IceServerList) Set(s string) error {
 	return nil
 }
 
-type BytesInfo struct {
+type BytesLogger interface {
+	Log()
+	AddOutbound(int)
+	AddInbound(int)
+}
+
+// Default BytesLogger does nothing.
+type BytesNullLogger struct{}
+
+func (b BytesNullLogger) Log()                   {}
+func (b BytesNullLogger) AddOutbound(amount int) {}
+func (b BytesNullLogger) AddInbound(amount int)  {}
+
+// BytesSyncLogger uses channels to safely log from multiple sources with output
+// occuring at reasonable intervals.
+type BytesSyncLogger struct {
 	outboundChan chan int
 	inboundChan  chan int
 	outbound     int
@@ -39,7 +54,7 @@ type BytesInfo struct {
 	isLogging    bool
 }
 
-func (b *BytesInfo) Log() {
+func (b *BytesSyncLogger) Log() {
 	b.isLogging = true
 	var amount int
 	output := func() {
@@ -76,14 +91,14 @@ func (b *BytesInfo) Log() {
 	}
 }
 
-func (b *BytesInfo) AddOutbound(amount int) {
+func (b *BytesSyncLogger) AddOutbound(amount int) {
 	if !b.isLogging {
 		return
 	}
 	b.outboundChan <- amount
 }
 
-func (b *BytesInfo) AddInbound(amount int) {
+func (b *BytesSyncLogger) AddInbound(amount int) {
 	if !b.isLogging {
 		return
 	}

@@ -29,7 +29,8 @@ type webRTCConn struct {
 
 	index  int
 	closed bool
-	*BytesInfo
+
+	BytesLogger
 }
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
@@ -38,7 +39,7 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 
 // Writes bytes out to the snowflake proxy.
 func (c *webRTCConn) Write(b []byte) (int, error) {
-	c.BytesInfo.AddOutbound(len(b))
+	c.BytesLogger.AddOutbound(len(b))
 	if nil == c.snowflake {
 		log.Printf("Buffered %d bytes --> WebRTC", len(b))
 		c.buffer.Write(b)
@@ -99,13 +100,8 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	connection.errorChannel = make(chan error, 1)
 	connection.reset = make(chan struct{}, 1)
 
-	// TODO: Separate out.
-	// Log every few seconds.
-	connection.BytesInfo = &BytesInfo{
-		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
-		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
-	}
-	go connection.BytesInfo.Log()
+	// Override with something that's not NullLogger to have real logging.
+	connection.BytesLogger = &BytesNullLogger{}
 
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
@@ -224,7 +220,7 @@ func (c *webRTCConn) establishDataChannel() error {
 		if len(msg) <= 0 {
 			log.Println("0 length message---")
 		}
-		c.BytesInfo.AddInbound(len(msg))
+		c.BytesLogger.AddInbound(len(msg))
 		n, err := c.writePipe.Write(msg)
 		if err != nil {
 			// TODO: Maybe shouldn't actually close.
