@@ -30,7 +30,7 @@ type Peers struct {
 // Construct a fresh container of remote peers.
 func NewPeers(max int) *Peers {
 	p := &Peers{capacity: max}
-	// Use buffered go channel to pass new snowflakes onwards to the SOCKS handler.
+	// Use buffered go channel to pass snowflakes onwards to the SOCKS handler.
 	p.snowflakeChan = make(chan *webRTCConn, max)
 	p.activePeers = list.New()
 	return p

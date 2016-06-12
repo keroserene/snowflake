@@ -63,6 +63,8 @@ func NewBrokerChannel(broker string, front string, transport http.RoundTripper) 
 // with an SDP answer from a designated remote WebRTC peer.
 func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
+	log.Println("Negotiating via BrokerChannel...\nTarget URL: ",
+		bc.Host, "\nFront URL:  ", bc.url.Host)
 	data := bytes.NewReader([]byte(offer.Serialize()))
 	// Suffix with broker's client registration handler.
 	request, err := http.NewRequest("POST", bc.url.String()+"client", data)

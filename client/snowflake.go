@@ -21,12 +21,10 @@ import (
 var ptInfo pt.ClientInfo
 
 const (
-	ReconnectTimeout  = 10
-	SnowflakeCapacity = 1
+	ReconnectTimeout         = 10
+	DefaultSnowflakeCapacity = 1
 )
 
-var brokerURL string
-var frontDomain string
 var iceServers IceServerList
 
 // When a connection handler starts, +1 is written to this channel; when it
@@ -148,16 +146,18 @@ func main() {
 	log.SetOutput(logFile)
 	log.Println("\nStarting Snowflake Client...")
 
-	flag.StringVar(&brokerURL, "url", "", "URL of signaling broker")
-	flag.StringVar(&frontDomain, "front", "", "front domain")
+	brokerURL := flag.String("url", "", "URL of signaling broker")
+	frontDomain := flag.String("front", "", "front domain")
 	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
+	max := flag.Int("max", DefaultSnowflakeCapacity,
+		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
 
 	// TODO: Maybe just get rid of copy-paste option entirely.
-	if "" != brokerURL {
-		log.Println("Rendezvous using Broker at: ", brokerURL)
-		if "" != frontDomain {
-			log.Println("Domain fronting using:", frontDomain)
+	if "" != *brokerURL {
+		log.Println("Rendezvous using Broker at: ", *brokerURL)
+		if "" != *frontDomain {
+			log.Println("Domain fronting using:", *frontDomain)
 		}
 	} else {
 		log.Println("No HTTP signaling detected. Waiting for a \"signal\" pipe...")
@@ -176,11 +176,9 @@ func main() {
 		go readSignalingMessages(signalFile)
 	}
 
-	// Prepare WebRTC SnowflakeCollector and the Broker, then accumulate connections.
-	// TODO: Expose remote peer capacity as a flag?
-	snowflakes := NewPeers(SnowflakeCapacity)
-
-	broker := NewBrokerChannel(brokerURL, frontDomain, CreateBrokerTransport())
+	// Prepare WebRTC SnowflakeCollector, Broker, then accumulate connections.
+	snowflakes := NewPeers(*max)
+	broker := NewBrokerChannel(*brokerURL, *frontDomain, CreateBrokerTransport())
 	snowflakes.Tongue = NewWebRTCDialer(broker)
 
 	// Use a real logger for traffic.

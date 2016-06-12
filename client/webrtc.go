@@ -264,12 +264,10 @@ func (c *webRTCConn) establishDataChannel() error {
 }
 
 func (c *webRTCConn) sendOfferToBroker() {
-	if "" == brokerURL {
+	if nil == c.broker {
 		return
 	}
 	offer := c.pc.LocalDescription()
-	log.Println("Sending offer via BrokerChannel...\nTarget URL: ", brokerURL,
-		"\nFront URL:  ", frontDomain)
 	answer, err := c.broker.Negotiate(offer)
 	if nil != err || nil == answer {
 		log.Printf("BrokerChannel Error: %s", err)
@@ -284,7 +282,7 @@ func (c *webRTCConn) exchangeSDP() error {
 	select {
 	case offer := <-c.offerChannel:
 		// Display for copy-paste, when no broker available.
-		if "" == brokerURL {
+		if nil == c.broker {
 			log.Printf("Please Copy & Paste the following to the peer:")
 			log.Printf("----------------")
 			log.Printf("\n" + offer.Serialize() + "\n")
