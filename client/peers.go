@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"errors"
 	"fmt"
 	"log"
@@ -22,70 +23,77 @@ type Peers struct {
 	BytesLogger
 
 	snowflakeChan chan *webRTCConn
-	current       *webRTCConn
+	activePeers   *list.List
 	capacity      int
-	// TODO: Probably not necessary.
-	maxedChan chan struct{}
 }
 
 // Construct a fresh container of remote peers.
 func NewPeers(max int) *Peers {
-	p := &Peers{capacity: max, current: nil}
+	p := &Peers{capacity: max}
 	// Use buffered go channel to pass new snowflakes onwards to the SOCKS handler.
 	p.snowflakeChan = make(chan *webRTCConn, max)
-	p.maxedChan = make(chan struct{}, 1)
+	p.activePeers = list.New()
 	return p
-}
-
-// TODO: Needs fixing.
-func (p *Peers) Count() int {
-	count := 0
-	if p.current != nil {
-		count = 1
-	}
-	return count + len(p.snowflakeChan)
 }
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Collect() error {
-	if p.Count() >= p.capacity {
-		s := fmt.Sprintf("At capacity [%d/%d]", p.Count(), p.capacity)
-		p.maxedChan <- struct{}{}
+	cnt := p.Count()
+	if cnt >= p.capacity {
+		s := fmt.Sprintf("At capacity [%d/%d]", cnt, p.capacity)
 		return errors.New(s)
 	}
-  // Engage the Snowflake Catching interface, which must be available.
+	// Engage the Snowflake Catching interface, which must be available.
 	if nil == p.Tongue {
 		return errors.New("Missing Tongue to catch Snowflakes with.")
 	}
 	connection, err := p.Tongue.Catch()
-  if nil == connection || nil != err {
-    return err
-  }
-  // Use the same rate-limited traffic logger to keep consistency.
-	connection.BytesLogger = p.BytesLogger
+	if nil == connection || nil != err {
+		return err
+	}
+	// Track new valid Snowflake in internal collection and pass along.
+	p.activePeers.PushBack(connection)
 	p.snowflakeChan <- connection
 	return nil
 }
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Pop() *webRTCConn {
-  // Blocks until an available snowflake appears.
+	// Blocks until an available snowflake appears.
 	snowflake, ok := <-p.snowflakeChan
 	if !ok {
 		return nil
 	}
-	p.current = snowflake
+	// Set to use the same rate-limited traffic logger to keep consistency.
 	snowflake.BytesLogger = p.BytesLogger
 	return snowflake
 }
 
-// Close all remote peers.
-func (p *Peers) End() {
-	log.Printf("WebRTC: interruped")
-	if nil != p.current {
-		p.current.Close()
+// Returns total available Snowflakes (including the active one)
+// The count only reduces when connections themselves close, rather than when
+// they are popped.
+func (p *Peers) Count() int {
+	p.purgeClosedPeers()
+	return p.activePeers.Len()
+}
+
+func (p *Peers) purgeClosedPeers() {
+	for e := p.activePeers.Front(); e != nil; {
+		next := e.Next()
+		conn := e.Value.(*webRTCConn)
+		// Purge those marked for deletion.
+		if conn.closed {
+			p.activePeers.Remove(e)
+		}
+		e = next
 	}
-	for r := range p.snowflakeChan {
-		r.Close()
+}
+
+// Close all Peers contained here.
+func (p *Peers) End() {
+	log.Printf("WebRTC: Ending all peer connections.")
+	for e := p.activePeers.Front(); e != nil; e = e.Next() {
+		conn := e.Value.(*webRTCConn)
+		conn.Close()
 	}
 }

@@ -61,6 +61,7 @@ func ConnectLoop(snowflakes SnowflakeCollector) {
 			continue
 		}
 		// Successful collection gets rate limited to once per second.
+		log.Println("ConnectLoop success.")
 		<-time.After(time.Second)
 	}
 }
@@ -68,10 +69,10 @@ func ConnectLoop(snowflakes SnowflakeCollector) {
 // Accept local SOCKS connections and pass them to the handler.
 func acceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error {
 	defer ln.Close()
+	log.Println("Started SOCKS listener.")
 	for {
-		log.Println("SOCKS listening...", ln)
 		conn, err := ln.AcceptSocks()
-		log.Println("accepting", conn, err)
+		log.Println("SOCKS accepted ", conn.Req)
 		if err != nil {
 			if e, ok := err.(net.Error); ok && e.Temporary() {
 				continue
@@ -138,7 +139,8 @@ func readSignalingMessages(f *os.File) {
 
 func main() {
 	webrtc.SetLoggingVerbosity(1)
-	logFile, err := os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	logFile, err := os.OpenFile("snowflake.log",
+		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal(err)
 	}

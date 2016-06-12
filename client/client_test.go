@@ -75,7 +75,7 @@ func TestSnowflakeClient(t *testing.T) {
 			snowflakes.Tongue = FakeDialer{}
 
 			go ConnectLoop(snowflakes)
-			<-snowflakes.maxedChan
+			// <-snowflakes.maxedChan
 
 			So(snowflakes.Count(), ShouldEqual, 1)
 			r := <-snowflakes.snowflakeChan
@@ -88,7 +88,7 @@ func TestSnowflakeClient(t *testing.T) {
 			snowflakes.Tongue = FakeDialer{}
 
 			go ConnectLoop(snowflakes)
-			<-snowflakes.maxedChan
+			// <-snowflakes.maxedChan
 			So(snowflakes.Count(), ShouldEqual, 3)
 			<-snowflakes.snowflakeChan
 			<-snowflakes.snowflakeChan
@@ -101,13 +101,13 @@ func TestSnowflakeClient(t *testing.T) {
 			snowflakes.Tongue = FakeDialer{}
 
 			go ConnectLoop(snowflakes)
-			<-snowflakes.maxedChan
+			// <-snowflakes.maxedChan
 			So(snowflakes.Count(), ShouldEqual, 3)
 
 			r := <-snowflakes.snowflakeChan
 			So(snowflakes.Count(), ShouldEqual, 2)
 			r.Close()
-			<-snowflakes.maxedChan
+			// <-snowflakes.maxedChan
 			So(snowflakes.Count(), ShouldEqual, 3)
 
 			<-snowflakes.snowflakeChan
@@ -121,7 +121,6 @@ func TestSnowflakeClient(t *testing.T) {
 		Convey("Can construct", func() {
 			p := NewPeers(1)
 			So(p.capacity, ShouldEqual, 1)
-			So(p.current, ShouldEqual, nil)
 			So(p.snowflakeChan, ShouldNotBeNil)
 			So(cap(p.snowflakeChan), ShouldEqual, 1)
 		})
@@ -136,36 +135,54 @@ func TestSnowflakeClient(t *testing.T) {
 			err = p.Collect()
 			So(err, ShouldBeNil)
 			So(p.Count(), ShouldEqual, 1)
-      // S
+			// S
 			err = p.Collect()
 		})
 
 		Convey("Collection continues until capacity.", func() {
-      c := 5
+			c := 5
 			p := NewPeers(c)
-      p.Tongue = FakeDialer{}
-      // Fill up to capacity.
-      for i := 0 ; i < c ; i++ {
-	      fmt.Println("Adding snowflake ", i)
-			  err := p.Collect()
-			  So(err, ShouldBeNil)
-    		So(p.Count(), ShouldEqual, i + 1)
-      }
-      // But adding another gives an error.
-  		So(p.Count(), ShouldEqual, c)
-  		err := p.Collect()
-  		So(err, ShouldNotBeNil)
-  		So(p.Count(), ShouldEqual, c)
+			p.Tongue = FakeDialer{}
+			// Fill up to capacity.
+			for i := 0; i < c; i++ {
+				fmt.Println("Adding snowflake ", i)
+				err := p.Collect()
+				So(err, ShouldBeNil)
+				So(p.Count(), ShouldEqual, i+1)
+			}
+			// But adding another gives an error.
+			So(p.Count(), ShouldEqual, c)
+			err := p.Collect()
+			So(err, ShouldNotBeNil)
+			So(p.Count(), ShouldEqual, c)
 
-      // But popping allows it to continue.
-      s := p.Pop()
-      So(s, ShouldNotBeNil)
-  		So(p.Count(), ShouldEqual, c)
+			// But popping and closing allows it to continue.
+			s := p.Pop()
+			s.Close()
+			So(s, ShouldNotBeNil)
+			So(p.Count(), ShouldEqual, c-1)
 
-  		// err = p.Collect()
-  		// So(err, ShouldNotBeNil)
-  		// So(p.Count(), ShouldEqual, c)
-    })
+			err = p.Collect()
+			So(err, ShouldBeNil)
+			So(p.Count(), ShouldEqual, c)
+		})
+
+		Convey("Count correctly purges peers marked for deletion.", func() {
+			p := NewPeers(4)
+			p.Tongue = FakeDialer{}
+			p.Collect()
+			p.Collect()
+			p.Collect()
+			p.Collect()
+			So(p.Count(), ShouldEqual, 4)
+			s := p.Pop()
+			s.Close()
+			So(p.Count(), ShouldEqual, 3)
+			s = p.Pop()
+			s.Close()
+			So(p.Count(), ShouldEqual, 2)
+		})
+
 	})
 
 	Convey("Snowflake", t, func() {

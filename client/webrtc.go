@@ -18,9 +18,10 @@ type WebRTCDialer struct {
 }
 
 func NewWebRTCDialer(broker *BrokerChannel) *WebRTCDialer {
+	config := webrtc.NewConfiguration(iceServers...)
 	return &WebRTCDialer{
-		broker,
-		webrtc.NewConfiguration(iceServers...),
+		BrokerChannel: broker,
+		webrtcConfig:  config,
 	}
 }
 
