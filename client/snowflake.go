@@ -18,14 +18,10 @@ import (
 	"github.com/keroserene/go-webrtc"
 )
 
-var ptInfo pt.ClientInfo
-
 const (
 	ReconnectTimeout         = 10
 	DefaultSnowflakeCapacity = 1
 )
-
-var iceServers IceServerList
 
 // When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
@@ -52,20 +48,20 @@ func ConnectLoop(snowflakes SnowflakeCollector) {
 	for {
 		err := snowflakes.Collect()
 		if nil != err {
-			log.Println("WebRTC Error:", err,
+			log.Println("WebRTC:", err,
 				" Retrying in", ReconnectTimeout, "seconds...")
 			// Failed collections get a timeout.
 			<-time.After(time.Second * ReconnectTimeout)
 			continue
 		}
 		// Successful collection gets rate limited to once per second.
-		log.Println("ConnectLoop success.")
+		log.Println("WebRTC: Connected to new Snowflake.")
 		<-time.After(time.Second)
 	}
 }
 
 // Accept local SOCKS connections and pass them to the handler.
-func acceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error {
+func socksAcceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error {
 	defer ln.Close()
 	log.Println("Started SOCKS listener.")
 	for {
@@ -98,7 +94,7 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 		return errors.New("handler: Received invalid Snowflake")
 	}
 	defer socks.Close()
-	log.Println("handler: Snowflake assigned.")
+	log.Println("---- Snowflake assigned ----")
 	err := socks.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		return err
@@ -114,7 +110,25 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 	return nil
 }
 
-// TODO: Fix since multiplexing changes access to remotes.
+func setupCopyPaste() {
+	log.Println("No HTTP signaling detected. Waiting for a \"signal\" pipe...")
+	// This FIFO receives signaling messages.
+	err := syscall.Mkfifo("signal", 0600)
+	if err != nil {
+		if syscall.EEXIST != err.(syscall.Errno) {
+			log.Fatal(err)
+		}
+	}
+	signalFile, err := os.OpenFile("signal", os.O_RDONLY, 0600)
+	if nil != err {
+		log.Fatal(err)
+	}
+	defer signalFile.Close()
+	go readSignalingMessages(signalFile)
+}
+
+// Manual copy-paste signalling.
+// TODO: Needs fix since multiplexing changes access to the remotes.
 func readSignalingMessages(f *os.File) {
 	log.Printf("readSignalingMessages")
 	s := bufio.NewScanner(f)
@@ -144,42 +158,26 @@ func main() {
 	}
 	defer logFile.Close()
 	log.SetOutput(logFile)
-	log.Println("\nStarting Snowflake Client...")
 
+	var iceServers IceServerList
+	log.Println("\n\n\n --- Starting Snowflake Client ---")
+
+	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
 	brokerURL := flag.String("url", "", "URL of signaling broker")
 	frontDomain := flag.String("front", "", "front domain")
-	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
 	max := flag.Int("max", DefaultSnowflakeCapacity,
 		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
 
 	// TODO: Maybe just get rid of copy-paste option entirely.
-	if "" != *brokerURL {
-		log.Println("Rendezvous using Broker at: ", *brokerURL)
-		if "" != *frontDomain {
-			log.Println("Domain fronting using:", *frontDomain)
-		}
-	} else {
-		log.Println("No HTTP signaling detected. Waiting for a \"signal\" pipe...")
-		// This FIFO receives signaling messages.
-		err := syscall.Mkfifo("signal", 0600)
-		if err != nil {
-			if err.(syscall.Errno) != syscall.EEXIST {
-				log.Fatal(err)
-			}
-		}
-		signalFile, err := os.OpenFile("signal", os.O_RDONLY, 0600)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer signalFile.Close()
-		go readSignalingMessages(signalFile)
+	if "" == *brokerURL {
+		setupCopyPaste()
 	}
 
 	// Prepare WebRTC SnowflakeCollector, Broker, then accumulate connections.
 	snowflakes := NewPeers(*max)
 	broker := NewBrokerChannel(*brokerURL, *frontDomain, CreateBrokerTransport())
-	snowflakes.Tongue = NewWebRTCDialer(broker)
+	snowflakes.Tongue = NewWebRTCDialer(broker, iceServers)
 
 	// Use a real logger for traffic.
 	snowflakes.BytesLogger = &BytesSyncLogger{
@@ -190,11 +188,11 @@ func main() {
 	go ConnectLoop(snowflakes)
 	go snowflakes.BytesLogger.Log()
 
-	ptInfo, err = pt.ClientSetup(nil)
+	// Begin goptlib client process.
+	ptInfo, err := pt.ClientSetup(nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if ptInfo.ProxyURL != nil {
 		pt.ProxyError("proxy is not supported")
 		os.Exit(1)
@@ -210,7 +208,7 @@ func main() {
 				pt.CmethodError(methodName, err.Error())
 				break
 			}
-			go acceptLoop(ln, snowflakes)
+			go socksAcceptLoop(ln, snowflakes)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			listeners = append(listeners, ln)
 		default:

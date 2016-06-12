@@ -17,7 +17,9 @@ type WebRTCDialer struct {
 	webrtcConfig *webrtc.Configuration
 }
 
-func NewWebRTCDialer(broker *BrokerChannel) *WebRTCDialer {
+func NewWebRTCDialer(
+	broker *BrokerChannel, iceServers IceServerList) *WebRTCDialer {
+
 	config := webrtc.NewConfiguration(iceServers...)
 	return &WebRTCDialer{
 		BrokerChannel: broker,
@@ -32,8 +34,7 @@ func (w WebRTCDialer) Catch() (*webRTCConn, error) {
 	}
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
-	config := webrtc.NewConfiguration(iceServers...)
-	connection := NewWebRTCConnection(config, w.BrokerChannel)
+	connection := NewWebRTCConnection(w.webrtcConfig, w.BrokerChannel)
 	err := connection.Connect()
 	return connection, err
 }

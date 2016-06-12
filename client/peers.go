@@ -38,6 +38,7 @@ func NewPeers(max int) *Peers {
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Collect() error {
+
 	cnt := p.Count()
 	if cnt >= p.capacity {
 		s := fmt.Sprintf("At capacity [%d/%d]", cnt, p.capacity)
@@ -59,6 +60,7 @@ func (p *Peers) Collect() error {
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Pop() *webRTCConn {
+
 	// Blocks until an available snowflake appears.
 	snowflake, ok := <-p.snowflakeChan
 	if !ok {

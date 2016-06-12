@@ -46,9 +46,11 @@ func NewBrokerChannel(broker string, front string, transport http.RoundTripper) 
 	if nil != err {
 		return nil
 	}
+	log.Println("Rendezvous using Broker at:", broker)
 	bc := new(BrokerChannel)
 	bc.url = targetURL
 	if "" != front { // Optional front domain.
+		log.Println("Domain fronting using:", front)
 		bc.Host = bc.url.Host
 		bc.url.Host = front
 	}
