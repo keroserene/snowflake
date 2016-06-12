@@ -11,34 +11,6 @@ import (
 	"time"
 )
 
-// Implements the |Tongue| interface to catch snowflakes, using a BrokerChannel.
-type WebRTCDialer struct {
-	*BrokerChannel
-	webrtcConfig *webrtc.Configuration
-}
-
-func NewWebRTCDialer(
-	broker *BrokerChannel, iceServers IceServerList) *WebRTCDialer {
-
-	config := webrtc.NewConfiguration(iceServers...)
-	return &WebRTCDialer{
-		BrokerChannel: broker,
-		webrtcConfig:  config,
-	}
-}
-
-// Initialize a WebRTC Connection by signaling through the broker.
-func (w WebRTCDialer) Catch() (*webRTCConn, error) {
-	if nil == w.BrokerChannel {
-		return nil, errors.New("Cannot Dial WebRTC without a BrokerChannel.")
-	}
-	// TODO: [#3] Fetch ICE server information from Broker.
-	// TODO: [#18] Consider TURN servers here too.
-	connection := NewWebRTCConnection(w.webrtcConfig, w.BrokerChannel)
-	err := connection.Connect()
-	return connection, err
-}
-
 // Remote WebRTC peer.  Implements the |net.Conn| interface.
 type webRTCConn struct {
 	config    *webrtc.Configuration
@@ -282,11 +254,11 @@ func (c *webRTCConn) sendOfferToBroker() {
 func (c *webRTCConn) exchangeSDP() error {
 	select {
 	case offer := <-c.offerChannel:
-		// Display for copy-paste, when no broker available.
+		// Display for copy-paste when no broker available.
 		if nil == c.broker {
 			log.Printf("Please Copy & Paste the following to the peer:")
 			log.Printf("----------------")
-			log.Printf("\n" + offer.Serialize() + "\n")
+			log.Printf("\n\n" + offer.Serialize() + "\n\n")
 			log.Printf("----------------")
 		}
 	case err := <-c.errorChannel:

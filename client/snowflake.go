@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"flag"
 	"io"
@@ -110,45 +109,6 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 	return nil
 }
 
-func setupCopyPaste() {
-	log.Println("No HTTP signaling detected. Waiting for a \"signal\" pipe...")
-	// This FIFO receives signaling messages.
-	err := syscall.Mkfifo("signal", 0600)
-	if err != nil {
-		if syscall.EEXIST != err.(syscall.Errno) {
-			log.Fatal(err)
-		}
-	}
-	signalFile, err := os.OpenFile("signal", os.O_RDONLY, 0600)
-	if nil != err {
-		log.Fatal(err)
-	}
-	defer signalFile.Close()
-	go readSignalingMessages(signalFile)
-}
-
-// Manual copy-paste signalling.
-// TODO: Needs fix since multiplexing changes access to the remotes.
-func readSignalingMessages(f *os.File) {
-	log.Printf("readSignalingMessages")
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		msg := s.Text()
-		log.Printf("readSignalingMessages loop %+q", msg)
-		sdp := webrtc.DeserializeSessionDescription(msg)
-		if sdp == nil {
-			log.Printf("ignoring invalid signal message %+q", msg)
-			continue
-		}
-		// webrtcRemotes[0].answerChannel <- sdp
-	}
-	log.Printf("close answerChannel")
-	// close(webrtcRemotes[0].answerChannel)
-	if err := s.Err(); err != nil {
-		log.Printf("signal FIFO: %s", err)
-	}
-}
-
 func main() {
 	webrtc.SetLoggingVerbosity(1)
 	logFile, err := os.OpenFile("snowflake.log",
@@ -169,24 +129,24 @@ func main() {
 		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
 
-	// TODO: Maybe just get rid of copy-paste option entirely.
-	if "" == *brokerURL {
-		setupCopyPaste()
-	}
-
-	// Prepare WebRTC SnowflakeCollector, Broker, then accumulate connections.
+	// Prepare to collect remote WebRTC peers.
 	snowflakes := NewPeers(*max)
-	broker := NewBrokerChannel(*brokerURL, *frontDomain, CreateBrokerTransport())
-	snowflakes.Tongue = NewWebRTCDialer(broker, iceServers)
-
-	// Use a real logger for traffic.
+	if "" != *brokerURL {
+		// Use potentially domain-fronting broker to rendezvous.
+		broker := NewBrokerChannel(*brokerURL, *frontDomain, CreateBrokerTransport())
+		snowflakes.Tongue = NewWebRTCDialer(broker, iceServers)
+	} else {
+		// Otherwise, use manual copy and pasting of SDP messages.
+		snowflakes.Tongue = NewCopyPasteDialer(iceServers)
+	}
+	// Use a real logger to periodically output how much traffic is happening.
 	snowflakes.BytesLogger = &BytesSyncLogger{
 		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
 		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
 	}
+	go snowflakes.BytesLogger.Log()
 
 	go ConnectLoop(snowflakes)
-	go snowflakes.BytesLogger.Log()
 
 	// Begin goptlib client process.
 	ptInfo, err := pt.ClientSetup(nil)
@@ -197,7 +157,6 @@ func main() {
 		pt.ProxyError("proxy is not supported")
 		os.Exit(1)
 	}
-
 	listeners := make([]net.Listener, 0)
 	for _, methodName := range ptInfo.MethodNames {
 		switch methodName {
@@ -234,9 +193,7 @@ func main() {
 	for _, ln := range listeners {
 		ln.Close()
 	}
-
 	snowflakes.End()
-
 	// wait for second signal or no more handlers
 	sig = nil
 	for sig == nil && numHandlers != 0 {
