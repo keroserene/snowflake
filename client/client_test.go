@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	// "git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/keroserene/go-webrtc"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -24,9 +23,7 @@ func (m *MockDataChannel) Send(data []byte) {
 	m.done <- true
 }
 
-func (*MockDataChannel) Close() error {
-	return nil
-}
+func (*MockDataChannel) Close() error { return nil }
 
 type MockResponse struct{}
 
@@ -34,13 +31,9 @@ func (m *MockResponse) Read(p []byte) (int, error) {
 	p = []byte(`{"type":"answer","sdp":"fake"}`)
 	return 0, nil
 }
-func (m *MockResponse) Close() error {
-	return nil
-}
+func (m *MockResponse) Close() error { return nil }
 
-type MockTransport struct {
-	statusOverride int
-}
+type MockTransport struct{ statusOverride int }
 
 // Just returns a response with fake SDP answer.
 func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -68,28 +61,17 @@ func (f FakeSocksConn) Reject() error {
 	f.rejected = true
 	return nil
 }
-func (f FakeSocksConn) Grant(addr *net.TCPAddr) error {
-	return nil
-}
+func (f FakeSocksConn) Grant(addr *net.TCPAddr) error { return nil }
 
-type FakeSnowflakeJar struct {
-	toRelease *webRTCConn
-}
+type FakePeers struct{ toRelease *webRTCConn }
 
-func (f FakeSnowflakeJar) Release() *webRTCConn {
-	return nil
-}
-
-func (f FakeSnowflakeJar) Collect() (*webRTCConn, error) {
-	return nil, nil
-}
+func (f FakePeers) Collect() error   { return nil }
+func (f FakePeers) Pop() *webRTCConn { return nil }
 
 func TestSnowflakeClient(t *testing.T) {
-
-	Convey("WebRTC ConnectLoop", t, func() {
-
+	SkipConvey("WebRTC ConnectLoop", t, func() {
 		Convey("WebRTC ConnectLoop continues until capacity of 1.\n", func() {
-			snowflakes := NewSnowflakeJar(1)
+			snowflakes := NewPeers(1)
 			snowflakes.Tongue = FakeDialer{}
 
 			go ConnectLoop(snowflakes)
@@ -102,7 +84,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("WebRTC ConnectLoop continues until capacity of 3.\n", func() {
-			snowflakes := NewSnowflakeJar(3)
+			snowflakes := NewPeers(3)
 			snowflakes.Tongue = FakeDialer{}
 
 			go ConnectLoop(snowflakes)
@@ -115,7 +97,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("WebRTC ConnectLoop continues filling when Snowflakes disconnect.\n", func() {
-			snowflakes := NewSnowflakeJar(3)
+			snowflakes := NewPeers(3)
 			snowflakes.Tongue = FakeDialer{}
 
 			go ConnectLoop(snowflakes)
@@ -135,17 +117,67 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 	})
 
+	Convey("Peers", t, func() {
+		Convey("Can construct", func() {
+			p := NewPeers(1)
+			So(p.capacity, ShouldEqual, 1)
+			So(p.current, ShouldEqual, nil)
+			So(p.snowflakeChan, ShouldNotBeNil)
+			So(cap(p.snowflakeChan), ShouldEqual, 1)
+		})
+
+		Convey("Collecting a Snowflake requires a Tongue.", func() {
+			p := NewPeers(1)
+			err := p.Collect()
+			So(err, ShouldNotBeNil)
+			So(p.Count(), ShouldEqual, 0)
+			// Set the dialer so that collection is possible.
+			p.Tongue = FakeDialer{}
+			err = p.Collect()
+			So(err, ShouldBeNil)
+			So(p.Count(), ShouldEqual, 1)
+      // S
+			err = p.Collect()
+		})
+
+		Convey("Collection continues until capacity.", func() {
+      c := 5
+			p := NewPeers(c)
+      p.Tongue = FakeDialer{}
+      // Fill up to capacity.
+      for i := 0 ; i < c ; i++ {
+	      fmt.Println("Adding snowflake ", i)
+			  err := p.Collect()
+			  So(err, ShouldBeNil)
+    		So(p.Count(), ShouldEqual, i + 1)
+      }
+      // But adding another gives an error.
+  		So(p.Count(), ShouldEqual, c)
+  		err := p.Collect()
+  		So(err, ShouldNotBeNil)
+  		So(p.Count(), ShouldEqual, c)
+
+      // But popping allows it to continue.
+      s := p.Pop()
+      So(s, ShouldNotBeNil)
+  		So(p.Count(), ShouldEqual, c)
+
+  		// err = p.Collect()
+  		// So(err, ShouldNotBeNil)
+  		// So(p.Count(), ShouldEqual, c)
+    })
+	})
+
 	Convey("Snowflake", t, func() {
 
 		SkipConvey("Handler Grants correctly", func() {
 			socks := &FakeSocksConn{}
-			snowflakes := &FakeSnowflakeJar{}
+			snowflakes := &FakePeers{}
 
 			So(socks.rejected, ShouldEqual, false)
 			snowflakes.toRelease = nil
 			handler(socks, snowflakes)
 			So(socks.rejected, ShouldEqual, true)
-
 		})
 
 		Convey("WebRTC Connection", func() {

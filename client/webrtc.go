@@ -14,6 +14,14 @@ import (
 // Implements the |Tongue| interface to catch snowflakes, using a BrokerChannel.
 type WebRTCDialer struct {
 	*BrokerChannel
+	webrtcConfig *webrtc.Configuration
+}
+
+func NewWebRTCDialer(broker *BrokerChannel) *WebRTCDialer {
+	return &WebRTCDialer{
+		broker,
+		webrtc.NewConfiguration(iceServers...),
+	}
 }
 
 // Initialize a WebRTC Connection by signaling through the broker.
@@ -33,7 +41,7 @@ func (w WebRTCDialer) Catch() (*webRTCConn, error) {
 type webRTCConn struct {
 	config    *webrtc.Configuration
 	pc        *webrtc.PeerConnection
-	snowflake SnowflakeChannel // Holds the WebRTC DataChannel.
+	snowflake SnowflakeDataChannel // Holds the WebRTC DataChannel.
 	broker    *BrokerChannel
 
 	offerChannel  chan *webrtc.SessionDescription
