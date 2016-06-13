@@ -128,7 +128,7 @@ func NewWebRTCDialer(
 }
 
 // Initialize a WebRTC Connection by signaling through the broker.
-func (w WebRTCDialer) Catch() (*webRTCConn, error) {
+func (w WebRTCDialer) Catch() (Snowflake, error) {
 	if nil == w.BrokerChannel {
 		return nil, errors.New("Cannot Dial WebRTC without a BrokerChannel.")
 	}
@@ -174,7 +174,7 @@ func NewCopyPasteDialer(iceServers IceServerList) *CopyPasteDialer {
 }
 
 // Initialize a WebRTC connection via manual copy-paste.
-func (d *CopyPasteDialer) Catch() (*webRTCConn, error) {
+func (d *CopyPasteDialer) Catch() (Snowflake, error) {
 	if nil == d.signal {
 		return nil, errors.New("Cannot copy-paste dial without signal pipe.")
 	}

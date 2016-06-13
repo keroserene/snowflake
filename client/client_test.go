@@ -47,7 +47,7 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 type FakeDialer struct{}
 
-func (w FakeDialer) Catch() (*webRTCConn, error) {
+func (w FakeDialer) Catch() (Snowflake, error) {
 	fmt.Println("Caught a dummy snowflake.")
 	return &webRTCConn{}, nil
 }
@@ -65,57 +65,10 @@ func (f FakeSocksConn) Grant(addr *net.TCPAddr) error { return nil }
 
 type FakePeers struct{ toRelease *webRTCConn }
 
-func (f FakePeers) Collect() error   { return nil }
-func (f FakePeers) Pop() *webRTCConn { return nil }
+func (f FakePeers) Collect() error { return nil }
+func (f FakePeers) Pop() Snowflake { return nil }
 
 func TestSnowflakeClient(t *testing.T) {
-	SkipConvey("WebRTC ConnectLoop", t, func() {
-		Convey("WebRTC ConnectLoop continues until capacity of 1.\n", func() {
-			snowflakes := NewPeers(1)
-			snowflakes.Tongue = FakeDialer{}
-
-			go ConnectLoop(snowflakes)
-			// <-snowflakes.maxedChan
-
-			So(snowflakes.Count(), ShouldEqual, 1)
-			r := <-snowflakes.snowflakeChan
-			So(r, ShouldNotBeNil)
-			So(snowflakes.Count(), ShouldEqual, 0)
-		})
-
-		Convey("WebRTC ConnectLoop continues until capacity of 3.\n", func() {
-			snowflakes := NewPeers(3)
-			snowflakes.Tongue = FakeDialer{}
-
-			go ConnectLoop(snowflakes)
-			// <-snowflakes.maxedChan
-			So(snowflakes.Count(), ShouldEqual, 3)
-			<-snowflakes.snowflakeChan
-			<-snowflakes.snowflakeChan
-			<-snowflakes.snowflakeChan
-			So(snowflakes.Count(), ShouldEqual, 0)
-		})
-
-		Convey("WebRTC ConnectLoop continues filling when Snowflakes disconnect.\n", func() {
-			snowflakes := NewPeers(3)
-			snowflakes.Tongue = FakeDialer{}
-
-			go ConnectLoop(snowflakes)
-			// <-snowflakes.maxedChan
-			So(snowflakes.Count(), ShouldEqual, 3)
-
-			r := <-snowflakes.snowflakeChan
-			So(snowflakes.Count(), ShouldEqual, 2)
-			r.Close()
-			// <-snowflakes.maxedChan
-			So(snowflakes.Count(), ShouldEqual, 3)
-
-			<-snowflakes.snowflakeChan
-			<-snowflakes.snowflakeChan
-			<-snowflakes.snowflakeChan
-			So(snowflakes.Count(), ShouldEqual, 0)
-		})
-	})
 
 	Convey("Peers", t, func() {
 		Convey("Can construct", func() {
@@ -181,6 +134,17 @@ func TestSnowflakeClient(t *testing.T) {
 			s = p.Pop()
 			s.Close()
 			So(p.Count(), ShouldEqual, 2)
+		})
+
+		Convey("End Closes all peers.", func() {
+			cnt := 5
+			p := NewPeers(cnt)
+			for i := 0; i < cnt; i++ {
+				p.activePeers.PushBack(&webRTCConn{})
+			}
+			So(p.Count(), ShouldEqual, cnt)
+			p.End()
+			So(p.Count(), ShouldEqual, 0)
 		})
 
 	})
@@ -250,6 +214,29 @@ func TestSnowflakeClient(t *testing.T) {
 				<-c.reset
 			})
 
+		})
+	})
+
+	Convey("Dialers", t, func() {
+		Convey("Can construct WebRTCDialer.", func() {
+			broker := &BrokerChannel{Host: "test"}
+			d := NewWebRTCDialer(broker, nil)
+			So(d, ShouldNotBeNil)
+			So(d.BrokerChannel, ShouldNotBeNil)
+			So(d.BrokerChannel.Host, ShouldEqual, "test")
+		})
+		Convey("WebRTCDialer cannot Catch a snowflake with nil broker.", func() {
+			d := NewWebRTCDialer(nil, nil)
+			conn, err := d.Catch()
+			So(conn, ShouldBeNil)
+			So(err, ShouldNotBeNil)
+		})
+		SkipConvey("WebRTCDialer can Catch a snowflake.", func() {
+			broker := &BrokerChannel{Host: "test"}
+			d := NewWebRTCDialer(broker, nil)
+			conn, err := d.Catch()
+			So(conn, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 		})
 	})
 

@@ -22,7 +22,7 @@ type Peers struct {
 	Tongue
 	BytesLogger
 
-	snowflakeChan chan *webRTCConn
+	snowflakeChan chan Snowflake
 	activePeers   *list.List
 	capacity      int
 }
@@ -31,7 +31,7 @@ type Peers struct {
 func NewPeers(max int) *Peers {
 	p := &Peers{capacity: max}
 	// Use buffered go channel to pass snowflakes onwards to the SOCKS handler.
-	p.snowflakeChan = make(chan *webRTCConn, max)
+	p.snowflakeChan = make(chan Snowflake, max)
 	p.activePeers = list.New()
 	return p
 }
@@ -59,7 +59,7 @@ func (p *Peers) Collect() error {
 }
 
 // As part of |SnowflakeCollector| interface.
-func (p *Peers) Pop() *webRTCConn {
+func (p *Peers) Pop() Snowflake {
 
 	// Blocks until an available snowflake appears.
 	snowflake, ok := <-p.snowflakeChan
@@ -67,7 +67,7 @@ func (p *Peers) Pop() *webRTCConn {
 		return nil
 	}
 	// Set to use the same rate-limited traffic logger to keep consistency.
-	snowflake.BytesLogger = p.BytesLogger
+	snowflake.(*webRTCConn).BytesLogger = p.BytesLogger
 	return snowflake
 }
 

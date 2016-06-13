@@ -26,21 +26,6 @@ const (
 // ends, -1 is written.
 var handlerChan = make(chan int)
 
-func copyLoop(a, b net.Conn) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		io.Copy(b, a)
-		wg.Done()
-	}()
-	go func() {
-		io.Copy(a, b)
-		wg.Done()
-	}()
-	wg.Wait()
-	log.Println("copy loop ended")
-}
-
 // Maintain |SnowflakeCapacity| number of available WebRTC connections, to
 // transfer to the Tor SOCKS handler when needed.
 func ConnectLoop(snowflakes SnowflakeCollector) {
@@ -104,9 +89,26 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 
 	// When WebRTC resets, close the SOCKS connection, which induces new handler.
 	// TODO: Double check this / fix it.
-	<-snowflake.reset
+	snowflake.WaitForReset()
 	log.Println("---- Closed ---")
 	return nil
+}
+
+// Exchanges bytes between two ReadWriters.
+// (In this case, between a SOCKS and WebRTC connection.)
+func copyLoop(a, b io.ReadWriter) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		io.Copy(b, a)
+		wg.Done()
+	}()
+	go func() {
+		io.Copy(a, b)
+		wg.Done()
+	}()
+	wg.Wait()
+	log.Println("copy loop ended")
 }
 
 func main() {

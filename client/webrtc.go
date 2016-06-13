@@ -3,15 +3,15 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/keroserene/go-webrtc"
 	"io"
 	"log"
-	"net"
 	"time"
 )
 
-// Remote WebRTC peer.  Implements the |net.Conn| interface.
+// Remote WebRTC peer.
+// Implements the |Snowflake| interface, which includes
+// |io.ReadWriter|, |Resetter|, and |Connector|.
 type webRTCConn struct {
 	config    *webrtc.Configuration
 	pc        *webrtc.PeerConnection
@@ -33,11 +33,14 @@ type webRTCConn struct {
 	BytesLogger
 }
 
+// Read bytes from remote WebRTC.
+// As part of |io.ReadWriter|
 func (c *webRTCConn) Read(b []byte) (int, error) {
 	return c.recvPipe.Read(b)
 }
 
-// Writes bytes out to the snowflake proxy.
+// Writes bytes out to remote WebRTC.
+// As part of |io.ReadWriter|
 func (c *webRTCConn) Write(b []byte) (int, error) {
 	c.BytesLogger.AddOutbound(len(b))
 	if nil == c.snowflake {
@@ -49,6 +52,7 @@ func (c *webRTCConn) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+// As part of |Snowflake|
 func (c *webRTCConn) Close() error {
 	var err error = nil
 	log.Printf("WebRTC: Closing")
@@ -67,25 +71,17 @@ func (c *webRTCConn) Close() error {
 	return err
 }
 
-func (c *webRTCConn) LocalAddr() net.Addr {
-	return nil
+// As part of |Resetter|
+func (c *webRTCConn) Reset() {
+	go func() {
+		c.reset <- struct{}{}
+		log.Println("WebRTC resetting...")
+	}()
+	c.Close()
 }
 
-func (c *webRTCConn) RemoteAddr() net.Addr {
-	return nil
-}
-
-func (c *webRTCConn) SetDeadline(t time.Time) error {
-	return fmt.Errorf("SetDeadline not implemented")
-}
-
-func (c *webRTCConn) SetReadDeadline(t time.Time) error {
-	return fmt.Errorf("SetReadDeadline not implemented")
-}
-
-func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
-	return fmt.Errorf("SetWriteDeadline not implemented")
-}
+// As part of |Resetter|
+func (c *webRTCConn) WaitForReset() { <-c.reset }
 
 // Construct a WebRTC PeerConnection.
 func NewWebRTCConnection(config *webrtc.Configuration,
@@ -108,6 +104,7 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 	return connection
 }
 
+// As part of |Connector| interface.
 func (c *webRTCConn) Connect() error {
 	log.Printf("Establishing WebRTC connection #%d...", c.index)
 	// TODO: When go-webrtc is more stable, it's possible that a new
@@ -285,14 +282,6 @@ func (c *webRTCConn) exchangeSDP() error {
 		return err
 	}
 	return nil
-}
-
-func (c *webRTCConn) Reset() {
-	go func() {
-		c.reset <- struct{}{}
-		log.Println("WebRTC resetting...")
-	}()
-	c.Close()
 }
 
 func (c *webRTCConn) cleanup() {

@@ -1,13 +1,31 @@
-// In the Client context, "Snowflake" refers to a remote browser proxy.
 package main
 
 import (
+	"io"
 	"net"
 )
 
+type Connector interface {
+	Connect() error
+}
+
+type Resetter interface {
+	Reset()
+	WaitForReset()
+}
+
+// Interface for a single remote WebRTC peer.
+// In the Client context, "Snowflake" refers to the remote browser proxy.
+type Snowflake interface {
+	io.ReadWriter
+	Resetter
+	Connector
+	Close() error
+}
+
 // Interface for catching Snowflakes. (aka the remote dialer)
 type Tongue interface {
-	Catch() (*webRTCConn, error)
+	Catch() (Snowflake, error)
 }
 
 // Interface for collecting some number of Snowflakes, for passing along
@@ -19,7 +37,7 @@ type SnowflakeCollector interface {
 	Collect() error
 
 	// Remove and return the most available Snowflake from the collection.
-	Pop() *webRTCConn
+	Pop() Snowflake
 }
 
 // Interface to adapt to goptlib's SocksConn struct.
