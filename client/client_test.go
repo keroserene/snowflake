@@ -65,8 +65,9 @@ func (f FakeSocksConn) Grant(addr *net.TCPAddr) error { return nil }
 
 type FakePeers struct{ toRelease *webRTCConn }
 
-func (f FakePeers) Collect() error { return nil }
-func (f FakePeers) Pop() Snowflake { return nil }
+func (f FakePeers) Collect() error          { return nil }
+func (f FakePeers) Pop() Snowflake          { return nil }
+func (f FakePeers) Melted() <-chan struct{} { return nil }
 
 func TestSnowflakeClient(t *testing.T) {
 
@@ -144,6 +145,7 @@ func TestSnowflakeClient(t *testing.T) {
 			}
 			So(p.Count(), ShouldEqual, cnt)
 			p.End()
+			<-p.Melted()
 			So(p.Count(), ShouldEqual, 0)
 		})
 
@@ -168,7 +170,6 @@ func TestSnowflakeClient(t *testing.T) {
 			Convey("Can construct a WebRTCConn", func() {
 				s := NewWebRTCConnection(nil, nil)
 				So(s, ShouldNotBeNil)
-				So(s.index, ShouldEqual, 0)
 				So(s.offerChannel, ShouldNotBeNil)
 				So(s.answerChannel, ShouldNotBeNil)
 				s.Close()
@@ -176,13 +177,13 @@ func TestSnowflakeClient(t *testing.T) {
 
 			Convey("Write buffers when datachannel is nil", func() {
 				c.Write([]byte("test"))
-				c.snowflake = nil
+				c.transport = nil
 				So(c.buffer.Bytes(), ShouldResemble, []byte("test"))
 			})
 
 			Convey("Write sends to datachannel when not nil", func() {
 				mock := new(MockDataChannel)
-				c.snowflake = mock
+				c.transport = mock
 				mock.done = make(chan bool, 1)
 				c.Write([]byte("test"))
 				<-mock.done

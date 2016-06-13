@@ -25,6 +25,8 @@ type Peers struct {
 	snowflakeChan chan Snowflake
 	activePeers   *list.List
 	capacity      int
+
+	melt chan struct{}
 }
 
 // Construct a fresh container of remote peers.
@@ -33,17 +35,19 @@ func NewPeers(max int) *Peers {
 	// Use buffered go channel to pass snowflakes onwards to the SOCKS handler.
 	p.snowflakeChan = make(chan Snowflake, max)
 	p.activePeers = list.New()
+	p.melt = make(chan struct{}, 1)
 	return p
 }
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Collect() error {
-
 	cnt := p.Count()
+	s := fmt.Sprintf("Currently at [%d/%d]", cnt, p.capacity)
 	if cnt >= p.capacity {
 		s := fmt.Sprintf("At capacity [%d/%d]", cnt, p.capacity)
 		return errors.New(s)
 	}
+	log.Println("WebRTC: Collecting a new Snowflake.", s)
 	// Engage the Snowflake Catching interface, which must be available.
 	if nil == p.Tongue {
 		return errors.New("Missing Tongue to catch Snowflakes with.")
@@ -60,7 +64,6 @@ func (p *Peers) Collect() error {
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Pop() Snowflake {
-
 	// Blocks until an available snowflake appears.
 	snowflake, ok := <-p.snowflakeChan
 	if !ok {
@@ -69,6 +72,11 @@ func (p *Peers) Pop() Snowflake {
 	// Set to use the same rate-limited traffic logger to keep consistency.
 	snowflake.(*webRTCConn).BytesLogger = p.BytesLogger
 	return snowflake
+}
+
+// As part of |SnowflakeCollector| interface.
+func (p *Peers) Melted() <-chan struct{} {
+	return p.melt
 }
 
 // Returns total available Snowflakes (including the active one)
@@ -93,9 +101,16 @@ func (p *Peers) purgeClosedPeers() {
 
 // Close all Peers contained here.
 func (p *Peers) End() {
-	log.Printf("WebRTC: Ending all peer connections.")
-	for e := p.activePeers.Front(); e != nil; e = e.Next() {
+	close(p.snowflakeChan)
+	p.melt <- struct{}{}
+	cnt := p.Count()
+	for e := p.activePeers.Front(); e != nil; {
+		log.Println(e, e.Value)
+		next := e.Next()
 		conn := e.Value.(*webRTCConn)
 		conn.Close()
+		p.activePeers.Remove(e)
+		e = next
 	}
+	log.Println("WebRTC: melted all", cnt, "snowflakes.")
 }

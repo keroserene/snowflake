@@ -38,6 +38,9 @@ type SnowflakeCollector interface {
 
 	// Remove and return the most available Snowflake from the collection.
 	Pop() Snowflake
+
+	// Signal when the collector has stopped collecting.
+	Melted() <-chan struct{}
 }
 
 // Interface to adapt to goptlib's SocksConn struct.

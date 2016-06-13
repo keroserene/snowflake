@@ -30,17 +30,19 @@ var handlerChan = make(chan int)
 // transfer to the Tor SOCKS handler when needed.
 func ConnectLoop(snowflakes SnowflakeCollector) {
 	for {
+		// Check if ending is necessary.
 		err := snowflakes.Collect()
 		if nil != err {
 			log.Println("WebRTC:", err,
 				" Retrying in", ReconnectTimeout, "seconds...")
-			// Failed collections get a timeout.
-			<-time.After(time.Second * ReconnectTimeout)
-			continue
 		}
-		// Successful collection gets rate limited to once per second.
-		log.Println("WebRTC: Connected to new Snowflake.")
-		<-time.After(time.Second)
+		select {
+		case <-time.After(time.Second * ReconnectTimeout):
+			continue
+		case <-snowflakes.Melted():
+			log.Println("ConnectLoop: stopped.")
+			return
+		}
 	}
 }
 
@@ -50,7 +52,7 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error 
 	log.Println("Started SOCKS listener.")
 	for {
 		conn, err := ln.AcceptSocks()
-		log.Println("SOCKS accepted ", conn.Req)
+		log.Println("SOCKS accepted: ", conn.Req)
 		if err != nil {
 			if e, ok := err.(net.Error); ok && e.Temporary() {
 				continue
@@ -72,6 +74,7 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 		handlerChan <- -1
 	}()
 	// Obtain an available WebRTC remote. May block.
+	log.Println("handler: awaiting Snowflake...")
 	snowflake := snowflakes.Pop()
 	if nil == snowflake {
 		socks.Reject()
@@ -85,6 +88,7 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 	}
 
 	// Begin exchanging data.
+	// BUG(serene): There's a leak here when multiplexed.
 	go copyLoop(socks, snowflake)
 
 	// When WebRTC resets, close the SOCKS connection, which induces new handler.

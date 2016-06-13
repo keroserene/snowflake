@@ -15,19 +15,17 @@ import (
 type webRTCConn struct {
 	config    *webrtc.Configuration
 	pc        *webrtc.PeerConnection
-	snowflake SnowflakeDataChannel // Holds the WebRTC DataChannel.
+	transport SnowflakeDataChannel // Holds the WebRTC DataChannel.
 	broker    *BrokerChannel
 
 	offerChannel  chan *webrtc.SessionDescription
 	answerChannel chan *webrtc.SessionDescription
 	errorChannel  chan error
-	endChannel    chan struct{}
 	recvPipe      *io.PipeReader
 	writePipe     *io.PipeWriter
 	buffer        bytes.Buffer
 	reset         chan struct{}
 
-	index  int
 	closed bool
 
 	BytesLogger
@@ -43,11 +41,11 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 // As part of |io.ReadWriter|
 func (c *webRTCConn) Write(b []byte) (int, error) {
 	c.BytesLogger.AddOutbound(len(b))
-	if nil == c.snowflake {
+	if nil == c.transport {
 		log.Printf("Buffered %d bytes --> WebRTC", len(b))
 		c.buffer.Write(b)
 	} else {
-		c.snowflake.Send(b)
+		c.transport.Send(b)
 	}
 	return len(b), nil
 }
@@ -57,15 +55,6 @@ func (c *webRTCConn) Close() error {
 	var err error = nil
 	log.Printf("WebRTC: Closing")
 	c.cleanup()
-	if nil != c.offerChannel {
-		close(c.offerChannel)
-	}
-	if nil != c.answerChannel {
-		close(c.answerChannel)
-	}
-	if nil != c.errorChannel {
-		close(c.errorChannel)
-	}
 	// Mark for deletion.
 	c.closed = true
 	return err
@@ -106,7 +95,6 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 
 // As part of |Connector| interface.
 func (c *webRTCConn) Connect() error {
-	log.Printf("Establishing WebRTC connection #%d...", c.index)
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
 	err := c.preparePeerConnection()
@@ -174,7 +162,7 @@ func (c *webRTCConn) preparePeerConnection() error {
 
 // Create a WebRTC DataChannel locally.
 func (c *webRTCConn) establishDataChannel() error {
-	if c.snowflake != nil {
+	if c.transport != nil {
 		panic("Unexpected datachannel already exists!")
 	}
 	dc, err := c.pc.CreateDataChannel("snowflake", webrtc.Init{})
@@ -187,9 +175,8 @@ func (c *webRTCConn) establishDataChannel() error {
 	}
 	dc.OnOpen = func() {
 		log.Println("WebRTC: DataChannel.OnOpen")
-		if nil != c.snowflake {
-			log.Println("PeerConnection snowflake already exists.")
-			panic("PeerConnection snowflake already exists.")
+		if nil != c.transport {
+			panic("WebRTC: transport already exists.")
 		}
 		// Flush buffered outgoing SOCKS data if necessary.
 		if c.buffer.Len() > 0 {
@@ -198,11 +185,11 @@ func (c *webRTCConn) establishDataChannel() error {
 			c.buffer.Reset()
 		}
 		// Then enable the datachannel.
-		c.snowflake = dc
+		c.transport = dc
 	}
 	dc.OnClose = func() {
 		// Future writes will go to the buffer until a new DataChannel is available.
-		if nil == c.snowflake {
+		if nil == c.transport {
 			// Closed locally, as part of a reset.
 			log.Println("WebRTC: DataChannel.OnClose [locally]")
 			return
@@ -210,7 +197,7 @@ func (c *webRTCConn) establishDataChannel() error {
 		// Closed remotely, need to reset everything.
 		// Disable the DataChannel as a write destination.
 		log.Println("WebRTC: DataChannel.OnClose [remotely]")
-		c.snowflake = nil
+		c.transport = nil
 		c.Reset()
 	}
 	dc.OnMessage = func(msg []byte) {
@@ -284,13 +271,23 @@ func (c *webRTCConn) exchangeSDP() error {
 	return nil
 }
 
+// Close all channels and transports
 func (c *webRTCConn) cleanup() {
-	if nil != c.snowflake {
+	if nil != c.offerChannel {
+		close(c.offerChannel)
+	}
+	if nil != c.answerChannel {
+		close(c.answerChannel)
+	}
+	if nil != c.errorChannel {
+		close(c.errorChannel)
+	}
+	if nil != c.transport {
 		log.Printf("WebRTC: closing DataChannel")
-		dataChannel := c.snowflake
-		// Setting snowflake to nil *before* Close indicates to OnClose that it
+		dataChannel := c.transport
+		// Setting dc to nil *before* Close indicates to OnClose that it
 		// was locally triggered.
-		c.snowflake = nil
+		c.transport = nil
 		dataChannel.Close()
 	}
 	if nil != c.pc {
