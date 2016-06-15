@@ -65,9 +65,9 @@ func (f FakeSocksConn) Grant(addr *net.TCPAddr) error { return nil }
 
 type FakePeers struct{ toRelease *webRTCConn }
 
-func (f FakePeers) Collect() error          { return nil }
-func (f FakePeers) Pop() Snowflake          { return nil }
-func (f FakePeers) Melted() <-chan struct{} { return nil }
+func (f FakePeers) Collect() (Snowflake, error) { return &webRTCConn{}, nil }
+func (f FakePeers) Pop() Snowflake              { return nil }
+func (f FakePeers) Melted() <-chan struct{}     { return nil }
 
 func TestSnowflakeClient(t *testing.T) {
 
@@ -81,16 +81,16 @@ func TestSnowflakeClient(t *testing.T) {
 
 		Convey("Collecting a Snowflake requires a Tongue.", func() {
 			p := NewPeers(1)
-			err := p.Collect()
+			_, err := p.Collect()
 			So(err, ShouldNotBeNil)
 			So(p.Count(), ShouldEqual, 0)
 			// Set the dialer so that collection is possible.
 			p.Tongue = FakeDialer{}
-			err = p.Collect()
+			_, err = p.Collect()
 			So(err, ShouldBeNil)
 			So(p.Count(), ShouldEqual, 1)
 			// S
-			err = p.Collect()
+			_, err = p.Collect()
 		})
 
 		Convey("Collection continues until capacity.", func() {
@@ -100,13 +100,13 @@ func TestSnowflakeClient(t *testing.T) {
 			// Fill up to capacity.
 			for i := 0; i < c; i++ {
 				fmt.Println("Adding snowflake ", i)
-				err := p.Collect()
+				_, err := p.Collect()
 				So(err, ShouldBeNil)
 				So(p.Count(), ShouldEqual, i+1)
 			}
 			// But adding another gives an error.
 			So(p.Count(), ShouldEqual, c)
-			err := p.Collect()
+			_, err := p.Collect()
 			So(err, ShouldNotBeNil)
 			So(p.Count(), ShouldEqual, c)
 
@@ -116,7 +116,7 @@ func TestSnowflakeClient(t *testing.T) {
 			So(s, ShouldNotBeNil)
 			So(p.Count(), ShouldEqual, c-1)
 
-			err = p.Collect()
+			_, err = p.Collect()
 			So(err, ShouldBeNil)
 			So(p.Count(), ShouldEqual, c)
 		})
@@ -147,6 +147,26 @@ func TestSnowflakeClient(t *testing.T) {
 			p.End()
 			<-p.Melted()
 			So(p.Count(), ShouldEqual, 0)
+		})
+
+		Convey("Pop skips over closed peers.", func() {
+			p := NewPeers(4)
+			p.Tongue = FakeDialer{}
+			wc1, _ := p.Collect()
+			wc2, _ := p.Collect()
+			wc3, _ := p.Collect()
+			So(wc1, ShouldNotBeNil)
+			So(wc2, ShouldNotBeNil)
+			So(wc3, ShouldNotBeNil)
+			wc1.Close()
+			r := p.Pop()
+			So(p.Count(), ShouldEqual, 2)
+			So(r, ShouldEqual, wc2)
+			wc4, _ := p.Collect()
+			wc2.Close()
+			wc3.Close()
+			r = p.Pop()
+			So(r, ShouldEqual, wc4)
 		})
 
 	})

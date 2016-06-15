@@ -40,34 +40,43 @@ func NewPeers(max int) *Peers {
 }
 
 // As part of |SnowflakeCollector| interface.
-func (p *Peers) Collect() error {
+func (p *Peers) Collect() (Snowflake, error) {
 	cnt := p.Count()
 	s := fmt.Sprintf("Currently at [%d/%d]", cnt, p.capacity)
 	if cnt >= p.capacity {
 		s := fmt.Sprintf("At capacity [%d/%d]", cnt, p.capacity)
-		return errors.New(s)
+		return nil, errors.New(s)
 	}
 	log.Println("WebRTC: Collecting a new Snowflake.", s)
 	// Engage the Snowflake Catching interface, which must be available.
 	if nil == p.Tongue {
-		return errors.New("Missing Tongue to catch Snowflakes with.")
+		return nil, errors.New("Missing Tongue to catch Snowflakes with.")
 	}
+	// BUG: some broker conflict here.
 	connection, err := p.Tongue.Catch()
-	if nil == connection || nil != err {
-		return err
+	if nil != err {
+		return nil, err
 	}
 	// Track new valid Snowflake in internal collection and pass along.
 	p.activePeers.PushBack(connection)
 	p.snowflakeChan <- connection
-	return nil
+	return connection, nil
 }
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Pop() Snowflake {
-	// Blocks until an available snowflake appears.
-	snowflake, ok := <-p.snowflakeChan
-	if !ok {
-		return nil
+	// Blocks until an available, valid snowflake appears.
+	var snowflake Snowflake
+	var ok bool
+	for nil == snowflake {
+		snowflake, ok = <-p.snowflakeChan
+		conn := snowflake.(*webRTCConn)
+		if !ok {
+			return nil
+		}
+		if conn.closed {
+			snowflake = nil
+		}
 	}
 	// Set to use the same rate-limited traffic logger to keep consistency.
 	snowflake.(*webRTCConn).BytesLogger = p.BytesLogger
@@ -105,7 +114,6 @@ func (p *Peers) End() {
 	p.melt <- struct{}{}
 	cnt := p.Count()
 	for e := p.activePeers.Front(); e != nil; {
-		log.Println(e, e.Value)
 		next := e.Next()
 		conn := e.Value.(*webRTCConn)
 		conn.Close()

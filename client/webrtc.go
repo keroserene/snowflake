@@ -31,7 +31,7 @@ type webRTCConn struct {
 	BytesLogger
 }
 
-// Read bytes from remote WebRTC.
+// Read bytes from local SOCKS.
 // As part of |io.ReadWriter|
 func (c *webRTCConn) Read(b []byte) (int, error) {
 	return c.recvPipe.Read(b)
@@ -62,11 +62,11 @@ func (c *webRTCConn) Close() error {
 
 // As part of |Resetter|
 func (c *webRTCConn) Reset() {
+	c.Close()
 	go func() {
 		c.reset <- struct{}{}
 		log.Println("WebRTC resetting...")
 	}()
-	c.Close()
 }
 
 // As part of |Resetter|
@@ -281,6 +281,11 @@ func (c *webRTCConn) cleanup() {
 	}
 	if nil != c.errorChannel {
 		close(c.errorChannel)
+	}
+	// Close this side of the SOCKS pipe.
+	if nil != c.writePipe {
+		c.writePipe.Close()
+		c.writePipe = nil
 	}
 	if nil != c.transport {
 		log.Printf("WebRTC: closing DataChannel")

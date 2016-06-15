@@ -17,10 +17,9 @@ type Resetter interface {
 // Interface for a single remote WebRTC peer.
 // In the Client context, "Snowflake" refers to the remote browser proxy.
 type Snowflake interface {
-	io.ReadWriter
+	io.ReadWriteCloser
 	Resetter
 	Connector
-	Close() error
 }
 
 // Interface for catching Snowflakes. (aka the remote dialer)
@@ -34,7 +33,7 @@ type SnowflakeCollector interface {
 
 	// Add a Snowflake to the collection.
 	// Implementation should decide how to connect and maintain the webRTCConn.
-	Collect() error
+	Collect() (Snowflake, error)
 
 	// Remove and return the most available Snowflake from the collection.
 	Pop() Snowflake
@@ -52,6 +51,6 @@ type SocksConnector interface {
 
 // Interface for the Snowflake's transport. (Typically just webrtc.DataChannel)
 type SnowflakeDataChannel interface {
+	io.Closer
 	Send([]byte)
-	Close() error
 }

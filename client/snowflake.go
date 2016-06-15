@@ -31,7 +31,7 @@ var handlerChan = make(chan int)
 func ConnectLoop(snowflakes SnowflakeCollector) {
 	for {
 		// Check if ending is necessary.
-		err := snowflakes.Collect()
+		_, err := snowflakes.Collect()
 		if nil != err {
 			log.Println("WebRTC:", err,
 				" Retrying in", ReconnectTimeout, "seconds...")
@@ -51,6 +51,7 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error 
 	defer ln.Close()
 	log.Println("Started SOCKS listener.")
 	for {
+		log.Println("SOCKS listening...")
 		conn, err := ln.AcceptSocks()
 		log.Println("SOCKS accepted: ", conn.Req)
 		if err != nil {
@@ -81,20 +82,22 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 		return errors.New("handler: Received invalid Snowflake")
 	}
 	defer socks.Close()
-	log.Println("---- Snowflake assigned ----")
+	log.Println("---- Handler: snowflake assigned ----")
 	err := socks.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		return err
 	}
 
-	// Begin exchanging data.
-	// BUG(serene): There's a leak here when multiplexed.
-	go copyLoop(socks, snowflake)
+	go func() {
+		// When WebRTC resets, close the SOCKS connection, which ends
+		// the copyLoop below and induces new handler.
+		snowflake.WaitForReset()
+		socks.Close()
+	}()
 
-	// When WebRTC resets, close the SOCKS connection, which induces new handler.
-	// TODO: Double check this / fix it.
-	snowflake.WaitForReset()
-	log.Println("---- Closed ---")
+	// Begin exchanging data.
+	copyLoop(socks, snowflake)
+	log.Println("---- Handler: closed ---")
 	return nil
 }
 
