@@ -3,16 +3,22 @@ package main
 import (
 	"bytes"
 	"errors"
-	"github.com/keroserene/go-webrtc"
 	"io"
 	"log"
 	"time"
+
+	"github.com/dchest/uniuri"
+	"github.com/keroserene/go-webrtc"
 )
 
 // Remote WebRTC peer.
 // Implements the |Snowflake| interface, which includes
 // |io.ReadWriter|, |Resetter|, and |Connector|.
-type webRTCConn struct {
+//
+// Handles preparation of go-webrtc PeerConnection. Only ever has
+// one DataChannel.
+type WebRTCPeer struct {
+	id        string
 	config    *webrtc.Configuration
 	pc        *webrtc.PeerConnection
 	transport SnowflakeDataChannel // Holds the WebRTC DataChannel.
@@ -33,13 +39,13 @@ type webRTCConn struct {
 
 // Read bytes from local SOCKS.
 // As part of |io.ReadWriter|
-func (c *webRTCConn) Read(b []byte) (int, error) {
+func (c *WebRTCPeer) Read(b []byte) (int, error) {
 	return c.recvPipe.Read(b)
 }
 
 // Writes bytes out to remote WebRTC.
 // As part of |io.ReadWriter|
-func (c *webRTCConn) Write(b []byte) (int, error) {
+func (c *WebRTCPeer) Write(b []byte) (int, error) {
 	c.BytesLogger.AddOutbound(len(b))
 	if nil == c.transport {
 		log.Printf("Buffered %d bytes --> WebRTC", len(b))
@@ -51,7 +57,7 @@ func (c *webRTCConn) Write(b []byte) (int, error) {
 }
 
 // As part of |Snowflake|
-func (c *webRTCConn) Close() error {
+func (c *WebRTCPeer) Close() error {
 	var err error = nil
 	log.Printf("WebRTC: Closing")
 	c.cleanup()
@@ -61,7 +67,7 @@ func (c *webRTCConn) Close() error {
 }
 
 // As part of |Resetter|
-func (c *webRTCConn) Reset() {
+func (c *WebRTCPeer) Reset() {
 	c.Close()
 	go func() {
 		c.reset <- struct{}{}
@@ -70,12 +76,13 @@ func (c *webRTCConn) Reset() {
 }
 
 // As part of |Resetter|
-func (c *webRTCConn) WaitForReset() { <-c.reset }
+func (c *WebRTCPeer) WaitForReset() { <-c.reset }
 
 // Construct a WebRTC PeerConnection.
 func NewWebRTCConnection(config *webrtc.Configuration,
-	broker *BrokerChannel) *webRTCConn {
-	connection := new(webRTCConn)
+	broker *BrokerChannel) *WebRTCPeer {
+	connection := new(WebRTCPeer)
+	connection.id = "snowflake-" + uniuri.New()
 	connection.config = config
 	connection.broker = broker
 	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
@@ -94,7 +101,8 @@ func NewWebRTCConnection(config *webrtc.Configuration,
 }
 
 // As part of |Connector| interface.
-func (c *webRTCConn) Connect() error {
+func (c *WebRTCPeer) Connect() error {
+	log.Println(c.id, " connecting...")
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
 	err := c.preparePeerConnection()
@@ -113,7 +121,7 @@ func (c *webRTCConn) Connect() error {
 }
 
 // Create and prepare callbacks on a new WebRTC PeerConnection.
-func (c *webRTCConn) preparePeerConnection() error {
+func (c *WebRTCPeer) preparePeerConnection() error {
 	if nil != c.pc {
 		c.pc.Close()
 		c.pc = nil
@@ -161,11 +169,11 @@ func (c *webRTCConn) preparePeerConnection() error {
 }
 
 // Create a WebRTC DataChannel locally.
-func (c *webRTCConn) establishDataChannel() error {
+func (c *WebRTCPeer) establishDataChannel() error {
 	if c.transport != nil {
 		panic("Unexpected datachannel already exists!")
 	}
-	dc, err := c.pc.CreateDataChannel("snowflake", webrtc.Init{})
+	dc, err := c.pc.CreateDataChannel(c.id, webrtc.Init{})
 	// Triggers "OnNegotiationNeeded" on the PeerConnection, which will prepare
 	// an SDP offer while other goroutines operating on this struct handle the
 	// signaling. Eventually fires "OnOpen".
@@ -220,7 +228,7 @@ func (c *webRTCConn) establishDataChannel() error {
 	return nil
 }
 
-func (c *webRTCConn) sendOfferToBroker() {
+func (c *WebRTCPeer) sendOfferToBroker() {
 	if nil == c.broker {
 		return
 	}
@@ -235,7 +243,7 @@ func (c *webRTCConn) sendOfferToBroker() {
 
 // Block until an SDP offer is available, send it to either
 // the Broker or signal pipe, then await for the SDP answer.
-func (c *webRTCConn) exchangeSDP() error {
+func (c *WebRTCPeer) exchangeSDP() error {
 	select {
 	case offer := <-c.offerChannel:
 		// Display for copy-paste when no broker available.
@@ -272,7 +280,7 @@ func (c *webRTCConn) exchangeSDP() error {
 }
 
 // Close all channels and transports
-func (c *webRTCConn) cleanup() {
+func (c *WebRTCPeer) cleanup() {
 	if nil != c.offerChannel {
 		close(c.offerChannel)
 	}

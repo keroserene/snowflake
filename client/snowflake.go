@@ -75,7 +75,6 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 		handlerChan <- -1
 	}()
 	// Obtain an available WebRTC remote. May block.
-	log.Println("handler: awaiting Snowflake...")
 	snowflake := snowflakes.Pop()
 	if nil == snowflake {
 		socks.Reject()
@@ -148,6 +147,10 @@ func main() {
 		// Otherwise, use manual copy and pasting of SDP messages.
 		snowflakes.Tongue = NewCopyPasteDialer(iceServers)
 	}
+	if nil == snowflakes.Tongue {
+		log.Fatal("Unable to prepare rendezvous method.")
+		return
+	}
 	// Use a real logger to periodically output how much traffic is happening.
 	snowflakes.BytesLogger = &BytesSyncLogger{
 		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
@@ -212,4 +215,5 @@ func main() {
 		case sig = <-sigChan:
 		}
 	}
+	log.Println("snowflake is done.")
 }

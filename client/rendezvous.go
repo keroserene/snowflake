@@ -115,17 +115,19 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 // Implements the |Tongue| interface to catch snowflakes, using BrokerChannel.
 type WebRTCDialer struct {
 	*BrokerChannel
-	// webrtcConfig *webrtc.Configuration
-	iceServers IceServerList
+	webrtcConfig *webrtc.Configuration
 }
 
 func NewWebRTCDialer(
 	broker *BrokerChannel, iceServers IceServerList) *WebRTCDialer {
-
+	config := webrtc.NewConfiguration(iceServers...)
+	if nil == config {
+		log.Println("Unable to prepare WebRTC configuration.")
+		return nil
+	}
 	return &WebRTCDialer{
 		BrokerChannel: broker,
-		iceServers:    iceServers,
-		// webrtcConfig:  config,
+		webrtcConfig:  config,
 	}
 }
 
@@ -136,8 +138,7 @@ func (w WebRTCDialer) Catch() (Snowflake, error) {
 	}
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
-	config := webrtc.NewConfiguration(w.iceServers...)
-	connection := NewWebRTCConnection(config, w.BrokerChannel)
+	connection := NewWebRTCConnection(w.webrtcConfig, w.BrokerChannel)
 	err := connection.Connect()
 	return connection, err
 }
@@ -149,7 +150,7 @@ func (w WebRTCDialer) Catch() (Snowflake, error) {
 type CopyPasteDialer struct {
 	webrtcConfig *webrtc.Configuration
 	signal       *os.File
-	current      *webRTCConn
+	current      *WebRTCPeer
 }
 
 func NewCopyPasteDialer(iceServers IceServerList) *CopyPasteDialer {

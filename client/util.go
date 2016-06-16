@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/keroserene/go-webrtc"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/keroserene/go-webrtc"
 )
 
 const (

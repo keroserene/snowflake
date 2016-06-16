@@ -49,7 +49,7 @@ type FakeDialer struct{}
 
 func (w FakeDialer) Catch() (Snowflake, error) {
 	fmt.Println("Caught a dummy snowflake.")
-	return &webRTCConn{}, nil
+	return &WebRTCPeer{}, nil
 }
 
 type FakeSocksConn struct {
@@ -63,9 +63,9 @@ func (f FakeSocksConn) Reject() error {
 }
 func (f FakeSocksConn) Grant(addr *net.TCPAddr) error { return nil }
 
-type FakePeers struct{ toRelease *webRTCConn }
+type FakePeers struct{ toRelease *WebRTCPeer }
 
-func (f FakePeers) Collect() (Snowflake, error) { return &webRTCConn{}, nil }
+func (f FakePeers) Collect() (Snowflake, error) { return &WebRTCPeer{}, nil }
 func (f FakePeers) Pop() Snowflake              { return nil }
 func (f FakePeers) Melted() <-chan struct{}     { return nil }
 
@@ -141,7 +141,7 @@ func TestSnowflakeClient(t *testing.T) {
 			cnt := 5
 			p := NewPeers(cnt)
 			for i := 0; i < cnt; i++ {
-				p.activePeers.PushBack(&webRTCConn{})
+				p.activePeers.PushBack(&WebRTCPeer{})
 			}
 			So(p.Count(), ShouldEqual, cnt)
 			p.End()

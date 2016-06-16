@@ -70,7 +70,7 @@ func (p *Peers) Pop() Snowflake {
 	var ok bool
 	for nil == snowflake {
 		snowflake, ok = <-p.snowflakeChan
-		conn := snowflake.(*webRTCConn)
+		conn := snowflake.(*WebRTCPeer)
 		if !ok {
 			return nil
 		}
@@ -79,7 +79,7 @@ func (p *Peers) Pop() Snowflake {
 		}
 	}
 	// Set to use the same rate-limited traffic logger to keep consistency.
-	snowflake.(*webRTCConn).BytesLogger = p.BytesLogger
+	snowflake.(*WebRTCPeer).BytesLogger = p.BytesLogger
 	return snowflake
 }
 
@@ -99,7 +99,7 @@ func (p *Peers) Count() int {
 func (p *Peers) purgeClosedPeers() {
 	for e := p.activePeers.Front(); e != nil; {
 		next := e.Next()
-		conn := e.Value.(*webRTCConn)
+		conn := e.Value.(*WebRTCPeer)
 		// Purge those marked for deletion.
 		if conn.closed {
 			p.activePeers.Remove(e)
@@ -115,7 +115,7 @@ func (p *Peers) End() {
 	cnt := p.Count()
 	for e := p.activePeers.Front(); e != nil; {
 		next := e.Next()
-		conn := e.Value.(*webRTCConn)
+		conn := e.Value.(*WebRTCPeer)
 		conn.Close()
 		p.activePeers.Remove(e)
 		e = next
