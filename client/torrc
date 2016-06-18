@@ -5,6 +5,6 @@ ClientTransportPlugin snowflake exec ./client \
 -url https://snowflake-reg.appspot.com/ \
 -front www.google.com \
 -ice stun:stun.l.google.com:19302 \
--max 4
+-max 3
 
 Bridge snowflake 0.0.3.0:1

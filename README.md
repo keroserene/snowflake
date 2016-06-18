@@ -2,28 +2,31 @@
 
 [![Build Status](https://travis-ci.org/keroserene/snowflake.svg?branch=master)](https://travis-ci.org/keroserene/snowflake)
 
-A Pluggable Transport using WebRTC, inspired by Flashproxy
+Pluggable Transport using WebRTC, inspired by Flashproxy.
+
+### Status
+
+- [x] Transport: Successfully connects using WebRTC.
+- [x] Rendezvous: HTTP signaling (with optional domain fronting) to the Broker
+  arranges peer-to-peer connections with multitude of volunteer "snowflakes".
+- [x] Client multiplexes remote snowflakes.
+- [x] Can browse using Tor over Snowflake.
+- [ ] Reproducible build with TBB.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [Status](#status)
 - [Usage](#usage)
   - [Dependencies](#dependencies)
   - [More Info](#more-info)
-  - [Building a Snowflake](#building-a-snowflake)
+  - [Building](#building)
+- [FAQ](#faq)
 - [Appendix](#appendix)
+    - [-- Testing Copy-Paste Via Browser Proxy --](#---testing-copy-paste-via-browser-proxy---)
     - [-- Testing directly via WebRTC Server --](#---testing-directly-via-webrtc-server---)
-    - [-- Via Browser Proxy --](#---via-browser-proxy---)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-### Status
-
-Successfully & automatically bootstraps with a WebRTC transport, using HTTP
-signaling (with optional domain fronting) speaking to a multitude of volunteer
-"snowflakes". Still lots of work to do.
 
 ### Usage
 
@@ -38,7 +41,7 @@ This should start the client plugin, bootstrapping to 100% using WebRTC.
 #### Dependencies
 
 Client:
-- [go-webrtc](https://github.com/keroserene/go-webrtc).
+- [go-webrtc](https://github.com/keroserene/go-webrtc)
 - Go 1.5+
 
 Proxy:
@@ -48,19 +51,22 @@ Proxy:
 
 #### More Info
 
-The client uses the following `torrc` options:
+Tor can plug in the Snowflake client via a correctly configured `torrc`.
+For example:
+
 ```
 ClientTransportPlugin snowflake exec ./client \
 -url https://snowflake-reg.appspot.com/ \
 -front www.google.com \
 -ice stun:stun.l.google.com:19302
+-max 3
 ```
 
-Which allows it to speak to the Broker,
-get matched with a "snowflake" browser proxy,
-and negotiate a WebRTC PeerConnection.
+The flags `-url` and `-front` allow the Snowflake client to speak to the Broker,
+in order to get connected with some volunteer's browser proxy. `-ice` is a
+comma-separated list of ICE servers, which are required for NAT traversal.
 
-To see logs, do `tail -F snowflake.log` in a second terminal.
+For logging, run `tail -F snowflake.log` in a second terminal.
 
 You can modify the `torrc` to use your own broker,
 or remove the options entirely which will default to the old copy paste
@@ -71,11 +77,13 @@ ClientTransportPlugin snowflake exec ./client --meek
 ```
 
 
-#### Building a Snowflake
+#### Building
 
-This will only work if there are any browser snowflakes running at all.
-To run your own, first make sure coffeescript is installed.
-Then, build with:
+This describes how to build the in-browser snowflake. For the client, see Usage,
+above.
+
+The client will only work if there are browser snowflakes available.
+To run your own:
 
 ```
 cd proxy/
@@ -91,8 +99,9 @@ cd build/
 python -m http.server
 ```
 
-Then, open a browser tab to `http://127.0.0.1:8000/snowflake.html`,
-which causes you to act as an ephemeral Tor bridge.
+Then, open a browser tab to `http://127.0.0.1:8000/snowflake.html` to view
+the debug-console of the snowflake.,
+So long as that tab is open, you are an ephemeral Tor bridge.
 
 ### FAQ
 
