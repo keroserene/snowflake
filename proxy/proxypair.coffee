@@ -107,6 +107,7 @@ class ProxyPair
     @relay.onmessage = @onRelayToClientMessage
     # TODO: Better websocket timeout handling.
     @timer = setTimeout((=>
+      return if 0 == @timer
       log @relay.label + ' timed out connecting.'
       @relay.onclose()), 5000)
 
