@@ -138,7 +138,7 @@ func (w WebRTCDialer) Catch() (Snowflake, error) {
 	}
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
-	connection := NewWebRTCConnection(w.webrtcConfig, w.BrokerChannel)
+	connection := NewWebRTCPeer(w.webrtcConfig, w.BrokerChannel)
 	err := connection.Connect()
 	return connection, err
 }
@@ -177,12 +177,12 @@ func NewCopyPasteDialer(iceServers IceServerList) *CopyPasteDialer {
 	return dialer
 }
 
-// Initialize a WebRTC connection via manual copy-paste.
+// Initialize a WebRTC Peer via manual copy-paste.
 func (d *CopyPasteDialer) Catch() (Snowflake, error) {
 	if nil == d.signal {
 		return nil, errors.New("Cannot copy-paste dial without signal pipe.")
 	}
-	connection := NewWebRTCConnection(d.webrtcConfig, nil)
+	connection := NewWebRTCPeer(d.webrtcConfig, nil)
 	// Must keep track of pending new connection until copy-paste completes.
 	d.current = connection
 	// Outputs SDP offer to log, expecting user to copy-paste to the remote Peer.

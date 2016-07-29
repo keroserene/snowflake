@@ -81,6 +81,7 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 		return errors.New("handler: Received invalid Snowflake")
 	}
 	defer socks.Close()
+	defer snowflake.Reset()
 	log.Println("---- Handler: snowflake assigned ----")
 	err := socks.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
@@ -88,13 +89,13 @@ func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 	}
 
 	go func() {
-		// When WebRTC resets, close the SOCKS connection, which ends
-		// the copyLoop below and induces new handler.
+		// When WebRTC resets, close the SOCKS connection too.
 		snowflake.WaitForReset()
 		socks.Close()
 	}()
 
-	// Begin exchanging data.
+	// Begin exchanging data. Either WebRTC or localhost SOCKS will close first.
+	// In eithercase, this closes the handler and induces a new handler.
 	copyLoop(socks, snowflake)
 	log.Println("---- Handler: closed ---")
 	return nil

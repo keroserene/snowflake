@@ -58,12 +58,14 @@ func (c *WebRTCPeer) Write(b []byte) (int, error) {
 
 // As part of |Snowflake|
 func (c *WebRTCPeer) Close() error {
-	var err error = nil
+	if c.closed { // Skip if already closed.
+		return nil
+	}
 	log.Printf("WebRTC: Closing")
 	c.cleanup()
 	// Mark for deletion.
 	c.closed = true
-	return err
+	return nil
 }
 
 // As part of |Resetter|
@@ -79,7 +81,7 @@ func (c *WebRTCPeer) Reset() {
 func (c *WebRTCPeer) WaitForReset() { <-c.reset }
 
 // Construct a WebRTC PeerConnection.
-func NewWebRTCConnection(config *webrtc.Configuration,
+func NewWebRTCPeer(config *webrtc.Configuration,
 	broker *BrokerChannel) *WebRTCPeer {
 	connection := new(WebRTCPeer)
 	connection.id = "snowflake-" + uniuri.New()
@@ -298,8 +300,8 @@ func (c *WebRTCPeer) cleanup() {
 	if nil != c.transport {
 		log.Printf("WebRTC: closing DataChannel")
 		dataChannel := c.transport
-		// Setting dc to nil *before* Close indicates to OnClose that it
-		// was locally triggered.
+		// Setting transport to nil *before* dc Close indicates to OnClose that
+		// this was locally triggered.
 		c.transport = nil
 		dataChannel.Close()
 	}
