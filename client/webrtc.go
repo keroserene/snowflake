@@ -29,6 +29,7 @@ type WebRTCPeer struct {
 	errorChannel  chan error
 	recvPipe      *io.PipeReader
 	writePipe     *io.PipeWriter
+	lastReceive   time.Time
 	buffer        bytes.Buffer
 	reset         chan struct{}
 
@@ -36,49 +37,6 @@ type WebRTCPeer struct {
 
 	BytesLogger
 }
-
-// Read bytes from local SOCKS.
-// As part of |io.ReadWriter|
-func (c *WebRTCPeer) Read(b []byte) (int, error) {
-	return c.recvPipe.Read(b)
-}
-
-// Writes bytes out to remote WebRTC.
-// As part of |io.ReadWriter|
-func (c *WebRTCPeer) Write(b []byte) (int, error) {
-	c.BytesLogger.AddOutbound(len(b))
-	if nil == c.transport {
-		log.Printf("Buffered %d bytes --> WebRTC", len(b))
-		c.buffer.Write(b)
-	} else {
-		c.transport.Send(b)
-	}
-	return len(b), nil
-}
-
-// As part of |Snowflake|
-func (c *WebRTCPeer) Close() error {
-	if c.closed { // Skip if already closed.
-		return nil
-	}
-	log.Printf("WebRTC: Closing")
-	c.cleanup()
-	// Mark for deletion.
-	c.closed = true
-	return nil
-}
-
-// As part of |Resetter|
-func (c *WebRTCPeer) Reset() {
-	c.Close()
-	go func() {
-		c.reset <- struct{}{}
-		log.Println("WebRTC resetting...")
-	}()
-}
-
-// As part of |Resetter|
-func (c *WebRTCPeer) WaitForReset() { <-c.reset }
 
 // Construct a WebRTC PeerConnection.
 func NewWebRTCPeer(config *webrtc.Configuration,
@@ -102,6 +60,69 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	return connection
 }
 
+// Read bytes from local SOCKS.
+// As part of |io.ReadWriter|
+func (c *WebRTCPeer) Read(b []byte) (int, error) {
+	return c.recvPipe.Read(b)
+}
+
+// Writes bytes out to remote WebRTC.
+// As part of |io.ReadWriter|
+func (c *WebRTCPeer) Write(b []byte) (int, error) {
+	c.BytesLogger.AddOutbound(len(b))
+	// TODO: Buffering could be improved / separated out of WebRTCPeer.
+	if nil == c.transport {
+		log.Printf("Buffered %d bytes --> WebRTC", len(b))
+		c.buffer.Write(b)
+	} else {
+		c.transport.Send(b)
+	}
+	return len(b), nil
+}
+
+// As part of |Snowflake|
+func (c *WebRTCPeer) Close() error {
+	if c.closed { // Skip if already closed.
+		return nil
+	}
+	// Mark for deletion.
+	c.closed = true
+	c.cleanup()
+	c.Reset()
+	log.Printf("WebRTC: Closing")
+	return nil
+}
+
+// As part of |Resetter|
+func (c *WebRTCPeer) Reset() {
+	if nil == c.reset {
+		return
+	}
+	c.reset <- struct{}{}
+}
+
+// As part of |Resetter|
+func (c *WebRTCPeer) WaitForReset() { <-c.reset }
+
+// Prevent long-lived broken remotes.
+// Should also update the DataChannel in underlying go-webrtc's to make Closes
+// more immediate / responsive.
+func (c *WebRTCPeer) checkForStaleness() {
+	c.lastReceive = time.Now()
+	for {
+		if c.closed {
+			return
+		}
+		if time.Since(c.lastReceive).Seconds() > SnowflakeTimeout {
+			log.Println("WebRTC: No messages received for", SnowflakeTimeout,
+				"seconds -- closing stale connection.")
+			c.Close()
+			return
+		}
+		<-time.After(time.Second)
+	}
+}
+
 // As part of |Connector| interface.
 func (c *WebRTCPeer) Connect() error {
 	log.Println(c.id, " connecting...")
@@ -119,6 +140,7 @@ func (c *WebRTCPeer) Connect() error {
 	if err != nil {
 		return err
 	}
+	go c.checkForStaleness()
 	return nil
 }
 
@@ -208,7 +230,7 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		// Disable the DataChannel as a write destination.
 		log.Println("WebRTC: DataChannel.OnClose [remotely]")
 		c.transport = nil
-		c.Reset()
+		c.Close()
 	}
 	dc.OnMessage = func(msg []byte) {
 		if len(msg) <= 0 {
@@ -225,6 +247,7 @@ func (c *WebRTCPeer) establishDataChannel() error {
 			log.Println("Error: short write")
 			panic("short write")
 		}
+		c.lastReceive = time.Now()
 	}
 	log.Println("WebRTC: DataChannel created.")
 	return nil
@@ -257,7 +280,7 @@ func (c *WebRTCPeer) exchangeSDP() error {
 		}
 	case err := <-c.errorChannel:
 		log.Println("Failed to prepare offer", err)
-		c.Reset()
+		c.Close()
 		return err
 	}
 	// Keep trying the same offer until a valid answer arrives.
