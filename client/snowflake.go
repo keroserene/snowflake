@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path"
 	"sync"
 	"syscall"
 	"time"
@@ -121,7 +122,11 @@ func copyLoop(a, b io.ReadWriter) {
 
 func main() {
 	webrtc.SetLoggingVerbosity(1)
-	logFile, err := os.OpenFile("snowflake.log",
+	stateDir, err := pt.MakeStateDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	logFile, err := os.OpenFile(path.Join(stateDir, "snowflake.log"),
 		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal(err)
