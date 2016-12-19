@@ -159,7 +159,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Otherwise, find the most available snowflake proxy, and pass the offer to it.
-  // Delete must be deferred in order to correctly process answer request later.
+	// Delete must be deferred in order to correctly process answer request later.
 	snowflake := heap.Pop(ctx.snowflakes).(*Snowflake)
 	defer delete(ctx.idToSnowflake, snowflake.id)
 	snowflake.offerChannel <- offer

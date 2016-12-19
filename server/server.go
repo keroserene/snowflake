@@ -8,6 +8,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"flag"
@@ -41,13 +42,12 @@ var ptInfo pt.ServerInfo
 var handlerChan = make(chan int)
 
 func usage() {
-	fmt.Printf("Usage: %s [OPTIONS]\n", os.Args[0])
+	fmt.Printf("Usage: %s [OPTIONS]\n\n", os.Args[0])
 	fmt.Printf("WebSocket server pluggable transport for Tor.\n")
 	fmt.Printf("Works only as a managed proxy.\n")
 	fmt.Printf("\n")
-	fmt.Printf("  -h, --help   show this help.\n")
-	fmt.Printf("  --log FILE   log messages to FILE (default stderr).\n")
-	fmt.Printf("  --port PORT  listen on PORT (overrides Tor's requested port).\n")
+	fmt.Printf("  -h, -help   show this help.\n")
+	flag.PrintDefaults()
 }
 
 // An abstraction that makes an underlying WebSocket connection look like an
@@ -181,11 +181,56 @@ func webSocketHandler(ws *websocket.WebSocket) {
 	proxy(or, &conn)
 }
 
-func startListener(addr *net.TCPAddr) (*net.TCPListener, error) {
-	ln, err := net.ListenTCP("tcp", addr)
+func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename string) (net.Listener, error) {
+	// This is cribbed from the source of net/http.Server.ListenAndServeTLS.
+	// We have to separate the Listen and Serve parts because we need to
+	// report the listening address before entering Serve (which is an
+	// infinite loop).
+	// https://groups.google.com/d/msg/Golang-nuts/3F1VRCCENp8/3hcayZiwYM8J
+	config := &tls.Config{}
+	config.NextProtos = []string{"http/1.1"}
+
+	var err error
+	config.Certificates = make([]tls.Certificate, 1)
+	config.Certificates[0], err = tls.LoadX509KeyPair(certFilename, keyFilename)
 	if err != nil {
 		return nil, err
 	}
+
+	conn, err := net.ListenTCP(network, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Additionally disable SSLv3 because of the POODLE attack.
+	// http://googleonlinesecurity.blogspot.com/2014/10/this-poodle-bites-exploiting-ssl-30.html
+	// https://code.google.com/p/go/source/detail?r=ad9e191a51946e43f1abac8b6a2fefbf2291eea7
+	config.MinVersion = tls.VersionTLS10
+
+	tlsListener := tls.NewListener(conn, config)
+
+	return tlsListener, nil
+}
+
+func startListener(network string, addr *net.TCPAddr) (net.Listener, error) {
+	ln, err := net.ListenTCP(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("listening with plain HTTP on %s", ln.Addr())
+	return startServer(ln)
+}
+
+func startListenerTLS(network string, addr *net.TCPAddr, certFilename, keyFilename string) (net.Listener, error) {
+	ln, err := listenTLS(network, addr, certFilename, keyFilename)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("listening with HTTPS on %s", ln.Addr())
+	return startServer(ln)
+}
+
+func startServer(ln net.Listener) (net.Listener, error) {
 	go func() {
 		defer ln.Close()
 		var config websocket.Config
@@ -195,7 +240,7 @@ func startListener(addr *net.TCPAddr) (*net.TCPListener, error) {
 			Handler:     config.Handler(webSocketHandler),
 			ReadTimeout: requestTimeout,
 		}
-		err = s.Serve(ln)
+		err := s.Serve(ln)
 		if err != nil {
 			log.Printf("http.Serve: " + err.Error())
 		}
@@ -204,10 +249,15 @@ func startListener(addr *net.TCPAddr) (*net.TCPListener, error) {
 }
 
 func main() {
+	var disableTLS bool
+	var certFilename, keyFilename string
 	var logFilename string
 	var port int
 
 	flag.Usage = usage
+	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
+	flag.StringVar(&certFilename, "cert", "", "TLS certificate file (required without --disable-tls)")
+	flag.StringVar(&keyFilename, "key", "", "TLS private key file (required without --disable-tls)")
 	flag.StringVar(&logFilename, "log", "", "log file to write to")
 	flag.IntVar(&port, "port", 0, "port to listen on if unspecified by Tor")
 	flag.Parse()
@@ -221,6 +271,16 @@ func main() {
 		log.SetOutput(f)
 	}
 
+	if disableTLS {
+		if certFilename != "" || keyFilename != "" {
+			log.Fatalf("The --cert and --key options are not allowed with --disable-tls.\n")
+		}
+	} else {
+		if certFilename == "" || keyFilename == "" {
+			log.Fatalf("The --cert and --key options are required.\n")
+		}
+	}
+
 	log.SetFlags(log.LstdFlags | log.LUTC)
 	log.Printf("starting")
 	var err error
@@ -230,7 +290,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	listeners := make([]*net.TCPListener, 0)
+	listeners := make([]net.Listener, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		// Override tor's requested port (which is 0 if this transport
 		// has not been run before) with the one requested by the --port
@@ -241,13 +301,17 @@ func main() {
 
 		switch bindaddr.MethodName {
 		case ptMethodName:
-			ln, err := startListener(bindaddr.Addr)
+			var ln net.Listener
+			if disableTLS {
+				ln, err = startListener("tcp", bindaddr.Addr)
+			} else {
+				ln, err = startListenerTLS("tcp", bindaddr.Addr, certFilename, keyFilename)
+			}
 			if err != nil {
 				pt.SmethodError(bindaddr.MethodName, err.Error())
 				break
 			}
 			pt.Smethod(bindaddr.MethodName, ln.Addr())
-			log.Printf("listening on %s", ln.Addr().String())
 			listeners = append(listeners, ln)
 		default:
 			pt.SmethodError(bindaddr.MethodName, "no such method")
