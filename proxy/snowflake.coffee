@@ -125,7 +125,6 @@ class Snowflake
     try
       offer = JSON.parse desc
       dbg 'Received:\n\n' + offer.sdp + '\n'
-      log offer
       sdp = new SessionDescription offer
       @sendAnswer pair if pair.receiveWebRTCOffer sdp
     catch e
@@ -137,8 +136,9 @@ class Snowflake
       pair.pc.setLocalDescription sdp
     fail = ->
       dbg 'webrtc: Failed to create Answer'
-    promise = pair.pc.createAnswer next, fail
-    promise.then next if promise
+    pair.pc.createAnswer()
+    .then next
+    .catch fail
 
   makeProxyPair: (relay) ->
     pair = new ProxyPair null, relay, @rateLimit
