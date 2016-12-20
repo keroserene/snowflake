@@ -125,7 +125,7 @@ class Snowflake
     try
       offer = JSON.parse desc
       dbg 'Received:\n\n' + offer.sdp + '\n'
-      console.log offer
+      log offer
       sdp = new SessionDescription offer
       @sendAnswer pair if pair.receiveWebRTCOffer sdp
     catch e

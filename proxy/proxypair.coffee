@@ -120,7 +120,7 @@ class ProxyPair
         bytes = new Uint8Array recv
         line = String.fromCharCode.apply(null, bytes)
       line = line.trim()
-      console.log 'WebRTC --> websocket data: ' + line
+      log 'WebRTC --> websocket data: ' + line
     @c2rSchedule.push recv
     @flush()
 
