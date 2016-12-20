@@ -13,3 +13,4 @@ proxy/build
 proxy/node_modules
 proxy/spec/support
 ignore/
+npm-debug.log

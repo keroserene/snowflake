@@ -69,14 +69,14 @@ class ProxyPair
     channel.onopen = =>
       log 'WebRTC DataChannel opened!'
       snowflake.state = MODE.WEBRTC_READY
-      snowflake.ui.setActive true
+      snowflake.ui?.setActive true
       # This is the point when the WebRTC datachannel is done, so the next step
       # is to establish websocket to the server.
       @connectRelay()
     channel.onclose = =>
       log 'WebRTC DataChannel closed.'
-      snowflake.ui.setStatus 'disconnected by webrtc.'
-      snowflake.ui.setActive false
+      snowflake.ui?.setStatus 'disconnected by webrtc.'
+      snowflake.ui?.setActive false
       snowflake.state = MODE.INIT
       @flush()
       @close()
@@ -95,11 +95,11 @@ class ProxyPair
         clearTimeout @timer
         @timer = 0
       log @relay.label + ' connected!'
-      snowflake.ui.setStatus 'connected'
+      snowflake.ui?.setStatus 'connected'
     @relay.onclose = =>
       log @relay.label + ' closed.'
-      snowflake.ui.setStatus 'disconnected.'
-      snowflake.ui.setActive false
+      snowflake.ui?.setStatus 'disconnected.'
+      snowflake.ui?.setActive false
       snowflake.state = MODE.INIT
       @flush()
       @close()

@@ -11,14 +11,24 @@
     "lint": "cake lint",
     "build": "cake build",
     "clean": "cake clean",
-    "modern": "modernizr -c modernizr-config.json -d static/"
+    "modern": "modernizr -c modernizr-config.json -d static/",
+    "prepublish": "npm run build",
+    "start": "node build/snowflake.js"
+  },
+  "bin": {
+    "snowflake": "build/snowflake.js"
   },
   "author": "Serene Han",
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "coffee-script": "^1.10.0",
-    "coffeelint": "^1.15.0",
-    "jasmine": "^2.4.1",
+    "coffeelint": "^1.16.0",
+    "jasmine": "^2.5.2",
     "modernizr": "^3.3.1"
+  },
+  "dependencies": {
+    "coffee-script": "^1.12.2",
+    "wrtc": "^0.0.61",
+    "ws": "^1.1.1",
+    "xmlhttprequest": "^1.8.0"
   }
 }

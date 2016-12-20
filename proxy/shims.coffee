@@ -1,11 +1,27 @@
 ###
-WebrTC shims for multiple browsers.
+WebRTC shims for multiple browsers.
 ###
 
-if typeof module isnt 'undefined' and module.exports
+if module?.exports
   window = {}
+  location = ''
+
+  if not TESTING? or not TESTING
+    webrtc = require 'wrtc'
+
+    PeerConnection = webrtc.RTCPeerConnection
+    IceCandidate = webrtc.RTCIceCandidate
+    SessionDescription = webrtc.RTCSessionDescription
+
+    WebSocket = require 'ws'
+    { XMLHttpRequest } = require 'xmlhttprequest'
+
+    process.nextTick () -> init true
+
 else
   window = this
+  location = window.location.search.substr(1)
+
   prop = Modernizr.prefixed 'RTCPeerConnection', window, false
   if not prop
     console.log 'webrtc feature not detected. shutting down'
@@ -18,4 +34,5 @@ else
   SessionDescription = window.RTCSessionDescription ||
     window.mozRTCSessionDescription
 
-location = if window.location then window.location.search.substr(1) else ""
+  WebSocket = window.WebSocket
+  XMLHttpRequest = window.XMLHttpRequest

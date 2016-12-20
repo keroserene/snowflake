@@ -3,7 +3,7 @@ All of Snowflake's DOM manipulation and inputs.
 ###
 
 class UI
-  debug = false  # True when there's no badge
+  debug: false  # True when there's no badge
 
   # DOM elements references.
   $msglog: null

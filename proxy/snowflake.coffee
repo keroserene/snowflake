@@ -13,7 +13,6 @@ DEFAULT_RELAY =
   port: 9902
 COPY_PASTE_ENABLED = false
 
-DEBUG = false
 silenceNotifications = false
 query = Query.parse(location)
 DEBUG = Params.getBool(query, 'debug', false)
@@ -88,7 +87,8 @@ class Snowflake
   pollBroker: ->
     # Temporary countdown. TODO: Simplify
     countdown = (msg, sec) =>
-      @ui.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
+      dbg msg
+      @ui?.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
       sec--
       if sec >= 0
         setTimeout((-> countdown(msg, sec)), 1000)
@@ -103,7 +103,7 @@ class Snowflake
         return
       msg = 'polling for client... '
       msg += '[retries: ' + @retries + ']' if @retries > 0
-      @ui.setStatus msg
+      @ui?.setStatus msg
       recv = @broker.getClientOffer pair.id
       recv.then (desc) =>
         @receiveOffer pair, desc
@@ -199,12 +199,12 @@ Signalling =
 # Log to both console and UI if applicable.
 log = (msg) ->
   console.log 'Snowflake: ' + msg
-  snowflake.ui.log msg
+  snowflake.ui?.log msg
 
-dbg = (msg) -> log msg if true == snowflake.ui.debug
+dbg = (msg) -> log msg if DEBUG or snowflake.ui?.debug
 
-init = ->
-  ui = new UI()
+init = (isNode) ->
+  ui = if isNode then null else new UI()
   silenceNotifications = Params.getBool(query, 'silent', false)
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
   broker = new Broker brokerUrl
@@ -229,4 +229,4 @@ window.onunload = ->
   pair.close() for pair in snowflake.proxyPairs
   null
 
-window.onload = init
+window.onload = init.bind null, false

@@ -35,7 +35,8 @@ task 'test', 'snowflake unit tests', ->
   # Simply concat all the files because we're not using node exports.
   jasmineFiles = FILES_ALL
   outFile = 'test/bundle.spec.coffee'
-  exec 'cat ' + jasmineFiles.join(' ') +  ' | cat > ' + outFile
+  exec 'echo "TESTING = true" > ' + outFile
+  exec 'cat ' + jasmineFiles.join(' ') +  ' | cat >> ' + outFile
   execSync 'coffee -cb ' + outFile
   spawn 'jasmine', ['test/bundle.spec.js'], {
     stdio: 'inherit'
