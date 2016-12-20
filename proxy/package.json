@@ -11,7 +11,7 @@
     "lint": "cake lint",
     "build": "cake build",
     "clean": "cake clean",
-    "modern": "modernizr -c modernizr-config.json -d lib/"
+    "modern": "modernizr -c modernizr-config.json -d static/"
   },
   "author": "Serene Han",
   "license": "BSD-3-Clause",

@@ -1,5 +1,5 @@
 fs = require 'fs'
-{exec, spawn, execSync} = require 'child_process'
+{ exec, spawn, execSync } = require 'child_process'
 
 # All coffeescript files required.
 FILES = [
@@ -24,7 +24,6 @@ STATIC = 'static'
 
 copyStaticFiles = ->
   exec 'cp ' + STATIC + '/* build/'
-  exec 'cp lib/modernizr.js build/'
 
 compileCoffee = ->
   exec 'cat ' + FILES.join(' ') + ' | coffee -cs > ' + OUTFILE, (err, stdout, stderr) ->
