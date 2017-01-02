@@ -12,6 +12,7 @@ DEFAULT_RELAY =
   host: '192.81.135.242'
   port: 9902
 COPY_PASTE_ENABLED = false
+COOKIE_NAME = "snowflake-allow";
 
 silenceNotifications = false
 query = Query.parse(location)
@@ -51,6 +52,7 @@ class Snowflake
   state:      MODE.INIT
   retries:    0
 
+  # Prepare the Snowflake with a Broker (to find clients) and optional UI.
   constructor: (@broker, @ui) ->
     rateLimitBytes = undefined
     if 'off' != query['ratelimit']
@@ -204,6 +206,13 @@ log = (msg) ->
 dbg = (msg) -> log msg if DEBUG or snowflake.ui?.debug
 
 init = (isNode) ->
+  cookies = Parse.cookie document.cookie
+  # Do nothing if snowflake has not been opted in.
+  if cookies[COOKIE_NAME] != "1"
+    console.log 'Snowflake is not activate. Please click the badge to change options.';
+    return
+
+  # Hook up to the debug UI if available.
   ui = if isNode then null else new UI()
   silenceNotifications = Params.getBool(query, 'silent', false)
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
@@ -219,7 +228,6 @@ init = (isNode) ->
   snowflake.beginWebRTC()
 
 # Notification of closing tab with active proxy.
-# TODO: Opt-in/out parameter or cookie
 window.onbeforeunload = ->
   if !silenceNotifications && MODE.WEBRTC_READY == snowflake.state
     return CONFIRMATION_MESSAGE

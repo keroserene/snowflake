@@ -77,6 +77,14 @@
   <div id="snowflake-status"></div>
   </div>
 
+  <div id='cookies-disabled' style='display:none'>
+  <hr/>
+  <p>
+  Your browser has cookies disabled. You will need to enable them in order
+  to set Snowflake preferences.
+  </p>
+  </div>
+
 <script>
 
 // Defaults to opt-in.
@@ -120,9 +128,16 @@ function refreshStatus() {
   }
 }
 
-$buttons = document.getElementById('buttons');
-$buttons.style = '';
-refreshStatus();
+window.onload = function() {
+  if (navigator.cookieEnabled) {
+    // Both JS and cookies enabled -- display normal buttons.
+    document.getElementById('buttons').style = '';
+  } else {
+    // Display the cookies disabled message if necessary.
+    document.getElementById('cookies-disabled').style = '';
+  }
+  refreshStatus();
+}
 </script>
 </body>
 </html>
