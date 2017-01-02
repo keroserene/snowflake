@@ -2,8 +2,6 @@
 <html>
 <head>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-  <script type="text/javascript" src="modernizr.js"></script>
-  <script type="text/javascript" src="snowflake.js"></script>
   <title>Snowflake - Options</title>
   <style>
   * {
@@ -29,43 +27,14 @@
     position: relative; border: none;
     width: 30rem; min-width: 40em;
     padding: 3rem; margin: auto; margin-top: 1rem;
+    cursor: default;
   }
-  .active { background-color: rgba(0,50,0,0.8); }
-  #msglog {
-    display: block;
-    width: 100%;
-    min-height: 40em;
-    margin-bottom: 1em;
-    padding: 8px;
+  a { color: #88F; } a:hover { color: #fff; }
+  #snowflake-status {
+    color: #888;
   }
-  .inputarea {
-    position: relative;
-    width: 100%;
-    height: 3em;
-    display: block;
-  }
-  #input {
-    display: inline-block;
-    position: absolute; left: 0;
-    width: 89%; height: 100%;
-    padding: 8px 30px;
-    font-size: 80%;
-    color: #fff;
-    background-color: rgba(0,0,0,0.9);
-    border: 1px solid #999;
-  }
-  #send {
-    display: inline-block; position: absolute;
-    right: 0; top: 0;  height: 100%; width: 10%;
-    background-color: #202; color: #f8f;
-    font-variant: small-caps; font-size: 100%;
-    border: none; // box-shadow: 0 2px 5px #000;
-  }
-  #send:hover { background-color: #636; }
-  #status {
-    background-color: rgba(0,0,0,0.9);  color: #999;
-    margin: 8px 0; padding: 8px 1em; cursor: default;
-    text-align: left;
+  .active {
+    color: #2F2 !important;
   }
   </style>
 </head>
@@ -82,42 +51,78 @@
 
   <p>
   For more information on this system click
-  <a href="keroserene.net/snowflake">here</a>.
+  <a href="https://keroserene.net/snowflake">here</a>.
   </p>
 
   <noscript>
-  Volunteering as a snowflake proxy requires javascript to be enabled.
+  <hr/>
+  Snowflake proxy requires javascript.
+  <br/>
+  To volunteer as a proxy, please enable javascript.
   </noscript>
+
+  <div id='buttons' style='display:none'>
   <p>
   Do you want your browser to act as a proxy?
   </p>
 
   <p>
-  <button onclick="enable()">
+  <button onclick="enableSnowflake()">
     Yes
   </button>
-  <button onclick="disable()">
+  <button onclick="disableSnowflake()">
     No
   </button>
   </p>
-
-  <div id="snowflake-status">
+  <div id="snowflake-status"></div>
   </div>
 
 <script>
 
-var COOKIE_NAME = 'snowflake-allow'
+// Defaults to opt-in.
+var COOKIE_NAME = "snowflake-allow";
+var COOKIE_LIFETIME = "Thu, 01 Jan 2038 00:00:00 GMT";
 
 function readCookie(cookie) {
-  c = document.cookies.split('; ');
+  c = document.cookie.split('; ');
   cookies = {};
   for (i = 0 ; i < c.length ; i++) {
-    pair = c[i].split('=')
-    cookies[pair[0]] = pair[1]q
+    pair = c[i].split('=');
+    cookies[pair[0]] = pair[1];
   }
   return cookies[cookie];
 }
 
+function enableSnowflake() {
+  setSnowflakeCookie(1);
+  refreshStatus();
+}
+
+function disableSnowflake() {
+  setSnowflakeCookie(0);
+  refreshStatus();
+}
+
+function setSnowflakeCookie(val) {
+  document.cookie = COOKIE_NAME + "=" + val + ";path=/ ;expires=" + COOKIE_LIFETIME;
+}
+
+function refreshStatus() {
+  var enabled = readCookie(COOKIE_NAME);
+  var $status = document.getElementById('snowflake-status');
+  if ("1" === enabled) {
+    $status.innerHTML = 'Snowflake Proxy is ACTIVE <br/><br/>' +
+    'Thank you for contributing to internet freedom!';
+    $status.className = 'active';
+  } else {
+    $status.innerHTML = 'Snowflake Proxy is OFF';
+    $status.className = '';
+  }
+}
+
+$buttons = document.getElementById('buttons');
+$buttons.style = '';
+refreshStatus();
 </script>
 </body>
 </html>
