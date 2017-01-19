@@ -4,7 +4,8 @@
 //
 // Usage in torrc:
 // 	ExtORPort auto
-// 	ServerTransportPlugin snowflake exec server --port 9902
+// 	ServerTransportListenAddr snowflake 0.0.0.0:9902
+// 	ServerTransportPlugin snowflake exec server
 package main
 
 import (
@@ -250,14 +251,12 @@ func main() {
 	var disableTLS bool
 	var certFilename, keyFilename string
 	var logFilename string
-	var port int
 
 	flag.Usage = usage
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.StringVar(&certFilename, "cert", "", "TLS certificate file (required without --disable-tls)")
 	flag.StringVar(&keyFilename, "key", "", "TLS private key file (required without --disable-tls)")
 	flag.StringVar(&logFilename, "log", "", "log file to write to")
-	flag.IntVar(&port, "port", 0, "port to listen on if unspecified by Tor")
 	flag.Parse()
 
 	if logFilename != "" {
@@ -290,13 +289,6 @@ func main() {
 
 	listeners := make([]net.Listener, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
-		// Override tor's requested port (which is 0 if this transport
-		// has not been run before) with the one requested by the --port
-		// option.
-		if port != 0 {
-			bindaddr.Addr.Port = port
-		}
-
 		switch bindaddr.MethodName {
 		case ptMethodName:
 			var ln net.Listener
