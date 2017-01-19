@@ -25,6 +25,7 @@ install:
     - go get -u github.com/keroserene/go-webrtc
     - go get -u github.com/dchest/uniuri
     - go get -u git.torproject.org/pluggable-transports/goptlib.git
+    - go get -u git.torproject.org/pluggable-transports/websocket.git/websocket
     - pushd proxy
     - npm install
     - popd
