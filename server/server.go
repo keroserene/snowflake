@@ -33,8 +33,6 @@ const requestTimeout = 10 * time.Second
 // "4/3+1" accounts for possible base64 encoding.
 const maxMessageSize = 64*1024*4/3 + 1
 
-var logFile = os.Stderr
-
 var ptInfo pt.ServerInfo
 
 // When a connection handler starts, +1 is written to this channel; when it
