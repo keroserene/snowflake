@@ -38,9 +38,10 @@ task 'test', 'snowflake unit tests', ->
   exec 'echo "TESTING = true" > ' + outFile
   exec 'cat ' + jasmineFiles.join(' ') +  ' | cat >> ' + outFile
   execSync 'coffee -cb ' + outFile
-  spawn 'jasmine', ['test/bundle.spec.js'], {
+  proc = spawn 'jasmine', ['test/bundle.spec.js'], {
     stdio: 'inherit'
   }
+  proc.on "exit", (code) -> process.exit code
 
 task 'build', 'build the snowflake proxy', ->
   exec 'mkdir -p build'
@@ -49,10 +50,11 @@ task 'build', 'build the snowflake proxy', ->
   console.log 'Snowflake prepared.'
 
 task 'lint', 'ensure idiomatic coffeescript', ->
-  spawn 'coffeelint', FILES_ALL, {
+  proc = spawn 'coffeelint', FILES_ALL, {
     file: 'coffeelint.json'
     stdio: 'inherit'
   }
+  proc.on "exit", (code) -> process.exit code
 
 task 'clean', 'remove all built files', ->
   exec 'rm -r build'
