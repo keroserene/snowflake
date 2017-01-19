@@ -30,8 +30,9 @@ install:
     - popd
 
 script:
-    - make check
-    - go test -v -race ./broker ./client
+    - test -z "$(go fmt ./...)"
+    - go vet ./...
+    - go test -v -race ./...
     - cd proxy
     - npm run-script lint
     - npm test
