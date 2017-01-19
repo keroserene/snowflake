@@ -12,7 +12,7 @@ DEFAULT_RELAY =
   host: '192.81.135.242'
   port: 9902
 COPY_PASTE_ENABLED = false
-COOKIE_NAME = "snowflake-allow";
+COOKIE_NAME = "snowflake-allow"
 
 silenceNotifications = false
 query = Query.parse(location)
@@ -209,7 +209,7 @@ init = (isNode) ->
   cookies = Parse.cookie document.cookie
   # Do nothing if snowflake has not been opted in.
   if cookies[COOKIE_NAME] != "1"
-    console.log 'Snowflake is not activate. Please click the badge to change options.';
+    log 'Not activate. Please click the badge to change options.'
     return
 
   # Hook up to the debug UI if available.
