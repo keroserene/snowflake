@@ -228,11 +228,11 @@ func main() {
 	flag.StringVar(&logFilename, "log", "", "log file to write to")
 	flag.Parse()
 
+	log.SetFlags(log.LstdFlags | log.LUTC)
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Can't open log file %q: %s.\n", logFilename, err.Error())
-			os.Exit(1)
+			log.Fatalf("Can't open log file %q: %s.", logFilename, err.Error())
 		}
 		log.SetOutput(f)
 	}
@@ -247,13 +247,11 @@ func main() {
 		}
 	}
 
-	log.SetFlags(log.LstdFlags | log.LUTC)
 	log.Printf("starting")
 	var err error
 	ptInfo, err = pt.ServerSetup(nil)
 	if err != nil {
-		log.Printf("error in setup: %s", err)
-		os.Exit(1)
+		log.Fatalf("error in setup: %s", err)
 	}
 
 	listeners := make([]net.Listener, 0)
