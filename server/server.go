@@ -256,26 +256,26 @@ func main() {
 
 	listeners := make([]net.Listener, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
-		switch bindaddr.MethodName {
-		case ptMethodName:
-			var ln net.Listener
-			args := pt.Args{}
-			if disableTLS {
-				args.Add("tls", "no")
-				ln, err = startListener("tcp", bindaddr.Addr)
-			} else {
-				args.Add("tls", "yes")
-				ln, err = startListenerTLS("tcp", bindaddr.Addr, certFilename, keyFilename)
-			}
-			if err != nil {
-				pt.SmethodError(bindaddr.MethodName, err.Error())
-				break
-			}
-			pt.SmethodArgs(bindaddr.MethodName, ln.Addr(), args)
-			listeners = append(listeners, ln)
-		default:
+		if bindaddr.MethodName != ptMethodName {
 			pt.SmethodError(bindaddr.MethodName, "no such method")
+			continue
 		}
+
+		var ln net.Listener
+		args := pt.Args{}
+		if disableTLS {
+			args.Add("tls", "no")
+			ln, err = startListener("tcp", bindaddr.Addr)
+		} else {
+			args.Add("tls", "yes")
+			ln, err = startListenerTLS("tcp", bindaddr.Addr, certFilename, keyFilename)
+		}
+		if err != nil {
+			pt.SmethodError(bindaddr.MethodName, err.Error())
+			break
+		}
+		pt.SmethodArgs(bindaddr.MethodName, ln.Addr(), args)
+		listeners = append(listeners, ln)
 	}
 	pt.SmethodsDone()
 
