@@ -30,7 +30,7 @@ import (
 const ptMethodName = "snowflake"
 const requestTimeout = 10 * time.Second
 
-const maxMessageSize = 64*1024
+const maxMessageSize = 64 * 1024
 
 var ptInfo pt.ServerInfo
 
