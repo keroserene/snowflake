@@ -213,11 +213,13 @@ func startServer(ln net.Listener) (net.Listener, error) {
 }
 
 func main() {
+	var acmeEmail string
 	var acmeHostnamesCommas string
 	var disableTLS bool
 	var logFilename string
 
 	flag.Usage = usage
+	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.StringVar(&logFilename, "log", "", "log file to write to")
@@ -250,6 +252,7 @@ func main() {
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(acmeHostnames...),
+		Email:      acmeEmail,
 	}
 
 	// The ACME responder only works when it is running on port 443. In case
