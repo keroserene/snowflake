@@ -142,7 +142,7 @@ func webSocketHandler(ws *websocket.WebSocket) {
 	// the client. See https://bugs.torproject.org/18628.
 	or, err := pt.DialOr(&ptInfo, "", ptMethodName)
 	if err != nil {
-		log.Printf("Failed to connect to ORPort: " + err.Error())
+		log.Printf("failed to connect to ORPort: %s", err)
 		return
 	}
 	defer or.Close()
@@ -210,7 +210,7 @@ func startServer(ln net.Listener) (net.Listener, error) {
 		}
 		err := s.Serve(ln)
 		if err != nil {
-			log.Printf("http.Serve: " + err.Error())
+			log.Printf("http.Serve: %s", err)
 		}
 	}()
 	return ln, nil
@@ -232,18 +232,18 @@ func main() {
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
-			log.Fatalf("Can't open log file %q: %s.", logFilename, err.Error())
+			log.Fatalf("can't open log file: %s", err)
 		}
 		log.SetOutput(f)
 	}
 
 	if disableTLS {
 		if certFilename != "" || keyFilename != "" {
-			log.Fatalf("The --cert and --key options are not allowed with --disable-tls.\n")
+			log.Fatalf("the --cert and --key options are not allowed with --disable-tls")
 		}
 	} else {
 		if certFilename == "" || keyFilename == "" {
-			log.Fatalf("The --cert and --key options are required.\n")
+			log.Fatalf("the --cert and --key options are required")
 		}
 	}
 
@@ -292,7 +292,7 @@ func main() {
 	}
 
 	// signal received, shut down
-	log.Printf("Caught signal %q, exiting.", sig)
+	log.Printf("caught signal %q, exiting", sig)
 	for _, ln := range listeners {
 		ln.Close()
 	}
