@@ -272,7 +272,7 @@ func main() {
 		}
 		if err != nil {
 			pt.SmethodError(bindaddr.MethodName, err.Error())
-			break
+			continue
 		}
 		pt.SmethodArgs(bindaddr.MethodName, ln.Addr(), args)
 		listeners = append(listeners, ln)
