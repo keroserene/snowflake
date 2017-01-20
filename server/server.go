@@ -41,11 +41,15 @@ var ptInfo pt.ServerInfo
 var handlerChan = make(chan int)
 
 func usage() {
-	fmt.Printf("Usage: %s [OPTIONS]\n\n", os.Args[0])
-	fmt.Printf("WebSocket server pluggable transport for Tor.\n")
-	fmt.Printf("Works only as a managed proxy.\n")
-	fmt.Printf("\n")
-	fmt.Printf("  -h, -help   show this help.\n")
+	fmt.Fprintf(os.Stderr, `Usage: %s [OPTIONS]
+
+WebSocket server pluggable transport for Snowflake. Works only as a managed
+proxy. Uses TLS with ACME (Let's Encrypt) by default. Set the certificate
+hostnames with the --acme-hostnames option. Use ServerTransportListenAddr in
+torrc to choose the listening port. When using TLS, if the port is not 443, this
+program will open an additional listening port on 443 to work with ACME.
+
+`, os.Args[0])
 	flag.PrintDefaults()
 }
 
