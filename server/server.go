@@ -301,6 +301,9 @@ func main() {
 			ln, err = startListener("tcp", bindaddr.Addr)
 		} else {
 			args.Add("tls", "yes")
+			for _, hostname := range acmeHostnames {
+				args.Add("hostname", hostname)
+			}
 			ln, err = startListenerTLS("tcp", bindaddr.Addr, &certManager)
 		}
 		if err != nil {
