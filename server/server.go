@@ -1,11 +1,6 @@
-// Snowflake-specific websocket server plugin. This is the same as the websocket
-// server used by flash proxy, except that it reports the transport name as
-// "snowflake" and does not forward the remote address to the ExtORPort.
-//
-// Usage in torrc:
-// 	ExtORPort auto
-// 	ServerTransportListenAddr snowflake 0.0.0.0:9902
-// 	ServerTransportPlugin snowflake exec server
+// Snowflake-specific websocket server plugin. It reports the transport name as
+// "snowflake" and does not forward the (unknown) client address to the
+// ExtORPort.
 package main
 
 import (

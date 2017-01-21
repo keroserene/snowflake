@@ -1,9 +1,7 @@
-BridgeRelay 1
+SocksPort 0
 ORPort 9001
 ExtORPort auto
-SocksPort 0
-ExitPolicy reject *:*
-DataDirectory datadir
+BridgeRelay 1
 
 ServerTransportListenAddr snowflake 0.0.0.0:443
-ServerTransportPlugin snowflake exec ./server --acme-hostnames snowflake.example --acme-email admin@snowflake.example --log snowflake.log
+ServerTransportPlugin snowflake exec ./server --acme-hostnames snowflake.example --acme-email admin@snowflake.example --log /var/log/tor/snowflake-server.log
