@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -216,6 +217,14 @@ func startServer(ln net.Listener) (net.Listener, error) {
 	return ln, nil
 }
 
+func getCertificateCacheDir() (string, error) {
+	stateDir, err := pt.MakeStateDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(stateDir, "snowflake-certificate-cache"), nil
+}
+
 func main() {
 	var acmeEmail string
 	var acmeHostnamesCommas string
@@ -253,10 +262,21 @@ func main() {
 	var certManager *autocert.Manager
 	if !disableTLS {
 		log.Printf("ACME hostnames: %q", acmeHostnames)
+
+		var cache autocert.Cache
+		cacheDir, err := getCertificateCacheDir()
+		if err == nil {
+			log.Printf("caching ACME certificates in directory %q", cacheDir)
+			cache = autocert.DirCache(cacheDir)
+		} else {
+			log.Printf("disabling ACME certificate cache: %s", err)
+		}
+
 		certManager = &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
 			Email:      acmeEmail,
+			Cache:      cache,
 		}
 	}
 
