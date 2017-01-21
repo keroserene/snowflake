@@ -9,8 +9,8 @@ this must always act as the answerer.
 ###
 DEFAULT_BROKER = 'snowflake-reg.appspot.com'
 DEFAULT_RELAY =
-  host: '192.81.135.242'
-  port: 9902
+  host: 'snowflake.bamsoftware.com'
+  port: 443
 COPY_PASTE_ENABLED = false
 COOKIE_NAME = "snowflake-allow"
 

@@ -46,7 +46,7 @@ buildUrl = (scheme, host, port, path, params) ->
   parts.join ''
 
 makeWebsocket = (addr) ->
-  url = buildUrl 'ws', addr.host, addr.port, '/'
+  url = buildUrl 'wss', addr.host, addr.port, '/'
   ws = new WebSocket url
   ###
   'User agents can use this as a hint for how to handle incoming binary data: if
