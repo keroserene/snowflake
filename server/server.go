@@ -271,6 +271,7 @@ func main() {
 			ln, err = startListenerTLS("tcp", bindaddr.Addr, certFilename, keyFilename)
 		}
 		if err != nil {
+			log.Printf("error opening listener: %s", err)
 			pt.SmethodError(bindaddr.MethodName, err.Error())
 			continue
 		}
