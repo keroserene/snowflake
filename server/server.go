@@ -250,13 +250,14 @@ func main() {
 		log.Fatalf("error in setup: %s", err)
 	}
 
+	var certManager *autocert.Manager
 	if !disableTLS {
 		log.Printf("ACME hostnames: %q", acmeHostnames)
-	}
-	certManager := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(acmeHostnames...),
-		Email:      acmeEmail,
+		certManager = &autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
+			Email:      acmeEmail,
+		}
 	}
 
 	// The ACME responder only works when it is running on port 443. In case
@@ -284,7 +285,7 @@ func main() {
 			addr := *bindaddr.Addr
 			addr.Port = 443
 			log.Printf("opening additional ACME listener on %s", addr.String())
-			ln443, err := startListenerTLS("tcp", &addr, &certManager)
+			ln443, err := startListenerTLS("tcp", &addr, certManager)
 			if err != nil {
 				log.Printf("error opening ACME listener: %s", err)
 				pt.SmethodError(bindaddr.MethodName, "ACME listener: "+err.Error())
@@ -304,7 +305,7 @@ func main() {
 			for _, hostname := range acmeHostnames {
 				args.Add("hostname", hostname)
 			}
-			ln, err = startListenerTLS("tcp", bindaddr.Addr, &certManager)
+			ln, err = startListenerTLS("tcp", bindaddr.Addr, certManager)
 		}
 		if err != nil {
 			log.Printf("error opening listener: %s", err)
