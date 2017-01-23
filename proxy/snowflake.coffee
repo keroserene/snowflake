@@ -143,7 +143,7 @@ class Snowflake
     .catch fail
 
   makeProxyPair: (relay) ->
-    pair = new ProxyPair null, relay, @rateLimit
+    pair = new ProxyPair relay, @rateLimit
     @proxyPairs.push pair
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.

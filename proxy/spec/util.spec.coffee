@@ -159,13 +159,12 @@ describe 'ProxyPair', ->
   fakeRelay = Parse.address '0.0.0.0:12345'
   rateLimit = new DummyRateLimit()
   destination = []
-  fakeClient = send: (d) -> destination.push d
   # Fake snowflake to interact with
   snowflake = {
     broker:
       sendAnswer: ->
   }
-  pp = new ProxyPair(fakeClient, fakeRelay, rateLimit)
+  pp = new ProxyPair(fakeRelay, rateLimit)
 
   it 'begins webrtc connection', ->
     pp.begin()

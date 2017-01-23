@@ -22,7 +22,7 @@ class ProxyPair
   onCleanup:   null
   id:          null
 
-  constructor: (@clientAddr, @relayAddr, @rateLimit) ->
+  constructor: (@relayAddr, @rateLimit) ->
     @active = false
     @id = genSnowflakeID()
 
