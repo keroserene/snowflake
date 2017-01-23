@@ -206,18 +206,18 @@ log = (msg) ->
 dbg = (msg) -> log msg if DEBUG or snowflake.ui?.debug
 
 init = (isNode) ->
-  cookies = Parse.cookie document.cookie
-  # Do nothing if snowflake has not been opted in.
-  if cookies[COOKIE_NAME] != "1"
-    log 'Not activate. Please click the badge to change options.'
-    return
-
   # Hook up to the debug UI if available.
   ui = if isNode then null else new UI()
   silenceNotifications = Params.getBool(query, 'silent', false)
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
   broker = new Broker brokerUrl
   snowflake = new Snowflake broker, ui
+
+  cookies = Parse.cookie document.cookie
+  # Do nothing if snowflake has not been opted in.
+  if cookies[COOKIE_NAME] != "1"
+    log 'Not activate. Please click the badge to change options.'
+    return
 
   log '== snowflake proxy =='
   log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
