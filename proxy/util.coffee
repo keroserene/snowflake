@@ -71,6 +71,7 @@ Parse =
     m = spec.match(/^\[([\0-9a-fA-F:.]+)\]:([0-9]+)$/) if !m
     # IPv4 syntax.
     m = spec.match(/^([0-9.]+):([0-9]+)$/) if !m
+    # TODO: Domain match
     return null if !m
 
     host = m[1]

@@ -1,16 +1,21 @@
 ###
 A Coffeescript WebRTC snowflake proxy
-Using Copy-paste signaling for now.
 
-Uses WebRTC from the client, and websocket to the server.
+Uses WebRTC from the client, and Websocket to the server.
 
 Assume that the webrtc client plugin is always the offerer, in which case
 this must always act as the answerer.
 ###
+
+# General snowflake proxy constants.
+# For websocket-specific constants, see websocket.coffee.
 DEFAULT_BROKER = 'snowflake-reg.appspot.com'
 DEFAULT_RELAY =
-  host: '192.81.135.242'
-  port: 9902
+  host: 'snowflake.bamsoftware.com'
+  port: '443'
+  # Original non-wss relay:
+  # host: '192.81.135.242'
+  # port: 9902
 COPY_PASTE_ENABLED = false
 COOKIE_NAME = "snowflake-allow"
 
@@ -174,7 +179,7 @@ class Snowflake
 snowflake = null
 
 # Signalling channel - just tells user to copy paste to the peer.
-# Eventually this should go over the broker.
+# When copy-paste mode is not enabled, this is handled automatically by Broker.
 Signalling =
   send: (msg) ->
     log '---- Please copy the below to peer ----\n'
@@ -205,10 +210,14 @@ log = (msg) ->
 
 dbg = (msg) -> log msg if DEBUG or snowflake.ui?.debug
 
+###
+Entry point.
+###
 init = (isNode) ->
   # Hook up to the debug UI if available.
   ui = if isNode then null else new UI()
   silenceNotifications = Params.getBool(query, 'silent', false)
+  # Establish connectivity information with the Broker.
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
   broker = new Broker brokerUrl
   snowflake = new Snowflake broker, ui

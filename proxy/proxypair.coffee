@@ -22,6 +22,11 @@ class ProxyPair
   onCleanup:   null
   id:          null
 
+  ###
+  Constructs a ProxyPair where:
+  - @relayAddr is the destination relay
+  - @rateLimit specifies a rate limit on traffic
+  ###
   constructor: (@relayAddr, @rateLimit) ->
     @active = false
     @id = genSnowflakeID()

@@ -2,6 +2,7 @@
 Only websocket-specific stuff.
 ###
 
+WSS_ENABLED = true
 DEFAULT_PORTS =
   http:  80
   https: 443
@@ -46,7 +47,8 @@ buildUrl = (scheme, host, port, path, params) ->
   parts.join ''
 
 makeWebsocket = (addr) ->
-  url = buildUrl 'ws', addr.host, addr.port, '/'
+  wsProtocol = if WSS_ENABLED then 'wss' else 'ws'
+  url = buildUrl wsProtocol, addr.host, addr.port, '/'
   ws = new WebSocket url
   ###
   'User agents can use this as a hint for how to handle incoming binary data: if
