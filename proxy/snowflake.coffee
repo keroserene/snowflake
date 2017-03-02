@@ -4,7 +4,9 @@ A Coffeescript WebRTC snowflake proxy
 Uses WebRTC from the client, and Websocket to the server.
 
 Assume that the webrtc client plugin is always the offerer, in which case
-this must always act as the answerer.
+this proxy must always act as the answerer.
+
+TODO: More documentation
 ###
 
 # General snowflake proxy constants.
@@ -70,16 +72,18 @@ class Snowflake
                                        RATE_LIMIT_HISTORY)
     @retries = 0
 
-  # TODO: Should potentially fetch from broker later.
-  # Set the target relay address spec, which is expected to be a websocket
-  # relay.
+  # Set the target relay address spec, which is expected to be websocket.
+  # TODO: Should potentially fetch the target from broker later, or modify
+  # entirely for the Tor-independent version.
   setRelayAddr: (relayAddr) ->
     @relayAddr = relayAddr
     log 'Using ' + relayAddr.host + ':' + relayAddr.port + ' as Relay.'
     log 'Input offer from the snowflake client:' if COPY_PASTE_ENABLED
     return true
 
-  # Initialize WebRTC PeerConnection
+  # Initialize WebRTC PeerConnection, which requires beginning the signalling
+  # process. If in copy paste mode, the user will need to copy and paste the SDP
+  # blobs. Otherwise, |pollBroker| automatically arranges signalling.
   beginWebRTC: ->
     @state = MODE.WEBRTC_CONNECTING
     for i in [1..CONNECTIONS_PER_CLIENT]
@@ -204,11 +208,21 @@ Signalling =
     snowflake.receiveOffer pair, msg
 
 # Log to both console and UI if applicable.
+# Requires that the snowflake and UI objects are hooked up in order to
+# log to console.
 log = (msg) ->
   console.log 'Snowflake: ' + msg
-  snowflake.ui?.log msg
+  snowflake?.ui?.log msg
 
 dbg = (msg) -> log msg if DEBUG or snowflake.ui?.debug
+
+snowflakeIsDisabled = ->
+  cookies = Parse.cookie document.cookie
+  # Do nothing if snowflake has not been opted in by user.
+  if cookies[COOKIE_NAME] != '1'
+    log 'Not opted-in. Please click the badge to change options.'
+    return true
+  return false
 
 ###
 Entry point.
@@ -217,21 +231,21 @@ init = (isNode) ->
   # Hook up to the debug UI if available.
   ui = if isNode then null else new UI()
   silenceNotifications = Params.getBool(query, 'silent', false)
-  # Establish connectivity information with the Broker.
+  # Retrieve connectivity information for the Broker and
+  # initialize Snowflake contexts.
   brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
   broker = new Broker brokerUrl
   snowflake = new Snowflake broker, ui
 
-  cookies = Parse.cookie document.cookie
-  # Do nothing if snowflake has not been opted in.
-  if cookies[COOKIE_NAME] != "1"
-    log 'Not activate. Please click the badge to change options.'
+  log '== snowflake proxy =='
+  if snowflakeIsDisabled()
+    # Do not activate the proxy if any number of conditions are true.
+    log 'Currently not active.'
     return
 
-  log '== snowflake proxy =='
+  # Otherwise, begin setting up WebRTC and acting as a proxy.
   log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
   dbg 'Contacting Broker at ' + broker.url if not COPY_PASTE_ENABLED
-
   relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
   snowflake.setRelayAddr relayAddr
   snowflake.beginWebRTC()

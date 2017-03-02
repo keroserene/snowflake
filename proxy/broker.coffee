@@ -18,8 +18,9 @@ class Broker
   clients: 0
 
   # When interacting with the Broker, snowflake must generate a unique session
-  # ID so the Broker can keep track of which signalling channel it's speaking
-  # to.
+  # ID so the Broker can keep track of each proxy's signalling channels.
+  # On construction, this Broker object does not do anything until
+  # |getClientOffer| is called.
   constructor: (@url) ->
     @clients = 0
     # Ensure url has the right protocol + trailing slash.
