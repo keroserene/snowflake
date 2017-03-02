@@ -48,7 +48,7 @@ MODE =
   WEBRTC_CONNECTING: 1
   WEBRTC_READY:      2
 
-CONFIRMATION_MESSAGE = "You're currently serving a Tor user via Snowflake."
+CONFIRMATION_MESSAGE = 'You\'re currently serving a Tor user via Snowflake.'
 
 # Minimum viable snowflake for now - just 1 client.
 class Snowflake
@@ -222,7 +222,12 @@ snowflakeIsDisabled = ->
   if cookies[COOKIE_NAME] != '1'
     log 'Not opted-in. Please click the badge to change options.'
     return true
+  # Also do nothing if running in Tor Browser.
+  if mightBeTBB()
+    log 'Will not run within Tor Browser.'
+    return true
   return false
+
 
 ###
 Entry point.
