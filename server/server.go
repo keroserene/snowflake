@@ -1,11 +1,6 @@
-// Snowflake-specific websocket server plugin. This is the same as the websocket
-// server used by flash proxy, except that it reports the transport name as
-// "snowflake" and does not forward the remote address to the ExtORPort.
-//
-// Usage in torrc:
-// 	ExtORPort auto
-// 	ServerTransportListenAddr snowflake 0.0.0.0:9902
-// 	ServerTransportPlugin snowflake exec server
+// Snowflake-specific websocket server plugin. It reports the transport name as
+// "snowflake" and does not forward the (unknown) client address to the
+// ExtORPort.
 package main
 
 import (
@@ -19,12 +14,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	"git.torproject.org/pluggable-transports/websocket.git/websocket"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 const ptMethodName = "snowflake"
@@ -39,11 +37,15 @@ var ptInfo pt.ServerInfo
 var handlerChan = make(chan int)
 
 func usage() {
-	fmt.Printf("Usage: %s [OPTIONS]\n\n", os.Args[0])
-	fmt.Printf("WebSocket server pluggable transport for Tor.\n")
-	fmt.Printf("Works only as a managed proxy.\n")
-	fmt.Printf("\n")
-	fmt.Printf("  -h, -help   show this help.\n")
+	fmt.Fprintf(os.Stderr, `Usage: %s [OPTIONS]
+
+WebSocket server pluggable transport for Snowflake. Works only as a managed
+proxy. Uses TLS with ACME (Let's Encrypt) by default. Set the certificate
+hostnames with the --acme-hostnames option. Use ServerTransportListenAddr in
+torrc to choose the listening port. When using TLS, if the port is not 443, this
+program will open an additional listening port on 443 to work with ACME.
+
+`, os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -150,7 +152,7 @@ func webSocketHandler(ws *websocket.WebSocket) {
 	proxy(or, &conn)
 }
 
-func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename string) (net.Listener, error) {
+func listenTLS(network string, addr *net.TCPAddr, m *autocert.Manager) (net.Listener, error) {
 	// This is cribbed from the source of net/http.Server.ListenAndServeTLS.
 	// We have to separate the Listen and Serve parts because we need to
 	// report the listening address before entering Serve (which is an
@@ -158,13 +160,7 @@ func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename stri
 	// https://groups.google.com/d/msg/Golang-nuts/3F1VRCCENp8/3hcayZiwYM8J
 	config := &tls.Config{}
 	config.NextProtos = []string{"http/1.1"}
-
-	var err error
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(certFilename, keyFilename)
-	if err != nil {
-		return nil, err
-	}
+	config.GetCertificate = m.GetCertificate
 
 	conn, err := net.ListenTCP(network, addr)
 	if err != nil {
@@ -190,8 +186,8 @@ func startListener(network string, addr *net.TCPAddr) (net.Listener, error) {
 	return startServer(ln)
 }
 
-func startListenerTLS(network string, addr *net.TCPAddr, certFilename, keyFilename string) (net.Listener, error) {
-	ln, err := listenTLS(network, addr, certFilename, keyFilename)
+func startListenerTLS(network string, addr *net.TCPAddr, m *autocert.Manager) (net.Listener, error) {
+	ln, err := listenTLS(network, addr, m)
 	if err != nil {
 		return nil, err
 	}
@@ -216,15 +212,24 @@ func startServer(ln net.Listener) (net.Listener, error) {
 	return ln, nil
 }
 
+func getCertificateCacheDir() (string, error) {
+	stateDir, err := pt.MakeStateDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(stateDir, "snowflake-certificate-cache"), nil
+}
+
 func main() {
+	var acmeEmail string
+	var acmeHostnamesCommas string
 	var disableTLS bool
-	var certFilename, keyFilename string
 	var logFilename string
 
 	flag.Usage = usage
+	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
+	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
-	flag.StringVar(&certFilename, "cert", "", "TLS certificate file (required without --disable-tls)")
-	flag.StringVar(&keyFilename, "key", "", "TLS private key file (required without --disable-tls)")
 	flag.StringVar(&logFilename, "log", "", "log file to write to")
 	flag.Parse()
 
@@ -237,21 +242,51 @@ func main() {
 		log.SetOutput(f)
 	}
 
-	if disableTLS {
-		if certFilename != "" || keyFilename != "" {
-			log.Fatalf("the --cert and --key options are not allowed with --disable-tls")
-		}
-	} else {
-		if certFilename == "" || keyFilename == "" {
-			log.Fatalf("the --cert and --key options are required")
-		}
+	if !disableTLS && acmeHostnamesCommas == "" {
+		log.Fatal("the --acme-hostnames option is required")
 	}
+	acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
 
 	log.Printf("starting")
 	var err error
 	ptInfo, err = pt.ServerSetup(nil)
 	if err != nil {
 		log.Fatalf("error in setup: %s", err)
+	}
+
+	var certManager *autocert.Manager
+	if !disableTLS {
+		log.Printf("ACME hostnames: %q", acmeHostnames)
+
+		var cache autocert.Cache
+		cacheDir, err := getCertificateCacheDir()
+		if err == nil {
+			log.Printf("caching ACME certificates in directory %q", cacheDir)
+			cache = autocert.DirCache(cacheDir)
+		} else {
+			log.Printf("disabling ACME certificate cache: %s", err)
+		}
+
+		certManager = &autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
+			Email:      acmeEmail,
+			Cache:      cache,
+		}
+	}
+
+	// The ACME responder only works when it is running on port 443. In case
+	// there is not already going to be a TLS listener on port 443, we need
+	// to open an additional one. The port is actually opened in the loop
+	// below, so that any errors can be reported in the SMETHOD-ERROR of
+	// another bindaddr.
+	// https://letsencrypt.github.io/acme-spec/#domain-validation-with-server-name-indication-dvsni
+	need443Listener := !disableTLS
+	for _, bindaddr := range ptInfo.Bindaddrs {
+		if !disableTLS && bindaddr.Addr.Port == 443 {
+			need443Listener = false
+			break
+		}
 	}
 
 	listeners := make([]net.Listener, 0)
@@ -261,6 +296,20 @@ func main() {
 			continue
 		}
 
+		if need443Listener {
+			addr := *bindaddr.Addr
+			addr.Port = 443
+			log.Printf("opening additional ACME listener on %s", addr.String())
+			ln443, err := startListenerTLS("tcp", &addr, certManager)
+			if err != nil {
+				log.Printf("error opening ACME listener: %s", err)
+				pt.SmethodError(bindaddr.MethodName, "ACME listener: "+err.Error())
+				continue
+			}
+			listeners = append(listeners, ln443)
+			need443Listener = false
+		}
+
 		var ln net.Listener
 		args := pt.Args{}
 		if disableTLS {
@@ -268,7 +317,10 @@ func main() {
 			ln, err = startListener("tcp", bindaddr.Addr)
 		} else {
 			args.Add("tls", "yes")
-			ln, err = startListenerTLS("tcp", bindaddr.Addr, certFilename, keyFilename)
+			for _, hostname := range acmeHostnames {
+				args.Add("hostname", hostname)
+			}
+			ln, err = startListenerTLS("tcp", bindaddr.Addr, certManager)
 		}
 		if err != nil {
 			log.Printf("error opening listener: %s", err)
