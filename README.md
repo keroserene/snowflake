@@ -140,6 +140,14 @@ abundance of ephemeral and short-lived (and special!) volunteer proxies...
 
 ### Appendix
 
+##### -- Testing with Standalone Proxy --
+
+```
+cd proxy-go
+go build
+./proxy-go
+```
+
 ##### -- Testing Copy-Paste Via Browser Proxy --
 
 Open a browser proxy, passing the `manual` parameter; e.g.
