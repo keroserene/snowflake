@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -291,12 +292,23 @@ func runSession(sid string) {
 }
 
 func main() {
+	var logFilename string
 	opt = new(snowflakeOptions)
 	flag.IntVar(&opt.capacity, "capacity", 10, "maximum concurrent clients")
 	flag.StringVar(&opt.broker, "broker", "https://snowflake-reg.appspot.com/", "broker URL")
 	flag.StringVar(&opt.relay, "relay", "wss://snowflake.bamsoftware.com/", "websocket relay URL")
 	flag.StringVar(&opt.stun, "stun", "stun:stun.l.google.com:19302", "stun URL")
+	flag.StringVar(&logFilename, "log", "", "log filename")
 	flag.Parse()
+
+	if logFilename != "" {
+		f, err := os.OpenFile(logFilename, os.O_WRONLY | os.O_APPEND, 0600)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		log.SetOutput(io.MultiWriter(os.Stderr, f))
+	}
 
 	var err error
 	opt.brokerURL, err = url.Parse(opt.broker)
