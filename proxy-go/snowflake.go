@@ -302,7 +302,7 @@ func main() {
 	flag.Parse()
 
 	if logFilename != "" {
-		f, err := os.OpenFile(logFilename, os.O_WRONLY | os.O_APPEND, 0600)
+		f, err := os.OpenFile(logFilename, os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0600)
 		if err != nil {
 			log.Fatal(err)
 		}
