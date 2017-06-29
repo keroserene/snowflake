@@ -305,6 +305,7 @@ func main() {
 	flag.StringVar(&logFilename, "log", "", "log filename")
 	flag.Parse()
 
+	log.SetFlags(log.LstdFlags | log.LUTC)
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0600)
 		if err != nil {
