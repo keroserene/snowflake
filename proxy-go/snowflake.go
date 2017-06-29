@@ -8,7 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
+	"crypto/rand"
 	"net"
 	"net/http"
 	"net/url"
