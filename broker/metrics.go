@@ -1,4 +1,4 @@
-package snowflake_broker
+package main
 
 import (
 	// "golang.org/x/net/internal/timeseries"

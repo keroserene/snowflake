@@ -2,7 +2,7 @@
 Keeping track of pending available snowflake proxies.
 */
 
-package snowflake_broker
+package main
 
 /*
 The Snowflake struct contains a single interaction

@@ -3,7 +3,7 @@ Broker acts as the HTTP signaling channel.
 It matches clients and snowflake proxies by passing corresponding
 SessionDescriptions in order to negotiate a WebRTC connection.
 */
-package snowflake_broker
+package main
 
 import (
 	"container/heap"
@@ -13,6 +13,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+	"sync"
+	"os"
 )
 
 const (
@@ -226,7 +228,19 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(remoteAddr))
 }
 
-func init() {
+func main() {
+
+	if len(os.Args) < 3 {
+		log.Println("Usage: broker cert cert_key")
+		os.Exit(1)
+	}
+
+	cert := os.Args[1]
+	log.Println("Using cert file:", cert)
+	cert_key := os.Args[2]
+	log.Println("Using cert key file: ", cert_key)
+
+
 	ctx := NewBrokerContext()
 
 	go ctx.Broker()
@@ -238,4 +252,27 @@ func init() {
 	http.Handle("/client", SnowflakeHandler{ctx, clientOffers})
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	//Run HTTP server
+	go func(){
+		defer wg.Done()
+		err := http.ListenAndServe(":80", nil)
+		if err != nil {
+			log.Println("ListenAndServe: ", err)
+		}
+	}()
+
+	//Run HTTPS server
+	go func(){
+		defer wg.Done()
+		err := http.ListenAndServeTLS(":443", cert, cert_key, nil)
+		if err != nil {
+			log.Println("ListenAndServeTLS: ", err)
+		}
+	}()
+
+	wg.Wait()
 }
