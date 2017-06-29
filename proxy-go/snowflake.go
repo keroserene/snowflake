@@ -107,7 +107,7 @@ func pollOffer(sid string, broker *url.URL) *webrtc.SessionDescription {
 		req.Header.Set("X-Session-ID", sid)
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("error to poll broker: %s", err)
+			log.Printf("error polling broker: %s", err)
 		} else {
 			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusOK {
@@ -115,7 +115,7 @@ func pollOffer(sid string, broker *url.URL) *webrtc.SessionDescription {
 			} else {
 				body, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
-					log.Printf("error to read broker responses: %s", err)
+					log.Printf("error reading broker response: %s", err)
 				} else {
 					return webrtc.DeserializeSessionDescription(string(body))
 				}
@@ -180,7 +180,7 @@ func datachannelHandler(conn *webRTCConn) {
 
 	wsConn, err := websocket.Dial(opt.relay, "", opt.relay)
 	if err != nil {
-		log.Printf("error to dial relay: %s", err)
+		log.Printf("error dialing relay: %s", err)
 		return
 	}
 	log.Printf("connected to relay")
@@ -278,13 +278,13 @@ func runSession(sid string) {
 	}
 	pc, err := makePeerConnectionFromOffer(offer, config)
 	if err != nil {
-		log.Printf("error to make WebRTC connection: %s", err)
+		log.Printf("error making WebRTC connection: %s", err)
 		retToken()
 		return
 	}
 	err = sendAnswer(sid, opt.brokerURL, pc)
 	if err != nil {
-		log.Printf("error to send answer to client through broker: %s", err)
+		log.Printf("error sending answer to client through broker: %s", err)
 		pc.Close()
 		retToken()
 		return
