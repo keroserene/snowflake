@@ -21,6 +21,10 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+const defaultBrokerURL = "https://snowflake-reg.appspot.com/"
+const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
+const defaultSTUNURL = "stun:stun.l.google.com:19302"
+
 type snowflakeOptions struct {
 	capacity  int
 	broker    string
@@ -295,9 +299,9 @@ func main() {
 	var logFilename string
 	opt = new(snowflakeOptions)
 	flag.IntVar(&opt.capacity, "capacity", 10, "maximum concurrent clients")
-	flag.StringVar(&opt.broker, "broker", "https://snowflake-reg.appspot.com/", "broker URL")
-	flag.StringVar(&opt.relay, "relay", "wss://snowflake.bamsoftware.com/", "websocket relay URL")
-	flag.StringVar(&opt.stun, "stun", "stun:stun.l.google.com:19302", "stun URL")
+	flag.StringVar(&opt.broker, "broker", defaultBrokerURL, "broker URL")
+	flag.StringVar(&opt.relay, "relay", defaultRelayURL, "websocket relay URL")
+	flag.StringVar(&opt.stun, "stun", defaultSTUNURL, "stun URL")
 	flag.StringVar(&logFilename, "log", "", "log filename")
 	flag.Parse()
 
