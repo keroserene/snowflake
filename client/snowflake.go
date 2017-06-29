@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -199,6 +200,16 @@ func main() {
 	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
+
+	if os.Getenv("TOR_PT_EXIT_ON_STDIN_CLOSE") == "1" {
+		// This environment variable means we should treat EOF on stdin
+		// just like SIGTERM: https://bugs.torproject.org/15435.
+		go func() {
+			io.Copy(ioutil.Discard, os.Stdin)
+			log.Printf("synthesizing SIGTERM because of stdin close")
+			sigChan <- syscall.SIGTERM
+		}()
+	}
 
 	// keep track of handlers and wait for a signal
 	sig = nil
