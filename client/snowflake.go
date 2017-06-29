@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path"
 	"sync"
 	"syscall"
 	"time"
@@ -122,28 +121,27 @@ func copyLoop(a, b io.ReadWriter) {
 }
 
 func main() {
-	webrtc.SetLoggingVerbosity(1)
-	stateDir, err := pt.MakeStateDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-	logFile, err := os.OpenFile(path.Join(stateDir, "snowflake.log"),
-		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
-
 	var iceServers IceServerList
-	log.Println("\n\n\n --- Starting Snowflake Client ---")
-
 	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
 	brokerURL := flag.String("url", "", "URL of signaling broker")
 	frontDomain := flag.String("front", "", "front domain")
+	logFilename := flag.String("log", "", "name of log file")
 	max := flag.Int("max", DefaultSnowflakeCapacity,
 		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
+
+	webrtc.SetLoggingVerbosity(1)
+	if *logFilename != "" {
+		logFile, err := os.OpenFile(*logFilename,
+			os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer logFile.Close()
+		log.SetOutput(logFile)
+	}
+
+	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
 	// Prepare to collect remote WebRTC peers.
 	snowflakes := NewPeers(*max)
