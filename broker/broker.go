@@ -15,6 +15,7 @@ import (
 	"time"
 	"sync"
 	"os"
+	"flag"
 )
 
 const (
@@ -228,18 +229,27 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(remoteAddr))
 }
 
-func main() {
+var cert, cert_key string
 
-	if len(os.Args) < 3 {
-		log.Println("Usage: broker cert cert_key")
+func init() {
+	flag.StringVar(&cert, "cert", "", "TLS certificate file")
+	flag.StringVar(&cert_key, "key", "", "TLS key file")
+
+	flag.Parse()
+
+
+	if cert == "" || cert_key == "" {
+		log.Println("Missing options, exiting.")
+		fmt.Println("Usage:")
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	cert := os.Args[1]
 	log.Println("Using cert file:", cert)
-	cert_key := os.Args[2]
 	log.Println("Using cert key file: ", cert_key)
+}
 
+func main() {
 
 	ctx := NewBrokerContext()
 

@@ -22,18 +22,9 @@ The Broker expects:
 
 ### Running your own
 
-You can run your own Broker on either localhost or appengine.
-(Other CDNs will be supported soon.)
+You can run your own Broker on localhost, you'll need to pass a TLS
+certificate file using `--cert` option and the corresponding private key
+file using `--key` option.
 
-
-To run on localhost, run `dev_appserver.py` or equivalent from this
-directory. (on arch, I use the wrapper script `dev_appserver-go`)
-
-To run on appengine, you can spin up your own instance with an arbitrary
-name, and use `appcfg.py`.
-
-In both cases, you'll need to provide the URL of the custom broker
+You'll need to provide the URL of the custom broker
 to the client plugin using the `--url $URL` flag.
-
-See more detailed appengine instructions
-[here](https://cloud.google.com/appengine/docs/go/).
