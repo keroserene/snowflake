@@ -229,11 +229,14 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(remoteAddr))
 }
 
-var cert, cert_key string
+var cert, cert_key, http_port, https_port string
 
 func init() {
 	flag.StringVar(&cert, "cert", "", "TLS certificate file")
 	flag.StringVar(&cert_key, "key", "", "TLS key file")
+
+	flag.StringVar(&http_port, "webPort", "80", "HTTP port number")
+	flag.StringVar(&https_port, "tlsPort", "443", "HTTPS port number")
 
 	flag.Parse()
 
@@ -269,7 +272,7 @@ func main() {
 	//Run HTTP server
 	go func(){
 		defer wg.Done()
-		err := http.ListenAndServe(":80", nil)
+		err := http.ListenAndServe(":" + http_port, nil)
 		if err != nil {
 			log.Println("ListenAndServe: ", err)
 		}
@@ -278,7 +281,7 @@ func main() {
 	//Run HTTPS server
 	go func(){
 		defer wg.Done()
-		err := http.ListenAndServeTLS(":443", cert, cert_key, nil)
+		err := http.ListenAndServeTLS(":" + https_port, cert, cert_key, nil)
 		if err != nil {
 			log.Println("ListenAndServeTLS: ", err)
 		}
