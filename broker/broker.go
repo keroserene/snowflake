@@ -234,14 +234,13 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	var acmeEmail string
 	var acmeHostnamesCommas string
+	var addr string
 	var disableTLS bool
-	var http_port, https_port string
 
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
+	flag.StringVar(&addr, "addr", ":443", "address to listen on")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
-	flag.StringVar(&http_port, "webPort", "80", "HTTP port number")
-	flag.StringVar(&https_port, "tlsPort", "443", "HTTPS port number")
 	flag.Parse()
 
 	ctx := NewBrokerContext()
@@ -257,7 +256,9 @@ func main() {
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
 
 	var err error
-	var server http.Server
+	server := http.Server{
+		Addr: addr,
+	}
 
 	if acmeHostnamesCommas != "" {
 		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
@@ -269,11 +270,9 @@ func main() {
 			Email:      acmeEmail,
 		}
 
-		server.Addr = net.JoinHostPort("", https_port)
 		server.TLSConfig = &tls.Config{GetCertificate: certManager.GetCertificate}
 		err = server.ListenAndServeTLS("", "")
 	} else if disableTLS {
-		server.Addr = net.JoinHostPort("", http_port)
 		err = server.ListenAndServe()
 	} else {
 		log.Fatal("the --acme-hostnames or --disable-tls option is required")

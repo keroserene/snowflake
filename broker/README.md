@@ -42,9 +42,7 @@ without having to run as root:
 ```
 setcap 'cap_net_bind_service=+ep' /usr/local/bin/broker
 ```
-You can control the listening port with the --tlsPort
-or --webPort options (--webPort is honored only when
-also using --disable-tls).
+You can control the listening port with the --addr option.
 
 You'll need to provide the URL of the custom broker
 to the client plugin using the `--url $URL` flag.
