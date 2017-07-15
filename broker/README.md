@@ -22,9 +22,29 @@ The Broker expects:
 
 ### Running your own
 
-You can run your own Broker on localhost, you'll need to pass a TLS
-certificate file using `--cert` option and the corresponding private key
-file using `--key` option.
+The server uses TLS by default.
+There is a `--disable-tls` option for testing purposes,
+but you should use TLS in production.
+
+The server automatically fetches certificates
+from [Let's Encrypt](https://en.wikipedia.org/wiki/Let's_Encrypt) as needed.
+Use the `--acme-hostnames` option to tell the server
+what hostnames it may request certificates for.
+You can optionally provide a contact email address,
+using the `--acme-email` option,
+so that Let's Encrypt can inform you of any problems.
+
+In order to fetch certificates automatically,
+the server needs to be listening on port 443 (the default).
+On Linux, you can use the `setcap` program,
+part of libcap2, to enable the broker to bind to low-numbered ports
+without having to run as root:
+```
+setcap 'cap_net_bind_service=+ep' /usr/local/bin/broker
+```
+You can control the listening port with the --tlsPort
+or --webPort options (--webPort is honored only when
+also using --disable-tls).
 
 You'll need to provide the URL of the custom broker
 to the client plugin using the `--url $URL` flag.

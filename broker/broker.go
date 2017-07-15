@@ -7,15 +7,17 @@ package main
 
 import (
 	"container/heap"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"os"
-	"sync"
+	"strings"
 	"time"
+
+	"golang.org/x/crypto/acme/autocert"
 )
 
 const (
@@ -230,25 +232,17 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var cert, cert_key, http_port, https_port string
+	var acmeEmail string
+	var acmeHostnamesCommas string
+	var disableTLS bool
+	var http_port, https_port string
 
-	flag.StringVar(&cert, "cert", "", "TLS certificate file")
-	flag.StringVar(&cert_key, "key", "", "TLS key file")
-
+	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
+	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
+	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.StringVar(&http_port, "webPort", "80", "HTTP port number")
 	flag.StringVar(&https_port, "tlsPort", "443", "HTTPS port number")
-
 	flag.Parse()
-
-	if cert == "" || cert_key == "" {
-		log.Println("Missing options, exiting.")
-		fmt.Println("Usage:")
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-
-	log.Println("Using cert file:", cert)
-	log.Println("Using cert key file: ", cert_key)
 
 	ctx := NewBrokerContext()
 
@@ -262,26 +256,30 @@ func main() {
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	var err error
+	var server http.Server
 
-	//Run HTTP server
-	go func() {
-		defer wg.Done()
-		err := http.ListenAndServe(":"+http_port, nil)
-		if err != nil {
-			log.Println("ListenAndServe: ", err)
+	if acmeHostnamesCommas != "" {
+		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
+		log.Printf("ACME hostnames: %q", acmeHostnames)
+
+		certManager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
+			Email:      acmeEmail,
 		}
-	}()
 
-	//Run HTTPS server
-	go func() {
-		defer wg.Done()
-		err := http.ListenAndServeTLS(":"+https_port, cert, cert_key, nil)
-		if err != nil {
-			log.Println("ListenAndServeTLS: ", err)
-		}
-	}()
+		server.Addr = net.JoinHostPort("", https_port)
+		server.TLSConfig = &tls.Config{GetCertificate: certManager.GetCertificate}
+		err = server.ListenAndServeTLS("", "")
+	} else if disableTLS {
+		server.Addr = net.JoinHostPort("", http_port)
+		err = server.ListenAndServe()
+	} else {
+		log.Fatal("the --acme-hostnames or --disable-tls option is required")
+	}
 
-	wg.Wait()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
