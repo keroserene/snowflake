@@ -227,6 +227,8 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
+	log.SetFlags(log.LstdFlags | log.LUTC)
+
 	ctx := NewBrokerContext()
 
 	go ctx.Broker()
