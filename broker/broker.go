@@ -7,15 +7,15 @@ package main
 
 import (
 	"container/heap"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"time"
-	"sync"
 	"os"
-	"flag"
+	"sync"
+	"time"
 )
 
 const (
@@ -240,7 +240,6 @@ func main() {
 
 	flag.Parse()
 
-
 	if cert == "" || cert_key == "" {
 		log.Println("Missing options, exiting.")
 		fmt.Println("Usage:")
@@ -267,18 +266,18 @@ func main() {
 	wg.Add(2)
 
 	//Run HTTP server
-	go func(){
+	go func() {
 		defer wg.Done()
-		err := http.ListenAndServe(":" + http_port, nil)
+		err := http.ListenAndServe(":"+http_port, nil)
 		if err != nil {
 			log.Println("ListenAndServe: ", err)
 		}
 	}()
 
 	//Run HTTPS server
-	go func(){
+	go func() {
 		defer wg.Done()
-		err := http.ListenAndServeTLS(":" + https_port, cert, cert_key, nil)
+		err := http.ListenAndServeTLS(":"+https_port, cert, cert_key, nil)
 		if err != nil {
 			log.Println("ListenAndServeTLS: ", err)
 		}
