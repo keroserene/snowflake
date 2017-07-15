@@ -1,0 +1,31 @@
+This component runs on Google App Engine. It lies between meek-client
+and meek-server. The App Engine component receives requests from the
+client and forwards them to the server, then receives responses from the
+server and forwards them to the client.
+
+You need the Go App Engine SDK in order to deploy the app.
+	https://cloud.google.com/sdk/docs/#linux
+After unpacking, install the app-engine-go component:
+	google-cloud-sdk/bin/gcloud components install app-engine-go
+
+To test locally, run
+	google-cloud-sdk/bin/dev_appserver.py app.yaml
+The app will be running at http://127.0.0.1:8080/. You can test broker
+forwarding function by browsing to http://127.0.0.1:8000/ip.
+
+To deploy to App Engine, first create a new project and app. You have to
+think of a unique name (marked as "<appname>" in the commands). You only
+have to do the "create" step once; subsequent times you can go straight
+to the "deploy" step. This command will open a browser window so you can
+log in to a Google account.
+	google-cloud-sdk/bin/gcloud projects create <appname>
+	google-cloud-sdk/bin/gcloud app create --project=<appname>
+Then to deploy the project, run:
+	google-cloud-sdk/bin/gcloud app deploy --project=<appname>
+
+To configure meek-client to talk to the App Engine app, provide
+"https://<appname>.appspot.com/" as the url and "www.google.com" as the
+front domain.
+	UseBridges 1
+	Bridge meek 0.0.2.0:1 url=https://example.appspot.com/ front=www.google.com
+	ClientTransportPlugin meek exec ./meek-client --log meek-client.log
