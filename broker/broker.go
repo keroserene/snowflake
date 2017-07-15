@@ -217,15 +217,6 @@ func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("User-agent: *\nDisallow:\n"))
 }
 
-func ipHandler(w http.ResponseWriter, r *http.Request) {
-	remoteAddr := r.RemoteAddr
-	if net.ParseIP(remoteAddr).To4() == nil {
-		remoteAddr = "[" + remoteAddr + "]"
-	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte(remoteAddr))
-}
-
 func init() {
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
@@ -234,7 +225,6 @@ func init() {
 	go ctx.Broker()
 
 	http.HandleFunc("/robots.txt", robotsTxtHandler)
-	http.HandleFunc("/ip", ipHandler)
 
 	http.Handle("/proxy", SnowflakeHandler{ctx, proxyPolls})
 	http.Handle("/client", SnowflakeHandler{ctx, clientOffers})
