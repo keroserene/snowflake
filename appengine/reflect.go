@@ -1,10 +1,9 @@
-// A web app for Google App Engine that proxies HTTP requests and responses to a
-// Tor relay running meek-server.
+// A web app for Google App Engine that proxies HTTP requests and responses to
+// the Snowflake broker.
 package reflect
 
 import (
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -14,7 +13,7 @@ import (
 )
 
 const (
-	forwardURL = "https://meek.bamsoftware.com/"
+	forwardURL = "https://snowflake-broker.bamsoftware.com/"
 	// A timeout of 0 means to use the App Engine default (5 seconds).
 	urlFetchTimeout = 20 * time.Second
 )
@@ -32,24 +31,12 @@ func pathJoin(a, b string) string {
 	return a + b
 }
 
-// We reflect only a whitelisted set of header fields. In requests, the full
-// list includes things like User-Agent and X-Appengine-Country that the Tor
-// bridge doesn't need to know. In responses, there may be things like
-// Transfer-Encoding that interfere with App Engine's own hop-by-hop headers.
+// We reflect only a whitelisted set of header fields. Otherwise, we may copy
+// headers like Transfer-Encoding that interfere with App Engine's own
+// hop-by-hop headers.
 var reflectedHeaderFields = []string{
 	"Content-Type",
 	"X-Session-Id",
-}
-
-// Get the original client IP address as a string. When using the standard
-// net/http server, Request.RemoteAddr is a "host:port" string; however App
-// Engine seems to use just "host". We check for both to be safe.
-func getClientAddr(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil {
-		return host
-	}
-	return r.RemoteAddr
 }
 
 // Make a copy of r, with the URL being changed to be relative to forwardURL,
@@ -74,12 +61,6 @@ func copyRequest(r *http.Request) (*http.Request, error) {
 			}
 		}
 	}
-	// Set the original client IP address in a Meek-IP header. We would use
-	// X-Forwarded-For, but App Engine prohibits setting that header:
-	// https://cloud.google.com/appengine/docs/standard/go/outbound-requests#request_headers
-	// We could use Forwarded from RFC 7239, but other CDNs already use
-	// X-Forwarded-For and this way we only need one parser.
-	c.Header.Add("Meek-IP", getClientAddr(r))
 	return c, nil
 }
 

@@ -1,7 +1,5 @@
-This component runs on Google App Engine. It lies between meek-client
-and meek-server. The App Engine component receives requests from the
-client and forwards them to the server, then receives responses from the
-server and forwards them to the client.
+This component runs on Google App Engine. It reflects domain-fronted
+requests from a client to the Snowflake broker.
 
 You need the Go App Engine SDK in order to deploy the app.
 	https://cloud.google.com/sdk/docs/#linux
@@ -10,8 +8,7 @@ After unpacking, install the app-engine-go component:
 
 To test locally, run
 	google-cloud-sdk/bin/dev_appserver.py app.yaml
-The app will be running at http://127.0.0.1:8080/. You can test broker
-forwarding function by browsing to http://127.0.0.1:8000/ip.
+The app will be running at http://127.0.0.1:8080/.
 
 To deploy to App Engine, first create a new project and app. You have to
 think of a unique name (marked as "<appname>" in the commands). You only
@@ -23,9 +20,8 @@ log in to a Google account.
 Then to deploy the project, run:
 	google-cloud-sdk/bin/gcloud app deploy --project=<appname>
 
-To configure meek-client to talk to the App Engine app, provide
-"https://<appname>.appspot.com/" as the url and "www.google.com" as the
-front domain.
+To configure the Snowflake client to talk to the App Engine app, provide
+"https://<appname>.appspot.com/" as the --url option.
 	UseBridges 1
-	Bridge meek 0.0.2.0:1 url=https://example.appspot.com/ front=www.google.com
-	ClientTransportPlugin meek exec ./meek-client --log meek-client.log
+	Bridge snowflake 0.0.2.0:1
+	ClientTransportPlugin snowflake exec ./client -url https://<appname>.appspot.com/ -front www.google.com
