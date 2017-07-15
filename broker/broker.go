@@ -229,9 +229,9 @@ func ipHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(remoteAddr))
 }
 
-var cert, cert_key, http_port, https_port string
+func main() {
+	var cert, cert_key, http_port, https_port string
 
-func init() {
 	flag.StringVar(&cert, "cert", "", "TLS certificate file")
 	flag.StringVar(&cert_key, "key", "", "TLS key file")
 
@@ -250,9 +250,6 @@ func init() {
 
 	log.Println("Using cert file:", cert)
 	log.Println("Using cert key file: ", cert_key)
-}
-
-func main() {
 
 	ctx := NewBrokerContext()
 
