@@ -219,17 +219,21 @@ func receiveSignalsFIFO(filename string, config *webrtc.Configuration) error {
 func main() {
 	var err error
 	var httpAddr string
+	var logFilename string
 
 	flag.StringVar(&httpAddr, "http", "", "listen for HTTP signaling")
+	flag.StringVar(&logFilename, "log", "", "log file to write to")
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
-	logFile, err = os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		log.Fatal(err)
+	if logFilename != "" {
+		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Fatalf("can't open log file: %s", err)
+		}
+		defer logFile.Close()
+		log.SetOutput(f)
 	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
 
 	log.Println("starting")
 	webrtc.SetLoggingVerbosity(1)
