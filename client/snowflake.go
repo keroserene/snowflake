@@ -131,6 +131,7 @@ func main() {
 	flag.Parse()
 
 	webrtc.SetLoggingVerbosity(1)
+	log.SetFlags(log.LstdFlags | log.LUTC)
 	if *logFilename != "" {
 		logFile, err := os.OpenFile(*logFilename,
 			os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)

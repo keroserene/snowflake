@@ -223,6 +223,7 @@ func main() {
 	flag.StringVar(&httpAddr, "http", "", "listen for HTTP signaling")
 	flag.Parse()
 
+	log.SetFlags(log.LstdFlags | log.LUTC)
 	logFile, err = os.OpenFile("snowflake.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal(err)
