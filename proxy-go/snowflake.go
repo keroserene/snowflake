@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +38,25 @@ var (
 	config *webrtc.Configuration
 	client http.Client
 )
+
+var remoteIPPatterns = []*regexp.Regexp{
+	/* IPv4 */
+	regexp.MustCompile(`(?m)^c=IN IP4 ([\d.]+)(?:(?:\/\d+)?\/\d+)?(:? |\r?\n)`),
+	/* IPv6 */
+	regexp.MustCompile(`(?m)^c=IN IP6 ([0-9A-Fa-f:.]+)(?:\/\d+)?(:? |\r?\n)`),
+}
+
+// https://tools.ietf.org/html/rfc4566#section-5.7
+func remoteIPFromSDP(sdp string) net.IP {
+	for _, pattern := range remoteIPPatterns {
+		m := pattern.FindStringSubmatch(sdp)
+		if m != nil {
+			// Ignore parsing errors, ParseIP returns nil.
+			return net.ParseIP(m[1])
+		}
+	}
+	return nil
+}
 
 type webRTCConn struct {
 	dc *webrtc.DataChannel
@@ -64,7 +84,12 @@ func (c *webRTCConn) LocalAddr() net.Addr {
 }
 
 func (c *webRTCConn) RemoteAddr() net.Addr {
-	return nil
+	//Parse Remote SDP offer and extract client IP
+	clientIP := remoteIPFromSDP(c.pc.RemoteDescription().Sdp)
+	if clientIP == nil {
+		return nil
+	}
+	return &net.IPAddr{clientIP, ""}
 }
 
 func (c *webRTCConn) SetDeadline(t time.Time) error {
@@ -181,11 +206,31 @@ func CopyLoopTimeout(c1 net.Conn, c2 net.Conn, timeout time.Duration) {
 	wg.Wait()
 }
 
-func datachannelHandler(conn *webRTCConn) {
+// We pass conn.RemoteAddr() as an additional parameter, rather than calling
+// conn.RemoteAddr() inside this function, as a workaround for a hang that
+// otherwise occurs inside of conn.pc.RemoteDescription() (called by
+// RemoteAddr). https://bugs.torproject.org/18628#comment:8
+func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 	defer conn.Close()
 	defer retToken()
 
-	wsConn, err := websocket.Dial(relayURL, "", relayURL)
+	u, err := url.Parse(relayURL)
+	if err != nil {
+		log.Fatalf("invalid relay url: %s", err)
+	}
+
+	// Retrieve client IP address
+	if remoteAddr != nil {
+		// Encode client IP address in relay URL
+		q := u.Query()
+		clientIP := remoteAddr.String()
+		q.Set("client_ip", clientIP)
+		u.RawQuery = q.Encode()
+	} else {
+		log.Printf("no remote address given in websocket")
+	}
+
+	wsConn, err := websocket.Dial(u.String(), "", relayURL)
 	if err != nil {
 		log.Printf("error dialing relay: %s", err)
 		return
@@ -237,8 +282,9 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 				panic("short write")
 			}
 		}
+
 		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
-		go datachannelHandler(conn)
+		go datachannelHandler(conn, conn.RemoteAddr())
 	}
 
 	err = pc.SetRemoteDescription(sdp)
