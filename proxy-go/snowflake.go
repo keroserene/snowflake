@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"crypto/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -307,7 +307,7 @@ func main() {
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
 	if logFilename != "" {
-		f, err := os.OpenFile(logFilename, os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0600)
+		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			log.Fatal(err)
 		}
