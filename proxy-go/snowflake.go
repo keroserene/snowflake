@@ -25,12 +25,8 @@ const defaultBrokerURL = "https://snowflake-reg.appspot.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 
-type snowflakeOptions struct {
-	capacity  uint
-	broker    string
-	stun      string
-	relay     string
-}
+var brokerURL string
+var relayURL string
 
 const (
 	sessionIDLength = 16
@@ -38,7 +34,6 @@ const (
 
 var (
 	tokens chan bool
-	opt    *snowflakeOptions
 	config *webrtc.Configuration
 	client http.Client
 )
@@ -111,7 +106,7 @@ func mustParseURL(rawurl string) *url.URL {
 }
 
 func pollOffer(sid string) *webrtc.SessionDescription {
-	broker := mustParseURL(opt.broker)
+	broker := mustParseURL(brokerURL)
 	broker.Path = "/proxy"
 	for {
 		req, _ := http.NewRequest("POST", broker.String(), bytes.NewBuffer([]byte(sid)))
@@ -136,7 +131,7 @@ func pollOffer(sid string) *webrtc.SessionDescription {
 }
 
 func sendAnswer(sid string, pc *webrtc.PeerConnection) error {
-	broker := mustParseURL(opt.broker)
+	broker := mustParseURL(brokerURL)
 	broker.Path = "/answer"
 	body := bytes.NewBuffer([]byte(pc.LocalDescription().Serialize()))
 	req, _ := http.NewRequest("POST", broker.String(), body)
@@ -190,7 +185,7 @@ func datachannelHandler(conn *webRTCConn) {
 	defer conn.Close()
 	defer retToken()
 
-	wsConn, err := websocket.Dial(opt.relay, "", opt.relay)
+	wsConn, err := websocket.Dial(relayURL, "", relayURL)
 	if err != nil {
 		log.Printf("error dialing relay: %s", err)
 		return
@@ -304,12 +299,14 @@ func runSession(sid string) {
 }
 
 func main() {
+	var capacity uint
+	var stunURL string
 	var logFilename string
-	opt = new(snowflakeOptions)
-	flag.UintVar(&opt.capacity, "capacity", 10, "maximum concurrent clients")
-	flag.StringVar(&opt.broker, "broker", defaultBrokerURL, "broker URL")
-	flag.StringVar(&opt.relay, "relay", defaultRelayURL, "websocket relay URL")
-	flag.StringVar(&opt.stun, "stun", defaultSTUNURL, "stun URL")
+
+	flag.UintVar(&capacity, "capacity", 10, "maximum concurrent clients")
+	flag.StringVar(&brokerURL, "broker", defaultBrokerURL, "broker URL")
+	flag.StringVar(&relayURL, "relay", defaultRelayURL, "websocket relay URL")
+	flag.StringVar(&stunURL, "stun", defaultSTUNURL, "stun URL")
 	flag.StringVar(&logFilename, "log", "", "log filename")
 	flag.Parse()
 
@@ -324,22 +321,22 @@ func main() {
 	}
 
 	var err error
-	_, err = url.Parse(opt.broker)
+	_, err = url.Parse(brokerURL)
 	if err != nil {
 		log.Fatalf("invalid broker url: %s", err)
 	}
-	_, err = url.Parse(opt.stun)
+	_, err = url.Parse(stunURL)
 	if err != nil {
 		log.Fatalf("invalid stun url: %s", err)
 	}
-	_, err = url.Parse(opt.relay)
+	_, err = url.Parse(relayURL)
 	if err != nil {
 		log.Fatalf("invalid relay url: %s", err)
 	}
 
-	config = webrtc.NewConfiguration(webrtc.OptionIceServer(opt.stun))
-	tokens = make(chan bool, opt.capacity)
-	for i := uint(0); i < opt.capacity; i++ {
+	config = webrtc.NewConfiguration(webrtc.OptionIceServer(stunURL))
+	tokens = make(chan bool, capacity)
+	for i := uint(0); i < capacity; i++ {
 		tokens <- true
 	}
 
