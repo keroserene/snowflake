@@ -30,9 +30,7 @@ type snowflakeOptions struct {
 	broker    string
 	brokerURL *url.URL
 	stun      string
-	stunURL   *url.URL
 	relay     string
-	relayURL  *url.URL
 }
 
 const (
@@ -320,11 +318,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid broker url: %s", err)
 	}
-	opt.stunURL, err = url.Parse(opt.stun)
+	_, err = url.Parse(opt.stun)
 	if err != nil {
 		log.Fatalf("invalid stun url: %s", err)
 	}
-	opt.relayURL, err = url.Parse(opt.relay)
+	_, err = url.Parse(opt.relay)
 	if err != nil {
 		log.Fatalf("invalid relay url: %s", err)
 	}
