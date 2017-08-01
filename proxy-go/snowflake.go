@@ -26,7 +26,7 @@ const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 
 type snowflakeOptions struct {
-	capacity  int
+	capacity  uint
 	broker    string
 	brokerURL *url.URL
 	stun      string
@@ -296,7 +296,7 @@ func runSession(sid string) {
 func main() {
 	var logFilename string
 	opt = new(snowflakeOptions)
-	flag.IntVar(&opt.capacity, "capacity", 10, "maximum concurrent clients")
+	flag.UintVar(&opt.capacity, "capacity", 10, "maximum concurrent clients")
 	flag.StringVar(&opt.broker, "broker", defaultBrokerURL, "broker URL")
 	flag.StringVar(&opt.relay, "relay", defaultRelayURL, "websocket relay URL")
 	flag.StringVar(&opt.stun, "stun", defaultSTUNURL, "stun URL")
@@ -329,7 +329,7 @@ func main() {
 
 	config = webrtc.NewConfiguration(webrtc.OptionIceServer(opt.stun))
 	tokens = make(chan bool, opt.capacity)
-	for i := 0; i < opt.capacity; i++ {
+	for i := uint(0); i < opt.capacity; i++ {
 		tokens <- true
 	}
 
