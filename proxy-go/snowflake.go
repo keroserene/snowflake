@@ -28,7 +28,6 @@ const defaultSTUNURL = "stun:stun.l.google.com:19302"
 type snowflakeOptions struct {
 	capacity  uint
 	broker    string
-	brokerURL *url.URL
 	stun      string
 	relay     string
 }
@@ -102,7 +101,17 @@ func genSessionID() string {
 	return strings.TrimRight(base64.StdEncoding.EncodeToString(buf), "=")
 }
 
-func pollOffer(sid string, broker *url.URL) *webrtc.SessionDescription {
+// Parses a URL with url.Parse and panics on any error.
+func mustParseURL(rawurl string) *url.URL {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
+func pollOffer(sid string) *webrtc.SessionDescription {
+	broker := mustParseURL(opt.broker)
 	broker.Path = "/proxy"
 	for {
 		req, _ := http.NewRequest("POST", broker.String(), bytes.NewBuffer([]byte(sid)))
@@ -126,7 +135,8 @@ func pollOffer(sid string, broker *url.URL) *webrtc.SessionDescription {
 	}
 }
 
-func sendAnswer(sid string, broker *url.URL, pc *webrtc.PeerConnection) error {
+func sendAnswer(sid string, pc *webrtc.PeerConnection) error {
+	broker := mustParseURL(opt.broker)
 	broker.Path = "/answer"
 	body := bytes.NewBuffer([]byte(pc.LocalDescription().Serialize()))
 	req, _ := http.NewRequest("POST", broker.String(), body)
@@ -272,7 +282,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 }
 
 func runSession(sid string) {
-	offer := pollOffer(sid, opt.brokerURL)
+	offer := pollOffer(sid)
 	if offer == nil {
 		log.Printf("bad offer from broker")
 		retToken()
@@ -284,7 +294,7 @@ func runSession(sid string) {
 		retToken()
 		return
 	}
-	err = sendAnswer(sid, opt.brokerURL, pc)
+	err = sendAnswer(sid, pc)
 	if err != nil {
 		log.Printf("error sending answer to client through broker: %s", err)
 		pc.Close()
@@ -314,7 +324,7 @@ func main() {
 	}
 
 	var err error
-	opt.brokerURL, err = url.Parse(opt.broker)
+	_, err = url.Parse(opt.broker)
 	if err != nil {
 		log.Fatalf("invalid broker url: %s", err)
 	}
