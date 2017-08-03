@@ -3,16 +3,21 @@ Broker acts as the HTTP signaling channel.
 It matches clients and snowflake proxies by passing corresponding
 SessionDescriptions in order to negotiate a WebRTC connection.
 */
-package snowflake_broker
+package main
 
 import (
 	"container/heap"
+	"crypto/tls"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"time"
+
+	"golang.org/x/crypto/acme/autocert"
 )
 
 const (
@@ -217,7 +222,27 @@ func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("User-agent: *\nDisallow:\n"))
 }
 
-func init() {
+func ipHandler(w http.ResponseWriter, r *http.Request) {
+	remoteAddr := r.RemoteAddr
+	if net.ParseIP(remoteAddr).To4() == nil {
+		remoteAddr = "[" + remoteAddr + "]"
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(remoteAddr))
+}
+
+func main() {
+	var acmeEmail string
+	var acmeHostnamesCommas string
+	var addr string
+	var disableTLS bool
+
+	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
+	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
+	flag.StringVar(&addr, "addr", ":443", "address to listen on")
+	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
+	flag.Parse()
+
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
 	ctx := NewBrokerContext()
@@ -230,4 +255,31 @@ func init() {
 	http.Handle("/client", SnowflakeHandler{ctx, clientOffers})
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
+
+	var err error
+	server := http.Server{
+		Addr: addr,
+	}
+
+	if acmeHostnamesCommas != "" {
+		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
+		log.Printf("ACME hostnames: %q", acmeHostnames)
+
+		certManager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
+			Email:      acmeEmail,
+		}
+
+		server.TLSConfig = &tls.Config{GetCertificate: certManager.GetCertificate}
+		err = server.ListenAndServeTLS("", "")
+	} else if disableTLS {
+		err = server.ListenAndServe()
+	} else {
+		log.Fatal("the --acme-hostnames or --disable-tls option is required")
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }

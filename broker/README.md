@@ -22,18 +22,27 @@ The Broker expects:
 
 ### Running your own
 
-You can run your own Broker on either localhost or appengine.
-(Other CDNs will be supported soon.)
+The server uses TLS by default.
+There is a `--disable-tls` option for testing purposes,
+but you should use TLS in production.
 
+The server automatically fetches certificates
+from [Let's Encrypt](https://en.wikipedia.org/wiki/Let's_Encrypt) as needed.
+Use the `--acme-hostnames` option to tell the server
+what hostnames it may request certificates for.
+You can optionally provide a contact email address,
+using the `--acme-email` option,
+so that Let's Encrypt can inform you of any problems.
 
-To run on localhost, run `dev_appserver.py` or equivalent from this
-directory. (on arch, I use the wrapper script `dev_appserver-go`)
+In order to fetch certificates automatically,
+the server needs to be listening on port 443 (the default).
+On Linux, you can use the `setcap` program,
+part of libcap2, to enable the broker to bind to low-numbered ports
+without having to run as root:
+```
+setcap 'cap_net_bind_service=+ep' /usr/local/bin/broker
+```
+You can control the listening port with the --addr option.
 
-To run on appengine, you can spin up your own instance with an arbitrary
-name, and use `appcfg.py`.
-
-In both cases, you'll need to provide the URL of the custom broker
+You'll need to provide the URL of the custom broker
 to the client plugin using the `--url $URL` flag.
-
-See more detailed appengine instructions
-[here](https://cloud.google.com/appengine/docs/go/).

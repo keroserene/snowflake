@@ -1,6 +1,3 @@
-# override this with appcfg.py -A $YOUR_APP_ID
-application: snowflake-reg
-version: 1
 runtime: go
 api_version: go1
 
