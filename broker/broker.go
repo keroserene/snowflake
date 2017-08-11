@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -220,15 +219,6 @@ func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write([]byte("User-agent: *\nDisallow:\n"))
-}
-
-func ipHandler(w http.ResponseWriter, r *http.Request) {
-	remoteAddr := r.RemoteAddr
-	if net.ParseIP(remoteAddr).To4() == nil {
-		remoteAddr = "[" + remoteAddr + "]"
-	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte(remoteAddr))
 }
 
 func main() {
