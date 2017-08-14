@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/keroserene/go-webrtc"
@@ -17,17 +15,6 @@ type IceServerList []webrtc.ConfigurationOption
 
 func (i *IceServerList) String() string {
 	return fmt.Sprint(*i)
-}
-
-func (i *IceServerList) Set(s string) error {
-	log.Println("IceServerList:")
-	for _, server := range strings.Split(s, ",") {
-		// TODO: STUN / TURN url format validation?
-		log.Println(server)
-		option := webrtc.OptionIceServer(server)
-		*i = append(*i, option)
-	}
-	return nil
 }
 
 type BytesLogger interface {

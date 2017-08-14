@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -121,8 +122,7 @@ func copyLoop(a, b io.ReadWriter) {
 }
 
 func main() {
-	var iceServers IceServerList
-	flag.Var(&iceServers, "ice", "comma-separated list of ICE servers")
+	iceServersCommas := flag.String("ice", "", "comma-separated list of ICE servers")
 	brokerURL := flag.String("url", "", "URL of signaling broker")
 	frontDomain := flag.String("front", "", "front domain")
 	logFilename := flag.String("log", "", "name of log file")
@@ -143,6 +143,15 @@ func main() {
 	}
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
+
+	var iceServers IceServerList
+	log.Println("IceServerList:")
+	for _, server := range strings.Split(*iceServersCommas, ",") {
+		// TODO: STUN / TURN url format validation?
+		log.Println(server)
+		option := webrtc.OptionIceServer(server)
+		iceServers = append(iceServers, option)
+	}
 
 	// Prepare to collect remote WebRTC peers.
 	snowflakes := NewPeers(*max)
