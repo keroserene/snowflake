@@ -46,9 +46,9 @@ buildUrl = (scheme, host, port, path, params) ->
 
   parts.join ''
 
-makeWebsocket = (addr) ->
+makeWebsocket = (addr, params) ->
   wsProtocol = if WSS_ENABLED then 'wss' else 'ws'
-  url = buildUrl wsProtocol, addr.host, addr.port, '/'
+  url = buildUrl wsProtocol, addr.host, addr.port, '/', params
   ws = new WebSocket url
   ###
   'User agents can use this as a hint for how to handle incoming binary data: if

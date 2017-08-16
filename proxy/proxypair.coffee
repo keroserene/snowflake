@@ -93,7 +93,20 @@ class ProxyPair
   # Assumes WebRTC datachannel is connected.
   connectRelay: =>
     dbg 'Connecting to relay...'
-    @relay = makeWebsocket @relayAddr
+
+    # Get a remote IP address from the PeerConnection, if possible. Add it to
+    # the WebSocket URL's query string if available.
+    # MDN marks remoteDescription as "experimental". However the other two
+    # options, currentRemoteDescription and pendingRemoteDescription, which
+    # are not marked experimental, were undefined when I tried them in Firefox
+    # 52.2.0.
+    # https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/remoteDescription
+    peer_ip = Parse.ipFromSDP(@pc.remoteDescription?.sdp)
+    params = []
+    if peer_ip?
+      params.push(["client_ip", peer_ip])
+
+    @relay = makeWebsocket @relayAddr, params
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
       if @timer
