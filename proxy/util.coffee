@@ -112,6 +112,17 @@ Parse =
       return null if null == units
     count * Number(units)
 
+  # Parse a connection-address out of the "c=" Connection Data field of a session
+  # description. Return undefined if none is found.
+  # https://tools.ietf.org/html/rfc4566#section-5.7
+  ipFromSDP: (sdp) ->
+    for pattern in [
+      /^c=IN IP4 ([\d.]+)(?:(?:\/\d+)?\/\d+)?(:? |$)/m,
+      /^c=IN IP6 ([0-9A-Fa-f:.]+)(?:\/\d+)?(:? |$)/m,
+    ]
+      m = pattern.exec(sdp)
+      return m[1] if m?
+
 
 Params =
   getBool: (query, param, defaultValue) ->
