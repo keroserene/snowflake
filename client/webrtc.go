@@ -197,7 +197,7 @@ func (c *WebRTCPeer) establishDataChannel() error {
 	if c.transport != nil {
 		panic("Unexpected datachannel already exists!")
 	}
-	dc, err := c.pc.CreateDataChannel(c.id, webrtc.Init{})
+	dc, err := c.pc.CreateDataChannel(c.id)
 	// Triggers "OnNegotiationNeeded" on the PeerConnection, which will prepare
 	// an SDP offer while other goroutines operating on this struct handle the
 	// signaling. Eventually fires "OnOpen".
