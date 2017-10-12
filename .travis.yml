@@ -26,6 +26,7 @@ install:
     - go get -u github.com/dchest/uniuri
     - go get -u git.torproject.org/pluggable-transports/goptlib.git
     - go get -u git.torproject.org/pluggable-transports/websocket.git/websocket
+    - go get -u google.golang.org/appengine
     - pushd proxy
     - npm install
     - popd
