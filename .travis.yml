@@ -27,6 +27,7 @@ install:
     - go get -u git.torproject.org/pluggable-transports/goptlib.git
     - go get -u git.torproject.org/pluggable-transports/websocket.git/websocket
     - go get -u google.golang.org/appengine
+    - go get -u golang.org/x/crypto/acme/autocert
     - pushd proxy
     - npm install
     - popd
