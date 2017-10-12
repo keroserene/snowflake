@@ -74,14 +74,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if urlFetchTimeout != 0 {
+		context_, _ = context.WithTimeout(context_, urlFetchTimeout)
+	}
 	// Use urlfetch.Transport directly instead of urlfetch.Client because we
 	// want only a single HTTP transaction, not following redirects.
 	transport := urlfetch.Transport{
 		Context: context_,
-		// Despite the name, Transport.Deadline is really a timeout and
-		// not an absolute deadline as used in the net package. In
-		// other words it is a time.Duration, not a time.Time.
-		Deadline: urlFetchTimeout,
 	}
 	resp, err := transport.RoundTrip(fr)
 	if err != nil {
