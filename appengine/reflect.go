@@ -3,12 +3,12 @@
 package reflect
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
@@ -75,7 +75,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if urlFetchTimeout != 0 {
-		context_, _ = context.WithTimeout(context_, urlFetchTimeout)
+		var cancel context.CancelFunc
+		context_, cancel = context.WithTimeout(context_, urlFetchTimeout)
+		defer cancel()
 	}
 	// Use urlfetch.Transport directly instead of urlfetch.Client because we
 	// want only a single HTTP transaction, not following redirects.
