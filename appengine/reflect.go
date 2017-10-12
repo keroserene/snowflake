@@ -8,8 +8,10 @@ import (
 	"net/url"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/urlfetch"
 )
 
 const (
@@ -18,7 +20,7 @@ const (
 	urlFetchTimeout = 20 * time.Second
 )
 
-var context appengine.Context
+var context_ context.Context
 
 // Join two URL paths.
 func pathJoin(a, b string) string {
@@ -65,17 +67,17 @@ func copyRequest(r *http.Request) (*http.Request, error) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	context = appengine.NewContext(r)
+	context_ = appengine.NewContext(r)
 	fr, err := copyRequest(r)
 	if err != nil {
-		context.Errorf("copyRequest: %s", err)
+		log.Errorf(context_, "copyRequest: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Use urlfetch.Transport directly instead of urlfetch.Client because we
 	// want only a single HTTP transaction, not following redirects.
 	transport := urlfetch.Transport{
-		Context: context,
+		Context: context_,
 		// Despite the name, Transport.Deadline is really a timeout and
 		// not an absolute deadline as used in the net package. In
 		// other words it is a time.Duration, not a time.Time.
@@ -83,7 +85,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := transport.RoundTrip(fr)
 	if err != nil {
-		context.Errorf("RoundTrip: %s", err)
+		log.Errorf(context_, "RoundTrip: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -99,7 +101,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	n, err := io.Copy(w, resp.Body)
 	if err != nil {
-		context.Errorf("io.Copy after %d bytes: %s", n, err)
+		log.Errorf(context_, "io.Copy after %d bytes: %s", n, err)
 	}
 }
 
