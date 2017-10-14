@@ -139,10 +139,18 @@ func webSocketHandler(ws *websocket.WebSocket) {
 		handlerChan <- -1
 	}()
 
-	// Pass an empty string for the client address. The remote address on
-	// the incoming connection reflects that of the browser proxy, not of
-	// the client. See https://bugs.torproject.org/18628.
-	or, err := pt.DialOr(&ptInfo, "", ptMethodName)
+	// Check if client addr is a valid IP
+	addr := ws.Request().URL.Query().Get("client_ip")
+	clientIP := net.ParseIP(addr)
+
+	if clientIP == nil {
+		// Set client addr to empty
+		addr = ""
+	}
+
+	// Pass the address of client as the remote address of incoming connection
+	or, err := pt.DialOr(&ptInfo, addr, ptMethodName)
+
 	if err != nil {
 		log.Printf("failed to connect to ORPort: %s", err)
 		return
