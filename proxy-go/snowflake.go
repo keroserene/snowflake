@@ -89,7 +89,7 @@ func (c *webRTCConn) RemoteAddr() net.Addr {
 	if clientIP == nil {
 		return nil
 	}
-	return &net.IPAddr{clientIP, ""}
+	return &net.IPAddr{IP: clientIP, Zone: ""}
 }
 
 func (c *webRTCConn) SetDeadline(t time.Time) error {
