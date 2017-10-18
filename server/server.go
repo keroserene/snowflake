@@ -130,12 +130,16 @@ func proxy(local *net.TCPConn, conn *webSocketConn) {
 
 // Return an address string suitable to pass into pt.DialOr.
 func clientAddr(clientIPParam string) string {
+	if clientIPParam == "" {
+		return ""
+	}
 	// Check if client addr is a valid IP
 	clientIP := net.ParseIP(clientIPParam)
 	if clientIP == nil {
 		return ""
 	}
-	return clientIPParam
+	// Add a dummy port number. USERADDR requires a port number.
+	return (&net.TCPAddr{IP: clientIP, Port: 1, Zone: ""}).String()
 }
 
 func webSocketHandler(ws *websocket.WebSocket) {
