@@ -145,11 +145,8 @@ func main() {
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
 	var iceServers IceServerList
-	log.Println("IceServerList:")
-	for _, server := range strings.Split(*iceServersCommas, ",") {
-		// TODO: STUN / TURN url format validation?
-		log.Println(server)
-		option := webrtc.OptionIceServer(server)
+	if len(strings.TrimSpace(*iceServersCommas)) > 0 {
+		option := webrtc.OptionIceServer(*iceServersCommas)
 		iceServers = append(iceServers, option)
 	}
 
