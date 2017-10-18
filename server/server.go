@@ -269,6 +269,8 @@ func main() {
 		log.Fatalf("error in setup: %s", err)
 	}
 
+	go statsThread()
+
 	var certManager *autocert.Manager
 	if !disableTLS {
 		log.Printf("ACME hostnames: %q", acmeHostnames)
