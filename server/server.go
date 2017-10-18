@@ -155,7 +155,7 @@ func webSocketHandler(ws *websocket.WebSocket) {
 
 	// Pass the address of client as the remote address of incoming connection
 	clientIPParam := ws.Request().URL.Query().Get("client_ip")
-	or, err := pt.DialOr(&ptInfo, clientIPParam, ptMethodName)
+	or, err := pt.DialOr(&ptInfo, clientAddr(clientIPParam), ptMethodName)
 
 	if err != nil {
 		log.Printf("failed to connect to ORPort: %s", err)
