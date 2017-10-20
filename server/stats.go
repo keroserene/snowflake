@@ -32,7 +32,7 @@ func statsThread() {
 			numConnections += 1
 		case <-deadline:
 			now := time.Now()
-			log.Printf("in the past %.g s, %d/%d connections had client_ip",
+			log.Printf("in the past %.f s, %d/%d connections had client_ip",
 				(now.Sub(prevTime)).Seconds(),
 				numClientIP, numConnections)
 			numClientIP = 0
