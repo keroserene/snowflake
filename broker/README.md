@@ -35,14 +35,15 @@ using the `--acme-email` option,
 so that Let's Encrypt can inform you of any problems.
 
 In order to fetch certificates automatically,
-the server needs to be listening on port 443 (the default).
+the server needs to open an additional HTTP listener on port 80.
 On Linux, you can use the `setcap` program,
 part of libcap2, to enable the broker to bind to low-numbered ports
 without having to run as root:
 ```
 setcap 'cap_net_bind_service=+ep' /usr/local/bin/broker
 ```
-You can control the listening port with the --addr option.
+You can control the listening broker port with the --addr option.
+Port 443 is the default.
 
 You'll need to provide the URL of the custom broker
 to the client plugin using the `--url $URL` flag.

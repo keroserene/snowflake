@@ -260,6 +260,10 @@ func main() {
 			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
 			Email:      acmeEmail,
 		}
+		go func() {
+			log.Printf("Starting HTTP-01 listener")
+			log.Fatal(http.ListenAndServe(":80",  certManager.HTTPHandler(nil)))
+		}()
 
 		server.TLSConfig = &tls.Config{GetCertificate: certManager.GetCertificate}
 		err = server.ListenAndServeTLS("", "")
