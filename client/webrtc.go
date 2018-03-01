@@ -147,7 +147,7 @@ func (c *WebRTCPeer) Connect() error {
 // Create and prepare callbacks on a new WebRTC PeerConnection.
 func (c *WebRTCPeer) preparePeerConnection() error {
 	if nil != c.pc {
-		c.pc.Close()
+		c.pc.Destroy()
 		c.pc = nil
 	}
 	pc, err := webrtc.NewPeerConnection(c.config)
@@ -230,6 +230,7 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		// Disable the DataChannel as a write destination.
 		log.Println("WebRTC: DataChannel.OnClose [remotely]")
 		c.transport = nil
+		c.pc.DeleteDataChannel(dc)
 		c.Close()
 	}
 	dc.OnMessage = func(msg []byte) {
@@ -326,11 +327,14 @@ func (c *WebRTCPeer) cleanup() {
 		// Setting transport to nil *before* dc Close indicates to OnClose that
 		// this was locally triggered.
 		c.transport = nil
-		dataChannel.Close()
+		if c.pc == nil {
+			panic("DataChannel w/o PeerConnection, not good.")
+		}
+		c.pc.DeleteDataChannel(dataChannel.(*webrtc.DataChannel))
 	}
 	if nil != c.pc {
 		log.Printf("WebRTC: closing PeerConnection")
-		err := c.pc.Close()
+		err := c.pc.Destroy()
 		if nil != err {
 			log.Printf("Error closing peerconnection...")
 		}
