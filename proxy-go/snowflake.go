@@ -76,7 +76,7 @@ func (c *webRTCConn) Write(b []byte) (int, error) {
 }
 
 func (c *webRTCConn) Close() error {
-	return c.pc.Close()
+	return c.pc.Destroy()
 }
 
 func (c *webRTCConn) LocalAddr() net.Addr {
@@ -271,6 +271,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 		dc.OnClose = func() {
 			log.Println("OnClose channel")
 			pw.Close()
+			pc.DeleteDataChannel(dc)
 		}
 		dc.OnMessage = func(msg []byte) {
 			log.Printf("OnMessage <--- %d bytes", len(msg))
@@ -289,7 +290,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 
 	err = pc.SetRemoteDescription(sdp)
 	if err != nil {
-		pc.Close()
+		pc.Destroy()
 		return nil, fmt.Errorf("accept: SetRemoteDescription: %s", err)
 	}
 	log.Println("sdp offer successfully received.")
@@ -311,11 +312,11 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	// Wait until answer is ready.
 	select {
 	case err = <-errChan:
-		pc.Close()
+		pc.Destroy()
 		return nil, err
 	case _, ok := <-answerChan:
 		if !ok {
-			pc.Close()
+			pc.Destroy()
 			return nil, fmt.Errorf("Failed gathering ICE candidates.")
 		}
 	}
@@ -338,7 +339,7 @@ func runSession(sid string) {
 	err = sendAnswer(sid, pc)
 	if err != nil {
 		log.Printf("error sending answer to client through broker: %s", err)
-		pc.Close()
+		pc.Destroy()
 		retToken()
 		return
 	}
