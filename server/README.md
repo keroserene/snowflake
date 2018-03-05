@@ -7,10 +7,10 @@ and the proxy connects to the server (this program) using WebSocket.
 
 # Setup
 
-The server needs to be able to listen on port 443
+The server needs to be able to listen on port 80
 in order to generate its TLS certificates.
 On Linux, use the `setcap` program to enable
-the server to listen on port 443 without running as root:
+the server to listen on port 80 without running as root:
 ```
 setcap 'cap_net_bind_service=+ep' /usr/local/bin/snowflake-server
 ```
@@ -48,12 +48,11 @@ The server will cache TLS certificate data in the directory
 `pt_state/snowflake-certificate-cache` inside the tor state directory.
 
 In order to fetch certificates automatically,
-the server needs to listen on port 443.
+the server needs to listen on port 80,
+in addition to whatever ports it is listening on
+for WebSocket connections.
 This is a requirement of the ACME protocol used by Let's Encrypt.
-If your `ServerTransportListenAddr` is not on port 443,
-the server will open an listener on port 443 in addition
-to the port you requested.
-The program will exit if it can't bind to port 443.
+The program will exit if it can't bind to port 80.
 On Linux, you can use the `setcap` program,
 part of libcap2, to enable the server to bind to low-numbered ports
 without having to run as root:

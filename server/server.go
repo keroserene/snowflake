@@ -41,8 +41,8 @@ func usage() {
 WebSocket server pluggable transport for Snowflake. Works only as a managed
 proxy. Uses TLS with ACME (Let's Encrypt) by default. Set the certificate
 hostnames with the --acme-hostnames option. Use ServerTransportListenAddr in
-torrc to choose the listening port. When using TLS, if the port is not 443, this
-program will open an additional listening port on 443 to work with ACME.
+torrc to choose the listening port. When using TLS, this program will open an
+additional HTTP listener on port 80 to work with ACME.
 
 `, os.Args[0])
 	flag.PrintDefaults()
@@ -297,19 +297,11 @@ func main() {
 		}
 	}
 
-	// The ACME responder only works when it is running on port 443. In case
-	// there is not already going to be a TLS listener on port 443, we need
-	// to open an additional one. The port is actually opened in the loop
-	// below, so that any errors can be reported in the SMETHOD-ERROR of
-	// another bindaddr.
-	// https://letsencrypt.github.io/acme-spec/#domain-validation-with-server-name-indication-dvsni
-	need443Listener := !disableTLS
-	for _, bindaddr := range ptInfo.Bindaddrs {
-		if !disableTLS && bindaddr.Addr.Port == 443 {
-			need443Listener = false
-			break
-		}
-	}
+	// The ACME HTTP-01 responder only works when it is running on port 80.
+	// We actually open the port in the loop below, so that any errors can
+	// be reported in the SMETHOD-ERROR of some bindaddr.
+	// https://github.com/ietf-wg-acme/acme/blob/master/draft-ietf-acme-acme.md#http-challenge
+	needHTTP01Listener := !disableTLS
 
 	listeners := make([]net.Listener, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
@@ -318,18 +310,21 @@ func main() {
 			continue
 		}
 
-		if need443Listener {
+		if needHTTP01Listener {
 			addr := *bindaddr.Addr
-			addr.Port = 443
-			log.Printf("opening additional ACME listener on %s", addr.String())
-			ln443, err := startListenerTLS("tcp", &addr, certManager)
+			addr.Port = 80
+			log.Printf("Starting HTTP-01 ACME listener")
+			lnHTTP01, err := net.ListenTCP("tcp", &addr)
 			if err != nil {
-				log.Printf("error opening ACME listener: %s", err)
-				pt.SmethodError(bindaddr.MethodName, "ACME listener: "+err.Error())
+				log.Printf("error opening HTTP-01 ACME listener: %s", err)
+				pt.SmethodError(bindaddr.MethodName, "HTTP-01 ACME listener: "+err.Error())
 				continue
 			}
-			listeners = append(listeners, ln443)
-			need443Listener = false
+			go func() {
+				log.Fatal(http.Serve(lnHTTP01, certManager.HTTPHandler(nil)))
+			}()
+			listeners = append(listeners, lnHTTP01)
+			needHTTP01Listener = false
 		}
 
 		var ln net.Listener
