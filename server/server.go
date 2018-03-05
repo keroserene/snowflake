@@ -1,6 +1,5 @@
 // Snowflake-specific websocket server plugin. It reports the transport name as
-// "snowflake" and does not forward the (unknown) client address to the
-// ExtORPort.
+// "snowflake".
 package main
 
 import (
