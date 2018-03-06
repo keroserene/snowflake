@@ -22,7 +22,7 @@
   "license": "BSD-3-Clause",
   "devDependencies": {
     "coffeelint": "^1.16.0",
-    "jasmine": "^2.5.2",
+    "jasmine": "2.5.2",
     "modernizr": "^3.3.1"
   },
   "dependencies": {
