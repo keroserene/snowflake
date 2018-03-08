@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -126,13 +127,22 @@ func main() {
 	brokerURL := flag.String("url", "", "URL of signaling broker")
 	frontDomain := flag.String("front", "", "front domain")
 	logFilename := flag.String("log", "", "name of log file")
+	logToStateDir := flag.Bool("logToStateDir", false, "resolve the log file relative to tor's pt state dir")
 	max := flag.Int("max", DefaultSnowflakeCapacity,
 		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
 
 	webrtc.SetLoggingVerbosity(1)
 	log.SetFlags(log.LstdFlags | log.LUTC)
+
 	if *logFilename != "" {
+		if *logToStateDir {
+			stateDir, err := pt.MakeStateDir()
+			if err != nil {
+				log.Fatal(err)
+			}
+			*logFilename = filepath.Join(stateDir, *logFilename)
+		}
 		logFile, err := os.OpenFile(*logFilename,
 			os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
