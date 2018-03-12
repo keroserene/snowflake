@@ -22,6 +22,7 @@ import (
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	"git.torproject.org/pluggable-transports/websocket.git/websocket"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/net/http2"
 )
 
 const ptMethodName = "snowflake"
@@ -171,64 +172,63 @@ func webSocketHandler(ws *websocket.WebSocket) {
 	proxy(or, &conn)
 }
 
-func listenTLS(network string, addr *net.TCPAddr, m *autocert.Manager) (net.Listener, error) {
-	// This is cribbed from the source of net/http.Server.ListenAndServeTLS.
-	// We have to separate the Listen and Serve parts because we need to
-	// report the listening address before entering Serve (which is an
-	// infinite loop).
+func initServer(addr *net.TCPAddr,
+	getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error),
+	listenAndServe func(*http.Server)) (*http.Server, error) {
+	// We're not capable of listening on port 0 (i.e., an ephemeral port
+	// unknown in advance). The reason is that while the net/http package
+	// exposes ListenAndServe and ListenAndServeTLS, those functions never
+	// return, so there's no opportunity to find out what the port number
+	// is, in between the Listen and Serve steps.
 	// https://groups.google.com/d/msg/Golang-nuts/3F1VRCCENp8/3hcayZiwYM8J
-	config := &tls.Config{}
-	config.NextProtos = []string{"http/1.1"}
-	config.GetCertificate = m.GetCertificate
-
-	conn, err := net.ListenTCP(network, addr)
-	if err != nil {
-		return nil, err
+	if addr.Port == 0 {
+		return nil, fmt.Errorf("cannot listen on port %d; configure a port using ServerTransportListenAddr", addr.Port)
 	}
 
-	// Additionally disable SSLv3 because of the POODLE attack.
-	// http://googleonlinesecurity.blogspot.com/2014/10/this-poodle-bites-exploiting-ssl-30.html
-	// https://code.google.com/p/go/source/detail?r=ad9e191a51946e43f1abac8b6a2fefbf2291eea7
-	config.MinVersion = tls.VersionTLS10
-
-	tlsListener := tls.NewListener(conn, config)
-
-	return tlsListener, nil
-}
-
-func startListener(network string, addr *net.TCPAddr) (net.Listener, error) {
-	ln, err := net.ListenTCP(network, addr)
-	if err != nil {
-		return nil, err
+	var config websocket.Config
+	config.MaxMessageSize = maxMessageSize
+	server := &http.Server{
+		Addr:        addr.String(),
+		Handler:     config.Handler(webSocketHandler),
+		ReadTimeout: requestTimeout,
 	}
-	log.Printf("listening with plain HTTP on %s", ln.Addr())
-	return startServer(ln)
-}
-
-func startListenerTLS(network string, addr *net.TCPAddr, m *autocert.Manager) (net.Listener, error) {
-	ln, err := listenTLS(network, addr, m)
+	// We need to override server.TLSConfig.GetCertificate--but first
+	// server.TLSConfig needs to be non-nil. If we just create our own new
+	// &tls.Config, it will lack the default settings that the net/http
+	// package sets up for things like HTTP/2. Therefore we first call
+	// http2.ConfigureServer for its side effect of initializing
+	// server.TLSConfig properly. An alternative would be to make a dummy
+	// net.Listener, call Serve on it, and let it return.
+	// https://github.com/golang/go/issues/16588#issuecomment-237386446
+	err := http2.ConfigureServer(server, nil)
 	if err != nil {
-		return nil, err
+		return server, err
 	}
-	log.Printf("listening with HTTPS on %s", ln.Addr())
-	return startServer(ln)
+	server.TLSConfig.GetCertificate = getCertificate
+
+	go listenAndServe(server)
+
+	return server, nil
 }
 
-func startServer(ln net.Listener) (net.Listener, error) {
-	go func() {
-		defer ln.Close()
-		var config websocket.Config
-		config.MaxMessageSize = maxMessageSize
-		s := &http.Server{
-			Handler:     config.Handler(webSocketHandler),
-			ReadTimeout: requestTimeout,
-		}
-		err := s.Serve(ln)
+func startServer(addr *net.TCPAddr) (*http.Server, error) {
+	return initServer(addr, nil, func(server *http.Server) {
+		log.Printf("listening with plain HTTP on %s", addr)
+		err := server.ListenAndServe()
 		if err != nil {
-			log.Printf("http.Serve: %s", err)
+			log.Printf("error in ListenAndServe: %s", err)
 		}
-	}()
-	return ln, nil
+	})
+}
+
+func startServerTLS(addr *net.TCPAddr, getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) (*http.Server, error) {
+	return initServer(addr, getCertificate, func(server *http.Server) {
+		log.Printf("listening with HTTPS on %s", addr)
+		err := server.ListenAndServeTLS("", "")
+		if err != nil {
+			log.Printf("error in ListenAndServeTLS: %s", err)
+		}
+	})
 }
 
 func getCertificateCacheDir() (string, error) {
@@ -303,7 +303,7 @@ func main() {
 	// https://github.com/ietf-wg-acme/acme/blob/master/draft-ietf-acme-acme.md#http-challenge
 	needHTTP01Listener := !disableTLS
 
-	listeners := make([]net.Listener, 0)
+	servers := make([]*http.Server, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if bindaddr.MethodName != ptMethodName {
 			pt.SmethodError(bindaddr.MethodName, "no such method")
@@ -320,32 +320,36 @@ func main() {
 				pt.SmethodError(bindaddr.MethodName, "HTTP-01 ACME listener: "+err.Error())
 				continue
 			}
+			server := &http.Server{
+				Addr:    addr.String(),
+				Handler: certManager.HTTPHandler(nil),
+			}
 			go func() {
-				log.Fatal(http.Serve(lnHTTP01, certManager.HTTPHandler(nil)))
+				log.Fatal(server.Serve(lnHTTP01))
 			}()
-			listeners = append(listeners, lnHTTP01)
+			servers = append(servers, server)
 			needHTTP01Listener = false
 		}
 
-		var ln net.Listener
+		var server *http.Server
 		args := pt.Args{}
 		if disableTLS {
 			args.Add("tls", "no")
-			ln, err = startListener("tcp", bindaddr.Addr)
+			server, err = startServer(bindaddr.Addr)
 		} else {
 			args.Add("tls", "yes")
 			for _, hostname := range acmeHostnames {
 				args.Add("hostname", hostname)
 			}
-			ln, err = startListenerTLS("tcp", bindaddr.Addr, certManager)
+			server, err = startServerTLS(bindaddr.Addr, certManager.GetCertificate)
 		}
 		if err != nil {
 			log.Printf("error opening listener: %s", err)
 			pt.SmethodError(bindaddr.MethodName, err.Error())
 			continue
 		}
-		pt.SmethodArgs(bindaddr.MethodName, ln.Addr(), args)
-		listeners = append(listeners, ln)
+		pt.SmethodArgs(bindaddr.MethodName, bindaddr.Addr, args)
+		servers = append(servers, server)
 	}
 	pt.SmethodsDone()
 
@@ -366,8 +370,8 @@ func main() {
 
 	// signal received, shut down
 	log.Printf("caught signal %q, exiting", sig)
-	for _, ln := range listeners {
-		ln.Close()
+	for _, server := range servers {
+		server.Close()
 	}
 	for n := range handlerChan {
 		numHandlers += n
