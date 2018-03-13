@@ -80,7 +80,8 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		bc.Host, "\nFront URL:  ", bc.url.Host)
 	data := bytes.NewReader([]byte(offer.Serialize()))
 	// Suffix with broker's client registration handler.
-	request, err := http.NewRequest("POST", bc.url.String()+"client", data)
+	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
+	request, err := http.NewRequest("POST", clientURL.String(), data)
 	if nil != err {
 		return nil, err
 	}
