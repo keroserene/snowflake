@@ -52,12 +52,14 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 func (c *webRTCConn) Write(b []byte) (int, error) {
 	// log.Printf("webrtc Write %d %+q", len(b), string(b))
 	log.Printf("Write %d bytes --> WebRTC", len(b))
-	c.dc.Send(b)
+	if c.dc != nil {
+		c.dc.Send(b)
+	}
 	return len(b), nil
 }
 
 func (c *webRTCConn) Close() error {
-	return c.pc.Close()
+	return c.pc.Destroy()
 }
 
 func (c *webRTCConn) LocalAddr() net.Addr {
@@ -121,12 +123,16 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 
 		pr, pw := io.Pipe()
 
+		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
+
 		dc.OnOpen = func() {
 			log.Println("OnOpen channel")
 		}
 		dc.OnClose = func() {
 			log.Println("OnClose channel")
 			pw.Close()
+			conn.dc = nil
+			pc.DeleteDataChannel(dc)
 		}
 		dc.OnMessage = func(msg []byte) {
 			log.Printf("OnMessage <--- %d bytes", len(msg))
@@ -139,13 +145,12 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 			}
 		}
 
-		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
 		go datachannelHandler(conn)
 	}
 
 	err = pc.SetRemoteDescription(sdp)
 	if err != nil {
-		pc.Close()
+		pc.Destroy()
 		return nil, fmt.Errorf("accept: SetRemoteDescription: %s", err)
 	}
 	log.Println("sdp offer successfully received.")
@@ -167,11 +172,11 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	// Wait until answer is ready.
 	select {
 	case err = <-errChan:
-		pc.Close()
+		pc.Destroy()
 		return nil, err
 	case _, ok := <-answerChan:
 		if !ok {
-			pc.Close()
+			pc.Destroy()
 			return nil, fmt.Errorf("Failed gathering ICE candidates.")
 		}
 	}
