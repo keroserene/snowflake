@@ -26,7 +26,7 @@ const defaultBrokerURL = "https://snowflake-reg.appspot.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 
-var brokerURL string
+var brokerURL *url.URL
 var relayURL string
 
 const (
@@ -121,18 +121,8 @@ func genSessionID() string {
 	return strings.TrimRight(base64.StdEncoding.EncodeToString(buf), "=")
 }
 
-// Parses a URL with url.Parse and panics on any error.
-func mustParseURL(rawurl string) *url.URL {
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
-
 func pollOffer(sid string) *webrtc.SessionDescription {
-	broker := mustParseURL(brokerURL)
-	broker.Path = "/proxy"
+	broker := brokerURL.ResolveReference(&url.URL{Path: "proxy"})
 	for {
 		req, _ := http.NewRequest("POST", broker.String(), bytes.NewBuffer([]byte(sid)))
 		req.Header.Set("X-Session-ID", sid)
@@ -156,8 +146,7 @@ func pollOffer(sid string) *webrtc.SessionDescription {
 }
 
 func sendAnswer(sid string, pc *webrtc.PeerConnection) error {
-	broker := mustParseURL(brokerURL)
-	broker.Path = "/answer"
+	broker := brokerURL.ResolveReference(&url.URL{Path: "answer"})
 	body := bytes.NewBuffer([]byte(pc.LocalDescription().Serialize()))
 	req, _ := http.NewRequest("POST", broker.String(), body)
 	req.Header.Set("X-Session-ID", sid)
@@ -349,9 +338,10 @@ func main() {
 	var capacity uint
 	var stunURL string
 	var logFilename string
+	var rawBrokerURL string
 
 	flag.UintVar(&capacity, "capacity", 10, "maximum concurrent clients")
-	flag.StringVar(&brokerURL, "broker", defaultBrokerURL, "broker URL")
+	flag.StringVar(&rawBrokerURL, "broker", defaultBrokerURL, "broker URL")
 	flag.StringVar(&relayURL, "relay", defaultRelayURL, "websocket relay URL")
 	flag.StringVar(&stunURL, "stun", defaultSTUNURL, "stun URL")
 	flag.StringVar(&logFilename, "log", "", "log filename")
@@ -370,7 +360,7 @@ func main() {
 	log.Println("starting")
 
 	var err error
-	_, err = url.Parse(brokerURL)
+	brokerURL, err = url.Parse(rawBrokerURL)
 	if err != nil {
 		log.Fatalf("invalid broker url: %s", err)
 	}
