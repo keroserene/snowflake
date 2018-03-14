@@ -62,6 +62,9 @@ type webRTCConn struct {
 	dc *webrtc.DataChannel
 	pc *webrtc.PeerConnection
 	pr *io.PipeReader
+
+	lock sync.Mutex // Synchronization for DataChannel destruction
+	once sync.Once  // Synchronization for PeerConnection destruction
 }
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
@@ -69,6 +72,8 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 }
 
 func (c *webRTCConn) Write(b []byte) (int, error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	// log.Printf("webrtc Write %d %+q", len(b), string(b))
 	log.Printf("Write %d bytes --> WebRTC", len(b))
 	if c.dc != nil {
@@ -77,8 +82,11 @@ func (c *webRTCConn) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (c *webRTCConn) Close() error {
-	return c.pc.Destroy()
+func (c *webRTCConn) Close() (err error) {
+	c.once.Do(func() {
+		err = c.pc.Destroy()
+	})
+	return
 }
 
 func (c *webRTCConn) LocalAddr() net.Addr {
@@ -255,17 +263,18 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 		log.Println("OnDataChannel")
 
 		pr, pw := io.Pipe()
-
 		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
 
 		dc.OnOpen = func() {
 			log.Println("OnOpen channel")
 		}
 		dc.OnClose = func() {
+			conn.lock.Lock()
+			defer conn.lock.Unlock()
 			log.Println("OnClose channel")
-			pw.Close()
 			conn.dc = nil
 			pc.DeleteDataChannel(dc)
+			pw.Close()
 		}
 		dc.OnMessage = func(msg []byte) {
 			log.Printf("OnMessage <--- %d bytes", len(msg))
