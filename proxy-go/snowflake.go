@@ -367,6 +367,8 @@ func main() {
 		log.SetOutput(io.MultiWriter(os.Stderr, f))
 	}
 
+	log.Println("starting")
+
 	var err error
 	_, err = url.Parse(brokerURL)
 	if err != nil {
