@@ -57,13 +57,13 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error 
 	for {
 		log.Println("SOCKS listening...")
 		conn, err := ln.AcceptSocks()
-		log.Println("SOCKS accepted: ", conn.Req)
 		if err != nil {
 			if e, ok := err.(net.Error); ok && e.Temporary() {
 				continue
 			}
 			return err
 		}
+		log.Println("SOCKS accepted: ", conn.Req)
 		err = handler(conn, snowflakes)
 		if err != nil {
 			log.Printf("handler error: %s", err)
