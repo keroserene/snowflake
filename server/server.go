@@ -393,10 +393,7 @@ func main() {
 	for _, server := range servers {
 		server.Close()
 	}
-	for n := range handlerChan {
-		numHandlers += n
-		if numHandlers == 0 {
-			break
-		}
+	for numHandlers > 0 {
+		numHandlers += <-handlerChan
 	}
 }

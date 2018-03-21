@@ -241,11 +241,8 @@ func main() {
 		ln.Close()
 	}
 	snowflakes.End()
-	for n := range handlerChan {
-		numHandlers += n
-		if numHandlers == 0 {
-			break
-		}
+	for numHandlers > 0 {
+		numHandlers += <-handlerChan
 	}
 	log.Println("snowflake is done.")
 }
