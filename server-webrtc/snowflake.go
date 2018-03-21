@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -291,9 +292,19 @@ func main() {
 	var numHandlers int = 0
 	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGTERM)
 
-	// wait for first signal
+	if os.Getenv("TOR_PT_EXIT_ON_STDIN_CLOSE") == "1" {
+		// This environment variable means we should treat EOF on stdin
+		// just like SIGTERM: https://bugs.torproject.org/15435.
+		go func() {
+			io.Copy(ioutil.Discard, os.Stdin)
+			log.Printf("synthesizing SIGTERM because of stdin close")
+			sigChan <- syscall.SIGTERM
+		}()
+	}
+
+	// keep track of handlers and wait for a signal
 	sig = nil
 	for sig == nil {
 		select {
@@ -303,17 +314,7 @@ func main() {
 		}
 	}
 
-	if sig == syscall.SIGTERM {
-		return
-	}
-
-	// wait for second signal or no more handlers
-	sig = nil
-	for sig == nil && numHandlers != 0 {
-		select {
-		case n := <-handlerChan:
-			numHandlers += n
-		case sig = <-sigChan:
-		}
+	for numHandlers > 0 {
+		numHandlers += <-handlerChan
 	}
 }
