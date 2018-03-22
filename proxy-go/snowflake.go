@@ -25,6 +25,7 @@ import (
 const defaultBrokerURL = "https://snowflake-reg.appspot.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
+const pollInterval = 5 * time.Second
 
 var brokerURL *url.URL
 var relayURL string
@@ -133,7 +134,19 @@ func genSessionID() string {
 
 func pollOffer(sid string) *webrtc.SessionDescription {
 	broker := brokerURL.ResolveReference(&url.URL{Path: "proxy"})
+	timeOfNextPoll := time.Now()
 	for {
+		// Sleep until we're scheduled to poll again.
+		now := time.Now()
+		time.Sleep(timeOfNextPoll.Sub(now))
+		// Compute the next time to poll -- if it's in the past, that
+		// means that the POST took longer than pollInterval, so we're
+		// allowed to do another one immediately.
+		timeOfNextPoll = timeOfNextPoll.Add(pollInterval)
+		if timeOfNextPoll.Before(now) {
+			timeOfNextPoll = now
+		}
+
 		req, _ := http.NewRequest("POST", broker.String(), bytes.NewBuffer([]byte(sid)))
 		req.Header.Set("X-Session-ID", sid)
 		resp, err := client.Do(req)
