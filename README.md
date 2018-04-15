@@ -56,7 +56,7 @@ For example:
 
 ```
 ClientTransportPlugin snowflake exec ./client \
--url https://snowflake-reg.appspot.com/ \
+-url https://snowflake-reg-test.appspot.com/ \
 -front www.google.com \
 -ice stun:stun.l.google.com:19302
 -max 3

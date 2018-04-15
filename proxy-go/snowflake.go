@@ -22,7 +22,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const defaultBrokerURL = "https://snowflake-reg.appspot.com/"
+const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 const pollInterval = 5 * time.Second

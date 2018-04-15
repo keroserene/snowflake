@@ -11,7 +11,7 @@ TODO: More documentation
 
 # General snowflake proxy constants.
 # For websocket-specific constants, see websocket.coffee.
-DEFAULT_BROKER = 'snowflake-reg.appspot.com'
+DEFAULT_BROKER = 'snowflake-broker.bamsoftware.com'
 DEFAULT_RELAY =
   host: 'snowflake.bamsoftware.com'
   port: '443'
