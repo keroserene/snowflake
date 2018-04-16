@@ -7,6 +7,13 @@ See [keroserene.net/snowflake](https://keroserene.net/snowflake) for more info:
 <iframe src="https://keroserene.net/snowflake/embed.html" width="88" height="16" frameborder="0" scrolling="no"></iframe>
 ```
 
+### Building
+
+```
+cake build
+```
+(Type `cake` by itself to see possible commands)
+
 ### Testing
 
 Unit testing with Jasmine are available with:
