@@ -23,7 +23,7 @@ To run locally, either:
 ### Parameters
 
 With no parameters,
-snowflake uses the default relay `192.81.135.242:9902` and
+snowflake uses the default relay `snowflake.bamsoftware.com:443` and
 uses automatic signaling with the default broker at
 `https://snowflake-reg.appspot.com/`.
 
