@@ -1,0 +1,3 @@
+<FilesMatch "embed\.html|snowflake\.js|modernizr\.js|koch\.jpg">
+    Header always unset X-Frame-Options
+</FilesMatch>
