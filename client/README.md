@@ -7,8 +7,8 @@ It is based on goptlib.
 The client uses these following `torrc` options by default:
 ```
 ClientTransportPlugin snowflake exec ./client \
--url https://snowflake-reg-test.appspot.com/ \
--front www.google.com \
+-url https://snowflake-broker.azureedge.net/ \
+-front ajax.aspnetcdn.com \
 -ice stun:stun.l.google.com:19302
 ```
 
