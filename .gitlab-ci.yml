@@ -1,0 +1,29 @@
+image: golang:1.10-stretch
+
+cache:
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+
+before_script:
+  # Create symbolic links under $GOPATH, this is needed for local build
+  - export src=$GOPATH/src
+  - mkdir -p $src/git.torproject.org/pluggable-transports
+  - mkdir -p $src/gitlab.com/$CI_PROJECT_NAMESPACE
+  - ln -s $CI_PROJECT_DIR $src/git.torproject.org/pluggable-transports/snowflake.git
+  - ln -s $CI_PROJECT_DIR $src/gitlab.com/$CI_PROJECT_PATH
+
+build:
+  script:
+    - apt-get -qy update
+    - apt-get -qy install libx11-dev
+    - cd $src/gitlab.com/$CI_PROJECT_PATH/client
+    - go get ./...
+    - go build ./...
+    - go vet ./...
+    - go test -v -race ./...
+
+after_script:
+    # this file changes every time but should not be cached
+    - rm -f $GRADLE_USER_HOME/caches/modules-2/modules-2.lock
+    - rm -fr $GRADLE_USER_HOME/caches/*/plugin-resolution/
