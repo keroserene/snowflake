@@ -13,8 +13,9 @@ The app will be running at http://127.0.0.1:8080/.
 To deploy to App Engine, first create a new project and app. You have to
 think of a unique name (marked as "<appname>" in the commands). You only
 have to do the "create" step once; subsequent times you can go straight
-to the "deploy" step. This command will open a browser window so you can
-log in to a Google account.
+to the "deploy" step. The "gcloud auth login" command will open a
+browser window so you can log in to a Google account.
+	google-cloud-sdk/bin/gcloud auth login
 	google-cloud-sdk/bin/gcloud projects create <appname>
 	google-cloud-sdk/bin/gcloud app create --project=<appname>
 Then to deploy the project, run:
