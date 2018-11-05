@@ -20,7 +20,7 @@ const (
 	urlFetchTimeout = 20 * time.Second
 )
 
-var context_ context.Context
+var ctx context.Context
 
 // Join two URL paths.
 func pathJoin(a, b string) string {
@@ -67,26 +67,26 @@ func copyRequest(r *http.Request) (*http.Request, error) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	context_ = appengine.NewContext(r)
+	ctx = appengine.NewContext(r)
 	fr, err := copyRequest(r)
 	if err != nil {
-		log.Errorf(context_, "copyRequest: %s", err)
+		log.Errorf(ctx, "copyRequest: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if urlFetchTimeout != 0 {
 		var cancel context.CancelFunc
-		context_, cancel = context.WithTimeout(context_, urlFetchTimeout)
+		ctx, cancel = context.WithTimeout(ctx, urlFetchTimeout)
 		defer cancel()
 	}
 	// Use urlfetch.Transport directly instead of urlfetch.Client because we
 	// want only a single HTTP transaction, not following redirects.
 	transport := urlfetch.Transport{
-		Context: context_,
+		Context: ctx,
 	}
 	resp, err := transport.RoundTrip(fr)
 	if err != nil {
-		log.Errorf(context_, "RoundTrip: %s", err)
+		log.Errorf(ctx, "RoundTrip: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -102,7 +102,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	n, err := io.Copy(w, resp.Body)
 	if err != nil {
-		log.Errorf(context_, "io.Copy after %d bytes: %s", n, err)
+		log.Errorf(ctx, "io.Copy after %d bytes: %s", n, err)
 	}
 }
 
