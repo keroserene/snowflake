@@ -2,7 +2,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"io"
 	"io/ioutil"
@@ -12,36 +11,30 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
+	sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
 	"github.com/keroserene/go-webrtc"
 )
 
 const (
-	ReconnectTimeout         = 10
 	DefaultSnowflakeCapacity = 1
-	SnowflakeTimeout         = 30
 )
-
-// When a connection handler starts, +1 is written to this channel; when it
-// ends, -1 is written.
-var handlerChan = make(chan int)
 
 // Maintain |SnowflakeCapacity| number of available WebRTC connections, to
 // transfer to the Tor SOCKS handler when needed.
-func ConnectLoop(snowflakes SnowflakeCollector) {
+func ConnectLoop(snowflakes sf.SnowflakeCollector) {
 	for {
 		// Check if ending is necessary.
 		_, err := snowflakes.Collect()
 		if nil != err {
 			log.Println("WebRTC:", err,
-				" Retrying in", ReconnectTimeout, "seconds...")
+				" Retrying in", sf.ReconnectTimeout, "seconds...")
 		}
 		select {
-		case <-time.After(time.Second * ReconnectTimeout):
+		case <-time.After(time.Second * sf.ReconnectTimeout):
 			continue
 		case <-snowflakes.Melted():
 			log.Println("ConnectLoop: stopped.")
@@ -51,7 +44,7 @@ func ConnectLoop(snowflakes SnowflakeCollector) {
 }
 
 // Accept local SOCKS connections and pass them to the handler.
-func socksAcceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error {
+func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) error {
 	defer ln.Close()
 	log.Println("Started SOCKS listener.")
 	for {
@@ -64,62 +57,11 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes SnowflakeCollector) error 
 			return err
 		}
 		log.Println("SOCKS accepted: ", conn.Req)
-		err = handler(conn, snowflakes)
+		err = sf.Handler(conn, snowflakes)
 		if err != nil {
 			log.Printf("handler error: %s", err)
 		}
 	}
-}
-
-// Given an accepted SOCKS connection, establish a WebRTC connection to the
-// remote peer and exchange traffic.
-func handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
-	handlerChan <- 1
-	defer func() {
-		handlerChan <- -1
-	}()
-	// Obtain an available WebRTC remote. May block.
-	snowflake := snowflakes.Pop()
-	if nil == snowflake {
-		socks.Reject()
-		return errors.New("handler: Received invalid Snowflake")
-	}
-	defer socks.Close()
-	defer snowflake.Close()
-	log.Println("---- Handler: snowflake assigned ----")
-	err := socks.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		// When WebRTC resets, close the SOCKS connection too.
-		snowflake.WaitForReset()
-		socks.Close()
-	}()
-
-	// Begin exchanging data. Either WebRTC or localhost SOCKS will close first.
-	// In eithercase, this closes the handler and induces a new handler.
-	copyLoop(socks, snowflake)
-	log.Println("---- Handler: closed ---")
-	return nil
-}
-
-// Exchanges bytes between two ReadWriters.
-// (In this case, between a SOCKS and WebRTC connection.)
-func copyLoop(a, b io.ReadWriter) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		io.Copy(b, a)
-		wg.Done()
-	}()
-	go func() {
-		io.Copy(a, b)
-		wg.Done()
-	}()
-	wg.Wait()
-	log.Println("copy loop ended")
 }
 
 func main() {
@@ -156,30 +98,34 @@ func main() {
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
-	var iceServers IceServerList
+	var iceServers sf.IceServerList
 	if len(strings.TrimSpace(*iceServersCommas)) > 0 {
 		option := webrtc.OptionIceServer(*iceServersCommas)
 		iceServers = append(iceServers, option)
 	}
 
 	// Prepare to collect remote WebRTC peers.
-	snowflakes := NewPeers(*max)
+	snowflakes := sf.NewPeers(*max)
 	if "" != *brokerURL {
 		// Use potentially domain-fronting broker to rendezvous.
-		broker := NewBrokerChannel(*brokerURL, *frontDomain, CreateBrokerTransport())
-		snowflakes.Tongue = NewWebRTCDialer(broker, iceServers)
+		broker := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport())
+		snowflakes.Tongue = sf.NewWebRTCDialer(broker, iceServers)
 	} else {
 		// Otherwise, use manual copy and pasting of SDP messages.
-		snowflakes.Tongue = NewCopyPasteDialer(iceServers)
+		snowflakes.Tongue = sf.NewCopyPasteDialer(iceServers)
 	}
 	if nil == snowflakes.Tongue {
 		log.Fatal("Unable to prepare rendezvous method.")
 		return
 	}
 	// Use a real logger to periodically output how much traffic is happening.
-	snowflakes.BytesLogger = &BytesSyncLogger{
-		inboundChan: make(chan int, 5), outboundChan: make(chan int, 5),
-		inbound: 0, outbound: 0, inEvents: 0, outEvents: 0,
+	snowflakes.BytesLogger = &sf.BytesSyncLogger{
+		InboundChan:  make(chan int, 5),
+		OutboundChan: make(chan int, 5),
+		Inbound:      0,
+		Outbound:     0,
+		InEvents:     0,
+		OutEvents:    0,
 	}
 	go snowflakes.BytesLogger.Log()
 
@@ -232,7 +178,7 @@ func main() {
 	sig = nil
 	for sig == nil {
 		select {
-		case n := <-handlerChan:
+		case n := <-sf.HandlerChan:
 			numHandlers += n
 		case sig = <-sigChan:
 		}
@@ -244,7 +190,7 @@ func main() {
 	}
 	snowflakes.End()
 	for numHandlers > 0 {
-		numHandlers += <-handlerChan
+		numHandlers += <-sf.HandlerChan
 	}
 	log.Println("snowflake is done.")
 }

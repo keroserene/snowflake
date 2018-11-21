@@ -9,7 +9,7 @@
 //
 // - Manual copy-paste signaling. User must create a signaling pipe.
 //   (The flags in torrc-manual allow this)
-package main
+package lib
 
 import (
 	"bufio"

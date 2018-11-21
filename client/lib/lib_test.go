@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"bytes"
@@ -179,7 +179,7 @@ func TestSnowflakeClient(t *testing.T) {
 
 			So(socks.rejected, ShouldEqual, false)
 			snowflakes.toRelease = nil
-			handler(socks, snowflakes)
+			Handler(socks, snowflakes)
 			So(socks.rejected, ShouldEqual, true)
 		})
 
