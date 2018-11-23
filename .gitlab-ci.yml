@@ -43,6 +43,7 @@
   set +x
 
 .artifacts-template: &artifacts-template
+  stage: deploy
   artifacts:
     name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
     untracked: true
@@ -94,6 +95,55 @@ android:
     # gomobile bind won't build code with 'package main'
     - sed -i 's,^package main$,package snowflakeclient,' snowflake.go
     - gomobile bind -v -x -target=android/arm github.com/keroserene/snowflake/client
+
+# build against Debian/testing and publish .deb to local apt repo
+pages:
+  image: debian:stretch-backports
+  <<: *artifacts-template
+  variables:
+    DEBIAN_FRONTEND: noninteractive
+    GOPATH: /usr/share/gocode
+  script:
+    - *build_env_setup
+    - apt-get -qy update
+    - apt-get -qy install --no-install-recommends -t stretch-backports
+        aptly
+        golang-github-smartystreets-goconvey-dev
+    - apt-get -qy install --no-install-recommends
+        build-essential
+        ca-certificates
+        gnupg1
+        libx11-dev
+    - cd $src/github.com/keroserene/snowflake
+    - go get ./...
+    - go build ./...
+    - ./build-deb
+
+    # build apt repo from freshly built .debs
+    - rm -rf public $HOME/.aptly
+    - ln -s $CI_PROJECT_DIR $HOME/.aptly
+    - export aptly="aptly -gpg-provider=internal"
+    - export DEB_BUILD_ARCH=`dpkg --print-architecture`
+    - $aptly repo create autobuilt || true
+    - $aptly repo add autobuilt *.deb
+    - $aptly publish repo --skip-signing --distribution autobuilt --architectures all,$DEB_BUILD_ARCH autobuilt
+        || $aptly publish update --skip-signing --architectures all,$DEB_BUILD_ARCH autobuilt
+    # ease debugging since directory indices are disabled
+    - export JOB_URL="$CI_PROJECT_URL/-/jobs/$CI_JOB_ID"
+    - export COMMIT_URL="$CI_PROJECT_URL/commit/$CI_COMMIT_SHA"
+    - export BRANCH_URL="$CI_PROJECT_URL/commits/$CI_COMMIT_REF_NAME"
+    - cd public
+    - printf "<html><head><title>apt source for %s</title></head><body>" $CI_PROJECT_PATH > index.html
+    - printf "<h1>$CI_PROJECT_PATH apt repo</h1>" >> index.html
+    - printf "<ul><li>`date`</li>" >> index.html
+    - printf '<li><a href="%s">%s</a></li>\n' $JOB_URL $JOB_URL >> index.html
+    - printf '<li>branch <a href="%s"><code>%s</code></a></li>' $BRANCH_URL $CI_COMMIT_REF_NAME >> index.html
+    - printf '<li>commit <a href="%s"><code>%s</code></a></li>' $COMMIT_URL $CI_COMMIT_SHA >> index.html
+    - printf "<li><code>deb [allow-insecure=yes] https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME} autobuilt main</code></li>" >> index.html
+    - printf "<li><code>apt-get install --allow-unauthenticated -t autobuilt snowflake</code></li>" >> index.html
+    - printf '</ul>\n' >> index.html
+    - for f in `find | sort`; do printf '<a href="%s"><code>%s</code></a><br/>\n' $f $f >> index.html; done
+    - echo "</ul></body></html>" >> index.html
 
 debian-stretch_go-1.10:
   image: golang:1.10-stretch
