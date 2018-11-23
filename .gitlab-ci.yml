@@ -77,6 +77,44 @@
 
 # -- jobs ------------------------------------------------------------
 
+android:
+  image: registry.gitlab.com/fdroid/ci-images-client
+  <<: *artifacts-template
+  variables:
+    GOPATH: "/go"
+  script:
+    - *build_env_setup
+    - apt-get -qy update
+    - apt-get -qy install --no-install-recommends build-essential gnupg libx11-dev pkg-config
+    - cd /usr/local
+    - export gotarball="go1.11.1.linux-amd64.tar.gz"
+    - wget -q http://storage.googleapis.com/golang/${gotarball}
+    - wget -q http://storage.googleapis.com/golang/${gotarball}.asc
+    - curl https://dl.google.com/linux/linux_signing_key.pub | gpg --no-tty --batch --import
+    - gpg --verify ${gotarball}.asc
+    - echo "2871270d8ff0c8c69f161aaae42f9f28739855ff5c5204752a8d92a1c9f63993  ${gotarball}" | sha256sum -c
+    - tar -xzf ${gotarball}
+    - export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"  # putting this in 'variables:' cause weird runner errors
+    - go get github.com/smartystreets/goconvey/convey
+
+    - go get -u golang.org/x/mobile/cmd/gomobile
+    - cd $GOPATH/src/golang.org/x/mobile/cmd/gomobile
+    - go install
+    - echo y | $ANDROID_HOME/tools/bin/sdkmanager --no_https 'ndk-bundle' > /dev/null
+    - export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
+    - gomobile init -ndk $ANDROID_NDK_HOME
+
+    - cd $src/github.com/keroserene/snowflake/client
+    - go get -d -u ./...
+    - cp $src/github.com/keroserene/go-webrtc/webrtc-android-armeabi-v7a.pc
+         $src/github.com/keroserene/go-webrtc/webrtc-linux-arm.pc  # cgo uses both on Android :-/
+    - export CGO_CXXFLAGS=-D_GLIBCXX_USE_CXX_ABI=1
+    - export CGO_CFLAGS="-fsanitize=address"
+    - export CGO_LDFLAGS="-fsanitize=address"
+    # gomobile bind won't build code with 'package main'
+    - sed -i 's,^package main$,package snowflakeclient,' snowflake.go
+    - gomobile bind -v -x -target=android/arm github.com/keroserene/snowflake/client
+
 debian-stretch_go-1.10:
   image: golang:1.10-stretch
   <<: *golang-docker-debian-template
