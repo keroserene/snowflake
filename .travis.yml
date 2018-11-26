@@ -3,6 +3,8 @@ language: go
 sudo: required
 dist: trusty
 
+go_import_path: git.torproject.org/pluggable-transports/snowflake.git
+
 addons:
     apt:
         sources:
