@@ -13,7 +13,7 @@ describe 'ProxyPair', ->
     pp.begin()
     expect(pp.pc).not.toBeNull()
 
-  it 'accepts WebRTC offer from some client', ->
+  describe 'accepts WebRTC offer from some client', ->
     it 'rejects invalid offers', ->
       expect(pp.receiveWebRTCOffer {}).toBe false
       expect pp.receiveWebRTCOffer {
@@ -56,7 +56,7 @@ describe 'ProxyPair', ->
     expect(pp.relay.onerror).not.toBeNull()
     expect(pp.relay.onmessage).not.toBeNull()
 
-  it 'flushes data between client and relay', ->
+  describe 'flushes data between client and relay', ->
 
     it 'proxies data from client to relay', ->
       spyOn pp.relay, 'send'
