@@ -2,6 +2,25 @@
 jasmine tests for Snowflake proxypair
 ###
 
+# Replacement for MessageEvent constructor.
+# https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/MessageEvent
+MessageEvent = (type, init) ->
+  init
+
+# Asymmetic matcher that checks that two arrays have the same contents.
+arrayMatching = (sample) -> {
+  asymmetricMatch: (other) ->
+    a = new Uint8Array(sample)
+    b = new Uint8Array(other)
+    if a.length != b.length
+      return false
+    for _, i in a
+      if a[i] != b[i]
+        return false
+    true
+  jasmineToString: ->
+    '<arrayMatchine(' + jasmine.pp(sample) + ')>'
+}
 
 describe 'ProxyPair', ->
   fakeRelay = Parse.address '0.0.0.0:12345'
@@ -76,17 +95,19 @@ describe 'ProxyPair', ->
       }
       spyOn pp.client, 'send'
       spyOn pp.relay, 'send'
-      pp.c2rSchedule.push 'foo'
+      msg = new MessageEvent("message", { data: Uint8Array.from([1, 2, 3]).buffer })
+      pp.onClientToRelayMessage(msg)
       pp.flush()
       expect(pp.client.send).not.toHaveBeenCalled()
-      expect(pp.relay.send).toHaveBeenCalledWith 'foo'
+      expect(pp.relay.send).toHaveBeenCalledWith arrayMatching([1, 2, 3])
 
     it 'proxies data from relay to client', ->
       spyOn pp.client, 'send'
       spyOn pp.relay, 'send'
-      pp.r2cSchedule.push 'bar'
+      msg = new MessageEvent("message", { data: Uint8Array.from([4, 5, 6]).buffer })
+      pp.onRelayToClientMessage(msg)
       pp.flush()
-      expect(pp.client.send).toHaveBeenCalledWith 'bar'
+      expect(pp.client.send).toHaveBeenCalledWith arrayMatching([4, 5, 6])
       expect(pp.relay.send).not.toHaveBeenCalled()
 
     it 'sends nothing with nothing to flush', ->
