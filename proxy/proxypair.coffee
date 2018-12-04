@@ -139,8 +139,9 @@ class ProxyPair
 
   # websocket --> WebRTC
   onRelayToClientMessage: (event) =>
+    if DEBUG
+      log 'websocket --> WebRTC data: ' + event.data.byteLength + ' bytes'
     @r2cSchedule.push event.data
-    # log 'websocket --> WebRTC data: ' + event.data.byteLength + ' bytes'
     @flush()
 
   onError: (event) =>
