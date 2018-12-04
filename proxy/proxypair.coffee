@@ -132,21 +132,15 @@ class ProxyPair
 
   # WebRTC --> websocket
   onClientToRelayMessage: (msg) =>
-    line = recv = msg.data
     if DEBUG
-      # Go sends only raw bytes...
-      if '[object ArrayBuffer]' == recv.toString()
-        bytes = new Uint8Array recv
-        line = String.fromCharCode.apply(null, bytes)
-      line = line.trim()
-      log 'WebRTC --> websocket data: ' + line
-    @c2rSchedule.push recv
+      log 'WebRTC --> websocket data: ' + msg.data.byteLength + ' bytes'
+    @c2rSchedule.push msg.data
     @flush()
 
   # websocket --> WebRTC
   onRelayToClientMessage: (event) =>
     @r2cSchedule.push event.data
-    # log 'websocket-->WebRTC data: ' + event.data
+    # log 'websocket --> WebRTC data: ' + event.data.byteLength + ' bytes'
     @flush()
 
   onError: (event) =>
