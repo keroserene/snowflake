@@ -88,6 +88,7 @@ class ProxyPair
       # TODO: Change this for multiplexing.
       snowflake.reset()
     channel.onerror = -> log 'Data channel error!'
+    channel.binaryType = "arraybuffer"
     channel.onmessage = @onClientToRelayMessage
 
   # Assumes WebRTC datachannel is connected.
