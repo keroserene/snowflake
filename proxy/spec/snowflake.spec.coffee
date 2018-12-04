@@ -5,11 +5,17 @@ jasmine tests for Snowflake
 query = {}
 # Fake browser functionality:
 class PeerConnection
+  setRemoteDescription: ->
+    true
+  send: (data) ->
 class SessionDescription
   type: 'offer'
 class WebSocket
   OPEN: 1
   CLOSED: 0
+  constructor: ->
+    @bufferedAmount = 0
+  send: (data) ->
 log = ->
 class FakeUI
   log: ->

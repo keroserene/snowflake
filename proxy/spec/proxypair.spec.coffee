@@ -7,24 +7,32 @@ describe 'ProxyPair', ->
   fakeRelay = Parse.address '0.0.0.0:12345'
   rateLimit = new DummyRateLimit()
   destination = []
+  # Using the mock PeerConnection definition from spec/snowflake.spec.coffee.
   pp = new ProxyPair(fakeRelay, rateLimit)
 
-  it 'begins webrtc connection', ->
+  beforeEach ->
     pp.begin()
+
+  it 'begins webrtc connection', ->
     expect(pp.pc).not.toBeNull()
 
   describe 'accepts WebRTC offer from some client', ->
+    beforeEach ->
+      pp.begin()
+
     it 'rejects invalid offers', ->
+      expect(typeof(pp.pc.setRemoteDescription)).toBe("function")
+      expect(pp.pc).not.toBeNull()
       expect(pp.receiveWebRTCOffer {}).toBe false
-      expect pp.receiveWebRTCOffer {
+      expect(pp.receiveWebRTCOffer {
         type: 'answer'
-      }.toBeFalse()
+      }).toBe false
     it 'accepts valid offers', ->
-      goodOffer = {
+      expect(pp.pc).not.toBeNull()
+      expect(pp.receiveWebRTCOffer {
         type: 'offer'
         sdp: 'foo'
-      }
-      expect(pp.receiveWebRTCOffer goodOffer).toBe true
+      }).toBe true
 
   it 'responds with a WebRTC answer correctly', ->
     spyOn snowflake.broker, 'sendAnswer'
@@ -59,20 +67,31 @@ describe 'ProxyPair', ->
   describe 'flushes data between client and relay', ->
 
     it 'proxies data from client to relay', ->
+      pp.pc.ondatachannel {
+        channel: {
+          bufferedAmount: 0
+          readyState: "open"
+          send: (data) ->
+        }
+      }
+      spyOn pp.client, 'send'
       spyOn pp.relay, 'send'
-      pp.c2rSchedule.push { data: 'foo' }
+      pp.c2rSchedule.push 'foo'
       pp.flush()
       expect(pp.client.send).not.toHaveBeenCalled()
       expect(pp.relay.send).toHaveBeenCalledWith 'foo'
 
     it 'proxies data from relay to client', ->
       spyOn pp.client, 'send'
-      pp.r2cSchedule.push { data: 'bar' }
+      spyOn pp.relay, 'send'
+      pp.r2cSchedule.push 'bar'
       pp.flush()
       expect(pp.client.send).toHaveBeenCalledWith 'bar'
       expect(pp.relay.send).not.toHaveBeenCalled()
 
     it 'sends nothing with nothing to flush', ->
+      spyOn pp.client, 'send'
+      spyOn pp.relay, 'send'
       pp.flush()
       expect(pp.client.send).not.toHaveBeenCalled()
       expect(pp.relay.send).not.toHaveBeenCalled()
