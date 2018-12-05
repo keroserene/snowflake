@@ -171,7 +171,7 @@ class ProxyPair
          @relay.bufferedAmount < @MAX_BUFFER &&
          @c2rSchedule.length > 0
         chunk = @c2rSchedule.shift()
-        @rateLimit.update chunk.length
+        @rateLimit.update chunk.byteLength
         @relay.send chunk
         busy = true
       # websocket --> WebRTC
@@ -179,7 +179,7 @@ class ProxyPair
          @client.bufferedAmount < @MAX_BUFFER &&
          @r2cSchedule.length > 0
         chunk = @r2cSchedule.shift()
-        @rateLimit.update chunk.length
+        @rateLimit.update chunk.byteLength
         @client.send chunk
         busy = true
 
