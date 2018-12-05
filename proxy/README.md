@@ -37,6 +37,4 @@ uses automatic signaling with the default broker at
 Here are optional parameters to include in the query string.
 ```
 manual - enables copy-paste signalling mode.
-relay=<address> - use a custom target relay.
-broker=<url> - use a custom broker.
 ```
