@@ -11,8 +11,8 @@ TODO: More documentation
 
 # General snowflake proxy constants.
 # For websocket-specific constants, see websocket.coffee.
-DEFAULT_BROKER = 'snowflake-broker.bamsoftware.com'
-DEFAULT_RELAY =
+BROKER = 'snowflake-broker.bamsoftware.com'
+RELAY =
   host: 'snowflake.bamsoftware.com'
   port: '443'
   # Original non-wss relay:
@@ -236,10 +236,7 @@ init = (isNode) ->
   # Hook up to the debug UI if available.
   ui = if isNode then null else new UI()
   silenceNotifications = Params.getBool(query, 'silent', false)
-  # Retrieve connectivity information for the Broker and
-  # initialize Snowflake contexts.
-  brokerUrl = Params.getString(query, 'broker', DEFAULT_BROKER)
-  broker = new Broker brokerUrl
+  broker = new Broker BROKER
   snowflake = new Snowflake broker, ui
 
   log '== snowflake proxy =='
@@ -251,8 +248,7 @@ init = (isNode) ->
   # Otherwise, begin setting up WebRTC and acting as a proxy.
   log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
   dbg 'Contacting Broker at ' + broker.url if not COPY_PASTE_ENABLED
-  relayAddr = Params.getAddress(query, 'relay', DEFAULT_RELAY)
-  snowflake.setRelayAddr relayAddr
+  snowflake.setRelayAddr RELAY
   snowflake.beginWebRTC()
 
 # Notification of closing tab with active proxy.
