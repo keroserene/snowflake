@@ -174,7 +174,7 @@ class BucketRateLimit
 
   # How many seconds in the future will the limit expire?
   when: ->
-    age()
+    @age()
     (@amount - @capacity) / (@capacity / @time)
 
   isLimited: ->
