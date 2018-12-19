@@ -93,6 +93,11 @@ func main() {
 		defer logFile.Close()
 		log.SetOutput(logFile)
 	} else {
+		// Don't write to stderr; versions of tor earlier than about
+		// 0.3.5.6 do not read from the pipe, and eventually we will
+		// deadlock because the buffer is full.
+		// https://bugs.torproject.org/26360
+		// https://bugs.torproject.org/25600#comment:14
 		log.SetOutput(ioutil.Discard)
 	}
 
