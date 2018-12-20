@@ -4,6 +4,7 @@
 *.swm
 .DS_Store
 datadir/
+broker/broker
 client/client
 server-webrtc/server-webrtc
 server/server
