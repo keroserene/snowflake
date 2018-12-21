@@ -1,3 +1,4 @@
 <Files "embed.html">
     Header always unset X-Frame-Options
 </Files>
+Redirect permanent /options.html /index.html
