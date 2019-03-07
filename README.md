@@ -21,6 +21,7 @@ Pluggable Transport using WebRTC, inspired by Flashproxy.
   - [Dependencies](#dependencies)
   - [More Info](#more-info)
   - [Building](#building)
+  - [Test Environment](#test-environment)
 - [FAQ](#faq)
 - [Appendix](#appendix)
     - [-- Testing Copy-Paste Via Browser Proxy --](#---testing-copy-paste-via-browser-proxy---)
@@ -102,6 +103,12 @@ python -m http.server
 Then, open a browser tab to `http://127.0.0.1:8000/snowflake.html` to view
 the debug-console of the snowflake.,
 So long as that tab is open, you are an ephemeral Tor bridge.
+
+
+#### Test Environment
+
+There is a Docker-based test environment at https://github.com/cohosh/snowbox.
+
 
 ### FAQ
 
