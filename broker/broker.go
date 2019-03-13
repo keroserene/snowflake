@@ -12,8 +12,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
@@ -36,11 +40,21 @@ type BrokerContext struct {
 func NewBrokerContext() *BrokerContext {
 	snowflakes := new(SnowflakeHeap)
 	heap.Init(snowflakes)
+	metrics, err := NewMetrics()
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if metrics == nil {
+		panic("Failed to create metrics")
+	}
+
 	return &BrokerContext{
 		snowflakes:    snowflakes,
 		idToSnowflake: make(map[string]*Snowflake),
 		proxyPolls:    make(chan *ProxyPoll),
-		metrics:       new(Metrics),
+		metrics:       metrics,
 	}
 }
 
@@ -203,6 +217,16 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	// Get proxy country stats
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		log.Println("Error processing proxy IP: ", err.Error())
+	} else {
+
+		ctx.metrics.UpdateCountryStats(remoteIP)
+	}
+
 	log.Println("Received answer: ", body)
 	snowflake.answerChannel <- body
 }
@@ -213,6 +237,7 @@ func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		s += fmt.Sprintf("\nsnowflake %d: %s", snowflake.index, snowflake.id)
 	}
 	s += fmt.Sprintf("\n\nroundtrip avg: %d", ctx.metrics.clientRoundtripEstimate)
+	s += fmt.Sprintf("\n\nsnowflake country stats: %s", ctx.metrics.countryStats.Display())
 	w.Write([]byte(s))
 }
 
@@ -225,17 +250,30 @@ func main() {
 	var acmeEmail string
 	var acmeHostnamesCommas string
 	var addr string
+	var geoipDatabase string
+	var geoip6Database string
 	var disableTLS bool
+	var disableGeoip bool
 
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
 	flag.StringVar(&addr, "addr", ":443", "address to listen on")
+	flag.StringVar(&geoipDatabase, "geoipdb", "/usr/share/tor/geoip", "path to correctly formatted geoip database mapping IPv4 address ranges to country codes")
+	flag.StringVar(&geoip6Database, "geoip6db", "/usr/share/tor/geoip6", "path to correctly formatted geoip database mapping IPv6 address ranges to country codes")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
+	flag.BoolVar(&disableGeoip, "disable-geoip", false, "don't use geoip for stats collection")
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
 	ctx := NewBrokerContext()
+
+	if !disableGeoip {
+		err := ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
 
 	go ctx.Broker()
 
@@ -250,6 +288,20 @@ func main() {
 	server := http.Server{
 		Addr: addr,
 	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+
+	// go routine to handle a SIGHUP signal to allow the broker operator to send
+	// a SIGHUP signal when the geoip database files are updated, without requiring
+	// a restart of the broker
+	go func() {
+		for {
+			signal := <-sigChan
+			log.Println("Received signal:", signal, ". Reloading geoip databases.")
+			ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
+		}
+	}()
 
 	if acmeHostnamesCommas != "" {
 		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
