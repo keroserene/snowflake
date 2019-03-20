@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -52,6 +53,22 @@ additional HTTP listener on port 80 to work with ACME.
 
 `, os.Args[0])
 	flag.PrintDefaults()
+}
+
+// An io.Writer that can be used as the output for a logger that first
+// sanitizes logs and then writes to the provided io.Writer
+type logScrubber struct {
+	output io.Writer
+}
+
+func (ls *logScrubber) Write(b []byte) (n int, err error) {
+	//First scrub the input of IP addresses
+	reIPv4 := regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`)
+	reIPv6 := regexp.MustCompile(`(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))`)
+	scrubbedBytes := reIPv4.ReplaceAll(b, []byte("X.X.X.X"))
+	scrubbedBytes = reIPv6.ReplaceAll(scrubbedBytes,
+		[]byte("X:X:X:X:X:X:X:X"))
+	return ls.output.Write(scrubbedBytes)
 }
 
 // An abstraction that makes an underlying WebSocket connection look like an
@@ -280,8 +297,15 @@ func main() {
 			log.Fatalf("can't open log file: %s", err)
 		}
 		defer f.Close()
-		log.SetOutput(f)
-	}
+		//We want to send the log output through our scrubber first
+		scrubber := &logScrubber{f}
+		log.SetOutput(scrubber)
+	} else {
+            // we still want to send log output through our scrubber, even
+            // if no log file was specified
+            scrubber := &logScrubber{os.Stdout}
+            log.SetOutput(scrubber)
+        }
 
 	if !disableTLS && acmeHostnamesCommas == "" {
 		log.Fatal("the --acme-hostnames option is required")
