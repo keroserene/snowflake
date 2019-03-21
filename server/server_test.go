@@ -59,6 +59,7 @@ func TestLogScrubber(t *testing.T) {
 
 	log.Printf("%s", "http: TLS handshake error from 129.97.208.23:38310:")
 
+        //Example IPv4 address that ended up in log
 	if bytes.Compare(buff.Bytes(), []byte("http: TLS handshake error from X.X.X.X:38310:\n")) != 0 {
 		t.Errorf("log scrubber didn't scrub IPv4 address. Output: %s", string(buff.Bytes()))
 	}
@@ -66,9 +67,23 @@ func TestLogScrubber(t *testing.T) {
 
 	log.Printf("%s", "http2: panic serving [2620:101:f000:780:9097:75b1:519f:dbb8]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack")
 
+        //Example IPv6 address that ended up in log
 	if bytes.Compare(buff.Bytes(), []byte("http2: panic serving [X:X:X:X:X:X:X:X]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack\n")) != 0 {
 		t.Errorf("log scrubber didn't scrub IPv6 address. Output: %s", string(buff.Bytes()))
 	}
 	buff.Reset()
 
+        //Testing IPv6 edge cases
+	log.Printf("%s", "[1::]:58344")
+	log.Printf("%s", "[1:2:3:4:5:6::8]:58344")
+	log.Printf("%s", "[1::7:8]:58344")
+	log.Printf("%s", "[::4:5:6:7:8]:58344")
+	log.Printf("%s", "[::255.255.255.255]:58344")
+	log.Printf("%s", "[::ffff:0:255.255.255.255]:58344")
+	log.Printf("%s", "[2001:db8:3:4::192.0.2.33]:58344")
+
+	if bytes.Compare(buff.Bytes(), []byte("[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:XX.X.X.X]:58344\n[X:X:X:X:X:X:X:XX.X.X.X]:58344\n[X:X:X:X:X:X:X:XX.X.X.X]:58344\n")) != 0 {
+		t.Errorf("log scrubber didn't scrub IPv6 address. Output: %s", string(buff.Bytes()))
+	}
+	buff.Reset()
 }
