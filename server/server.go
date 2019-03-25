@@ -55,6 +55,13 @@ additional HTTP listener on port 80 to work with ACME.
 	flag.PrintDefaults()
 }
 
+var scrubberPatterns = []*regexp.Regexp{
+	/* IPv6 */
+	regexp.MustCompile(`\[([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})?\]`),
+	/* IPv4 */
+	regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`),
+}
+
 // An io.Writer that can be used as the output for a logger that first
 // sanitizes logs and then writes to the provided io.Writer
 type logScrubber struct {
@@ -62,13 +69,11 @@ type logScrubber struct {
 }
 
 func (ls *logScrubber) Write(b []byte) (n int, err error) {
-	//First scrub the input of IP addresses
-	reIPv4 := regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`)
-        //Note that for embedded IPv4 address, the previous regex will scrub it
-        reIPv6 := regexp.MustCompile(`([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?`)
-	scrubbedBytes := reIPv4.ReplaceAll(b, []byte("X.X.X.X"))
-	scrubbedBytes = reIPv6.ReplaceAll(scrubbedBytes,
-		[]byte("X:X:X:X:X:X:X:X"))
+	scrubbedBytes := b
+	for _, pattern := range scrubberPatterns {
+		scrubbedBytes = pattern.ReplaceAll(scrubbedBytes, []byte("[scrubbed]"))
+	}
+
 	return ls.output.Write(scrubbedBytes)
 }
 
@@ -292,21 +297,18 @@ func main() {
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
+
+	var logOutput io.Writer = os.Stderr
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
 			log.Fatalf("can't open log file: %s", err)
 		}
 		defer f.Close()
-		//We want to send the log output through our scrubber first
-		scrubber := &logScrubber{f}
-		log.SetOutput(scrubber)
-	} else {
-            // we still want to send log output through our scrubber, even
-            // if no log file was specified
-            scrubber := &logScrubber{os.Stdout}
-            log.SetOutput(scrubber)
-        }
+		logOutput = f
+	}
+	//We want to send the log output through our scrubber first
+	log.SetOutput(&logScrubber{logOutput})
 
 	if !disableTLS && acmeHostnamesCommas == "" {
 		log.Fatal("the --acme-hostnames option is required")

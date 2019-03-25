@@ -51,39 +51,58 @@ func TestClientAddr(t *testing.T) {
 }
 
 func TestLogScrubber(t *testing.T) {
-
-	var buff bytes.Buffer
-	scrubber := &logScrubber{&buff}
-	log.SetFlags(0) //remove all extra log output for test comparisons
-	log.SetOutput(scrubber)
-
-	log.Printf("%s", "http: TLS handshake error from 129.97.208.23:38310:")
-
-        //Example IPv4 address that ended up in log
-	if bytes.Compare(buff.Bytes(), []byte("http: TLS handshake error from X.X.X.X:38310:\n")) != 0 {
-		t.Errorf("log scrubber didn't scrub IPv4 address. Output: %s", string(buff.Bytes()))
+	for _, test := range []struct {
+		input, expected string
+	}{
+		{
+			"http: TLS handshake error from 129.97.208.23:38310:",
+			"http: TLS handshake error from [scrubbed]:38310:\n",
+		},
+		{
+			"http2: panic serving [2620:101:f000:780:9097:75b1:519f:dbb8]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack",
+			"http2: panic serving [scrubbed]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack\n",
+		},
+		{
+			//Make sure it doesn't scrub fingerprint
+			"a=fingerprint:sha-256 33:B6:FA:F6:94:CA:74:61:45:4A:D2:1F:2C:2F:75:8A:D9:EB:23:34:B2:30:E9:1B:2A:A6:A9:E0:44:72:CC:74",
+			"a=fingerprint:sha-256 33:B6:FA:F6:94:CA:74:61:45:4A:D2:1F:2C:2F:75:8A:D9:EB:23:34:B2:30:E9:1B:2A:A6:A9:E0:44:72:CC:74\n",
+		},
+		{
+			"[1::]:58344",
+			"[scrubbed]:58344\n",
+		},
+		{
+			"[1:2:3:4:5:6::8]",
+			"[scrubbed]\n",
+		},
+		{
+			"[1::7:8]",
+			"[scrubbed]\n",
+		},
+		{
+			"[::4:5:6:7:8]",
+			"[scrubbed]\n",
+		},
+		{
+			"[::255.255.255.255]",
+			"[scrubbed]\n",
+		},
+		{
+			"[::ffff:0:255.255.255.255]",
+			"[scrubbed]\n",
+		},
+		{
+			"[2001:db8:3:4::192.0.2.33]",
+			"[scrubbed]\n",
+		},
+	} {
+		var buff bytes.Buffer
+		log.SetFlags(0) //remove all extra log output for test comparisons
+		log.SetOutput(&logScrubber{&buff})
+		log.Print(test.input)
+		if buff.String() != test.expected {
+			t.Errorf("%q: got %q, expected %q", test.input, buff.String(), test.expected)
+		}
 	}
-	buff.Reset()
 
-	log.Printf("%s", "http2: panic serving [2620:101:f000:780:9097:75b1:519f:dbb8]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack")
-
-        //Example IPv6 address that ended up in log
-	if bytes.Compare(buff.Bytes(), []byte("http2: panic serving [X:X:X:X:X:X:X:X]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack\n")) != 0 {
-		t.Errorf("log scrubber didn't scrub IPv6 address. Output: %s", string(buff.Bytes()))
-	}
-	buff.Reset()
-
-        //Testing IPv6 edge cases
-	log.Printf("%s", "[1::]:58344")
-	log.Printf("%s", "[1:2:3:4:5:6::8]:58344")
-	log.Printf("%s", "[1::7:8]:58344")
-	log.Printf("%s", "[::4:5:6:7:8]:58344")
-	log.Printf("%s", "[::255.255.255.255]:58344")
-	log.Printf("%s", "[::ffff:0:255.255.255.255]:58344")
-	log.Printf("%s", "[2001:db8:3:4::192.0.2.33]:58344")
-
-	if bytes.Compare(buff.Bytes(), []byte("[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:X]:58344\n[X:X:X:X:X:X:X:XX.X.X.X]:58344\n[X:X:X:X:X:X:X:XX.X.X.X]:58344\n[X:X:X:X:X:X:X:XX.X.X.X]:58344\n")) != 0 {
-		t.Errorf("log scrubber didn't scrub IPv6 address. Output: %s", string(buff.Bytes()))
-	}
-	buff.Reset()
 }
