@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"flag"
@@ -66,15 +67,32 @@ var scrubberPatterns = []*regexp.Regexp{
 // sanitizes logs and then writes to the provided io.Writer
 type logScrubber struct {
 	output io.Writer
+	buffer []byte
 }
 
-func (ls *logScrubber) Write(b []byte) (n int, err error) {
+func scrub(b []byte) []byte {
 	scrubbedBytes := b
 	for _, pattern := range scrubberPatterns {
 		scrubbedBytes = pattern.ReplaceAll(scrubbedBytes, []byte("[scrubbed]"))
 	}
+	return scrubbedBytes
+}
 
-	return ls.output.Write(scrubbedBytes)
+func (ls *logScrubber) Write(b []byte) (n int, err error) {
+	n = len(b)
+	ls.buffer = append(ls.buffer, b...)
+	for {
+		i := bytes.LastIndexByte(ls.buffer, '\n')
+		if i == -1 {
+			return
+		}
+		fullLines := ls.buffer[:i+1]
+		_, err = ls.output.Write(scrub(fullLines))
+		if err != nil {
+			return
+		}
+		ls.buffer = ls.buffer[i+1:]
+	}
 }
 
 // An abstraction that makes an underlying WebSocket connection look like an
@@ -308,7 +326,7 @@ func main() {
 		logOutput = f
 	}
 	//We want to send the log output through our scrubber first
-	log.SetOutput(&logScrubber{logOutput})
+	log.SetOutput(&logScrubber{output: logOutput})
 
 	if !disableTLS && acmeHostnamesCommas == "" {
 		log.Fatal("the --acme-hostnames option is required")

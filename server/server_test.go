@@ -50,7 +50,50 @@ func TestClientAddr(t *testing.T) {
 	}
 }
 
-func TestLogScrubber(t *testing.T) {
+//Check to make sure that addresses split across calls to write are still scrubbed
+func TestLogScrubberSplit(t *testing.T) {
+	input := []byte("test\nhttp2: panic serving [2620:101:f000:780:9097:75b1:519f:dbb8]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack\n")
+
+	expected := "test\nhttp2: panic serving [scrubbed]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack\n"
+
+	var buff bytes.Buffer
+	scrubber := &logScrubber{output: &buff}
+	n, err := scrubber.Write(input[:12]) //test\nhttp2:
+	if n != 12 {
+		t.Errorf("wrong number of bytes %d", n)
+	}
+	if err != nil {
+		t.Errorf("%q", err)
+	}
+	if buff.String() != "test\n" {
+		t.Errorf("Got %q, expected %q", buff.String(), "test\n")
+	}
+
+	n, err = scrubber.Write(input[12:30]) //panic serving [2620:101:f
+	if n != 18 {
+		t.Errorf("wrong number of bytes %d", n)
+	}
+	if err != nil {
+		t.Errorf("%q", err)
+	}
+	if buff.String() != "test\n" {
+		t.Errorf("Got %q, expected %q", buff.String(), "test\n")
+	}
+
+	n, err = scrubber.Write(input[30:]) //000:780:9097:75b1:519f:dbb8]:58344: interface conversion: *http2.responseWriter is not http.Hijacker: missing method Hijack\n
+	if n != (len(input) - 30) {
+		t.Errorf("wrong number of bytes %d", n)
+	}
+	if err != nil {
+		t.Errorf("%q", err)
+	}
+	if buff.String() != expected {
+		t.Errorf("Got %q, expected %q", buff.String(), expected)
+	}
+
+}
+
+func TestLogScrubberFormats(t *testing.T) {
 	for _, test := range []struct {
 		input, expected string
 	}{
@@ -98,7 +141,7 @@ func TestLogScrubber(t *testing.T) {
 	} {
 		var buff bytes.Buffer
 		log.SetFlags(0) //remove all extra log output for test comparisons
-		log.SetOutput(&logScrubber{&buff})
+		log.SetOutput(&logScrubber{output: &buff})
 		log.Print(test.input)
 		if buff.String() != test.expected {
 			t.Errorf("%q: got %q, expected %q", test.input, buff.String(), test.expected)
