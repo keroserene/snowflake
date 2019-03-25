@@ -56,12 +56,18 @@ additional HTTP listener on port 80 to work with ACME.
 	flag.PrintDefaults()
 }
 
+const ipv4Address = `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`
+const ipv6Address = `(([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?(` + ipv4Address + `))` +
+	`|(([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?)`
+const optionalPort = `(:\d{1,5})?`
+const addressPattern = `((` + ipv4Address + `)|(\[(` + ipv6Address + `)\])|(` + ipv6Address + `))` + optionalPort
+const fullAddrPattern = `(^|\s|[^\w:])` + addressPattern + `(\s|(:\s)|[^\w:]|$)`
+
 var scrubberPatterns = []*regexp.Regexp{
-	/* IPv6 */
-	regexp.MustCompile(`\[([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})?\]`),
-	/* IPv4 */
-	regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`),
+	regexp.MustCompile(fullAddrPattern),
 }
+
+var addressRegexp = regexp.MustCompile(addressPattern)
 
 // An io.Writer that can be used as the output for a logger that first
 // sanitizes logs and then writes to the provided io.Writer
@@ -73,7 +79,11 @@ type logScrubber struct {
 func scrub(b []byte) []byte {
 	scrubbedBytes := b
 	for _, pattern := range scrubberPatterns {
-		scrubbedBytes = pattern.ReplaceAll(scrubbedBytes, []byte("[scrubbed]"))
+		// this is a workaround since go does not yet support look ahead or look
+		// behind for regular expressions.
+		scrubbedBytes = pattern.ReplaceAllFunc(scrubbedBytes, func(b []byte) []byte {
+			return addressRegexp.ReplaceAll(b, []byte("[scrubbed]"))
+		})
 	}
 	return scrubbedBytes
 }
