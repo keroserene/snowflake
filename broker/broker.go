@@ -203,7 +203,7 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log.Println("Received answer: ", body)
+	log.Println("Received answer.")
 	snowflake.answerChannel <- body
 }
 

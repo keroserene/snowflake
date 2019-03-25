@@ -309,7 +309,7 @@ func (c *WebRTCPeer) exchangeSDP() error {
 			answer = nil
 		}
 	}
-	log.Printf("Received Answer:\n\n%s\n", answer.Sdp)
+	log.Printf("Received Answer.\n")
 	err := c.pc.SetRemoteDescription(answer)
 	if nil != err {
 		log.Println("WebRTC: Unable to SetRemoteDescription:", err)
