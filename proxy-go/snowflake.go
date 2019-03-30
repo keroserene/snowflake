@@ -259,8 +259,6 @@ func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 // Installs an OnDataChannel callback that creates a webRTCConn and passes it to
 // datachannelHandler.
 func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
-	errChan := make(chan error)
-	answerChan := make(chan struct{})
 
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
@@ -268,9 +266,6 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	}
 	pc.OnNegotiationNeeded = func() {
 		panic("OnNegotiationNeeded")
-	}
-	pc.OnIceComplete = func() {
-		answerChan <- struct{}{}
 	}
 	pc.OnDataChannel = func(dc *webrtc.DataChannel) {
 		log.Println("OnDataChannel")
@@ -310,30 +305,25 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	}
 	log.Println("sdp offer successfully received.")
 
-	go func() {
-		log.Println("Generating answer...")
-		answer, err := pc.CreateAnswer() // blocking
-		if err != nil {
-			errChan <- err
-			return
-		}
-		err = pc.SetLocalDescription(answer)
-		if err != nil {
-			errChan <- err
-			return
-		}
-	}()
-
-	// Wait until answer is ready.
-	select {
-	case err = <-errChan:
+	log.Println("Generating answer...")
+	answer, err := pc.CreateAnswer()
+        // blocks on ICE gathering. we need to add a timeout if needed
+        // not putting this in a separate go routine, because we need
+        // SetLocalDescription(answer) to be called before sendAnswer
+	if err != nil {
 		pc.Destroy()
 		return nil, err
-	case _, ok := <-answerChan:
-		if !ok {
-			pc.Destroy()
-			return nil, fmt.Errorf("Failed gathering ICE candidates.")
-		}
+	}
+
+	if answer == nil {
+		pc.Destroy()
+		return nil, fmt.Errorf("Failed gathering ICE candidates.")
+	}
+
+	err = pc.SetLocalDescription(answer)
+	if err != nil {
+		pc.Destroy()
+		return nil, err
 	}
 	return pc, nil
 }
