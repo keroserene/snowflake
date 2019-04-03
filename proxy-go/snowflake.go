@@ -307,9 +307,9 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 
 	log.Println("Generating answer...")
 	answer, err := pc.CreateAnswer()
-        // blocks on ICE gathering. we need to add a timeout if needed
-        // not putting this in a separate go routine, because we need
-        // SetLocalDescription(answer) to be called before sendAnswer
+	// blocks on ICE gathering. we need to add a timeout if needed
+	// not putting this in a separate go routine, because we need
+	// SetLocalDescription(answer) to be called before sendAnswer
 	if err != nil {
 		pc.Destroy()
 		return nil, err
@@ -325,6 +325,20 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 		pc.Destroy()
 		return nil, err
 	}
+
+	// Set a timeout on peerconnection. If the connection state has not
+	// advanced to PeerConnectionStateConnected in this time,
+	// destroy the peer connection and return the token.
+	go func() {
+		<-time.After(time.Minute)
+		if pc.ConnectionState() != webrtc.PeerConnectionStateConnected {
+			log.Println("Timed out waiting for client to open data cannel.")
+			pc.Destroy()
+			retToken()
+		}
+
+	}()
+
 	return pc, nil
 }
 
