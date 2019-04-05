@@ -26,6 +26,9 @@ const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 const pollInterval = 5 * time.Second
+//amount of time after sending an SDP answer before the proxy assumes the
+//client is not going to connect
+const dataChannelTimeout = time.Minute
 
 var brokerURL *url.URL
 var relayURL string
@@ -330,7 +333,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	// advanced to PeerConnectionStateConnected in this time,
 	// destroy the peer connection and return the token.
 	go func() {
-		<-time.After(time.Minute)
+		<-time.After(dataChannelTimeout)
 		if pc.ConnectionState() != webrtc.PeerConnectionStateConnected {
 			log.Println("Timed out waiting for client to open data cannel.")
 			pc.Destroy()
