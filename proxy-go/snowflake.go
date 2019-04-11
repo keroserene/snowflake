@@ -26,6 +26,9 @@ const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 const pollInterval = 5 * time.Second
+//amount of time after sending an SDP answer before the proxy assumes the
+//client is not going to connect
+const dataChannelTimeout = time.Minute
 
 var brokerURL *url.URL
 var relayURL string
@@ -259,8 +262,6 @@ func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 // Installs an OnDataChannel callback that creates a webRTCConn and passes it to
 // datachannelHandler.
 func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
-	errChan := make(chan error)
-	answerChan := make(chan struct{})
 
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
@@ -268,9 +269,6 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	}
 	pc.OnNegotiationNeeded = func() {
 		panic("OnNegotiationNeeded")
-	}
-	pc.OnIceComplete = func() {
-		answerChan <- struct{}{}
 	}
 	pc.OnDataChannel = func(dc *webrtc.DataChannel) {
 		log.Println("OnDataChannel")
@@ -310,31 +308,40 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	}
 	log.Println("sdp offer successfully received.")
 
-	go func() {
-		log.Println("Generating answer...")
-		answer, err := pc.CreateAnswer() // blocking
-		if err != nil {
-			errChan <- err
-			return
-		}
-		err = pc.SetLocalDescription(answer)
-		if err != nil {
-			errChan <- err
-			return
-		}
-	}()
-
-	// Wait until answer is ready.
-	select {
-	case err = <-errChan:
+	log.Println("Generating answer...")
+	answer, err := pc.CreateAnswer()
+	// blocks on ICE gathering. we need to add a timeout if needed
+	// not putting this in a separate go routine, because we need
+	// SetLocalDescription(answer) to be called before sendAnswer
+	if err != nil {
 		pc.Destroy()
 		return nil, err
-	case _, ok := <-answerChan:
-		if !ok {
-			pc.Destroy()
-			return nil, fmt.Errorf("Failed gathering ICE candidates.")
-		}
 	}
+
+	if answer == nil {
+		pc.Destroy()
+		return nil, fmt.Errorf("Failed gathering ICE candidates.")
+	}
+
+	err = pc.SetLocalDescription(answer)
+	if err != nil {
+		pc.Destroy()
+		return nil, err
+	}
+
+	// Set a timeout on peerconnection. If the connection state has not
+	// advanced to PeerConnectionStateConnected in this time,
+	// destroy the peer connection and return the token.
+	go func() {
+		<-time.After(dataChannelTimeout)
+		if pc.ConnectionState() != webrtc.PeerConnectionStateConnected {
+			log.Println("Timed out waiting for client to open data cannel.")
+			pc.Destroy()
+			retToken()
+		}
+
+	}()
+
 	return pc, nil
 }
 
