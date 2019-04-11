@@ -10,12 +10,15 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -232,6 +235,10 @@ func main() {
 	flag.StringVar(&addr, "addr", ":443", "address to listen on")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.Parse()
+
+	var logOutput io.Writer = os.Stderr
+	//We want to send the log output through our scrubber first
+	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
 

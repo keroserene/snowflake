@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"github.com/keroserene/go-webrtc"
 	"golang.org/x/net/websocket"
 )
@@ -26,6 +27,7 @@ const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 const pollInterval = 5 * time.Second
+
 //amount of time after sending an SDP answer before the proxy assumes the
 //client is not going to connect
 const dataChannelTimeout = time.Minute
@@ -380,6 +382,7 @@ func main() {
 	flag.StringVar(&logFilename, "log", "", "log filename")
 	flag.Parse()
 
+	var logOutput io.Writer = os.Stderr
 	log.SetFlags(log.LstdFlags | log.LUTC)
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
@@ -387,8 +390,10 @@ func main() {
 			log.Fatal(err)
 		}
 		defer f.Close()
-		log.SetOutput(io.MultiWriter(os.Stderr, f))
+		logOutput = io.MultiWriter(os.Stderr, f)
 	}
+	//We want to send the log output through our scrubber first
+	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 
 	log.Println("starting")
 
