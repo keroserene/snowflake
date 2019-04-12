@@ -16,6 +16,7 @@ import (
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
+	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"github.com/keroserene/go-webrtc"
 )
 
@@ -77,6 +78,12 @@ func main() {
 	webrtc.SetLoggingVerbosity(1)
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
+	// Don't write to stderr; versions of tor earlier than about
+	// 0.3.5.6 do not read from the pipe, and eventually we will
+	// deadlock because the buffer is full.
+	// https://bugs.torproject.org/26360
+	// https://bugs.torproject.org/25600#comment:14
+	var logOutput io.Writer = ioutil.Discard
 	if *logFilename != "" {
 		if *logToStateDir {
 			stateDir, err := pt.MakeStateDir()
@@ -91,15 +98,10 @@ func main() {
 			log.Fatal(err)
 		}
 		defer logFile.Close()
-		log.SetOutput(logFile)
-	} else {
-		// Don't write to stderr; versions of tor earlier than about
-		// 0.3.5.6 do not read from the pipe, and eventually we will
-		// deadlock because the buffer is full.
-		// https://bugs.torproject.org/26360
-		// https://bugs.torproject.org/25600#comment:14
-		log.SetOutput(ioutil.Discard)
+		logOutput = logFile
 	}
+	//We want to send the log output through our scrubber first
+	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
