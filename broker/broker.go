@@ -218,7 +218,7 @@ func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 
 func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte("User-agent: *\nDisallow:\n"))
+	w.Write([]byte("User-agent: *\nDisallow: /\n"))
 }
 
 func main() {
