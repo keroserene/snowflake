@@ -30,7 +30,7 @@ const pollInterval = 5 * time.Second
 
 //amount of time after sending an SDP answer before the proxy assumes the
 //client is not going to connect
-const dataChannelTimeout = time.Minute
+const dataChannelTimeout = 20 * time.Second
 
 var brokerURL *url.URL
 var relayURL string
@@ -265,6 +265,7 @@ func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 // datachannelHandler.
 func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
 
+	dataChan := make(chan struct{})
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("accept: NewPeerConnection: %s", err)
@@ -274,6 +275,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	}
 	pc.OnDataChannel = func(dc *webrtc.DataChannel) {
 		log.Println("OnDataChannel")
+		close(dataChan)
 
 		pr, pw := io.Pipe()
 		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
@@ -335,9 +337,11 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	// advanced to PeerConnectionStateConnected in this time,
 	// destroy the peer connection and return the token.
 	go func() {
-		<-time.After(dataChannelTimeout)
-		if pc.ConnectionState() != webrtc.PeerConnectionStateConnected {
-			log.Println("Timed out waiting for client to open data cannel.")
+		select {
+		case <-dataChan:
+			log.Println("Connection successful.")
+		case <-time.After(dataChannelTimeout):
+			log.Println("Timed out waiting for client to open data channel.")
 			pc.Destroy()
 			retToken()
 		}
