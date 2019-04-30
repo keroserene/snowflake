@@ -21,14 +21,14 @@ FILES_SPEC = [
   'spec/websocket.spec.coffee'
 ]
 FILES_ALL = FILES.concat FILES_SPEC
-OUTFILE = 'build/snowflake.js'
+OUTFILE = 'snowflake.js'
 STATIC = 'static'
 
 copyStaticFiles = ->
   exec 'cp ' + STATIC + '/* build/'
 
-compileCoffee = ->
-  exec 'cat ' + FILES.join(' ') + ' | coffee -cs > ' + OUTFILE, (err, stdout, stderr) ->
+compileCoffee = (outDir) ->
+  exec 'cat ' + FILES.join(' ') + ' | coffee -cs > ' + outDir + '/' + OUTFILE, (err, stdout, stderr) ->
     throw err if err
 
 task 'test', 'snowflake unit tests', ->
@@ -48,8 +48,12 @@ task 'test', 'snowflake unit tests', ->
 task 'build', 'build the snowflake proxy', ->
   exec 'mkdir -p build'
   copyStaticFiles()
-  compileCoffee()
+  compileCoffee('build')
   console.log 'Snowflake prepared.'
+
+task 'webext', 'build the webextension', ->
+  compileCoffee('webext')
+  console.log 'Webextension prepared.'
 
 task 'lint', 'ensure idiomatic coffeescript', ->
   proc = spawn 'coffeelint', FILES_ALL, {

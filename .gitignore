@@ -14,5 +14,6 @@ proxy/test
 proxy/build
 proxy/node_modules
 proxy/spec/support
+proxy/webext/snowflake.js
 ignore/
 npm-debug.log

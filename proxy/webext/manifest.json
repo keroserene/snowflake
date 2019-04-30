@@ -1,0 +1,16 @@
+{
+	"manifest_version": 2,
+	"name": "Snowflake",
+	"version": "0.0.0",
+	"description": "Snowflake ...",
+	"background": {
+		"page": "snowflake.html",
+		"persistent": true
+	},
+	"browser_action": {
+		"default_icon": {
+			"16": "icons/16.png",
+			"32": "icons/32.png"
+		}
+	}
+}

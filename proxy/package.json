@@ -10,6 +10,7 @@
     "test": "cake test",
     "lint": "cake lint",
     "build": "cake build",
+    "webext": "cake webext",
     "clean": "cake clean",
     "prepublish": "npm run build",
     "start": "node build/snowflake.js"
