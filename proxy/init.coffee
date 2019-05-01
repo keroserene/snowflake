@@ -48,18 +48,6 @@ log = (msg) ->
 
 dbg = (msg) -> log msg if DEBUG or snowflake.ui?.debug
 
-snowflakeIsDisabled = ->
-  cookies = Parse.cookie document.cookie
-  # Do nothing if snowflake has not been opted in by user.
-  if cookies[COOKIE_NAME] != '1'
-    log 'Not opted-in. Please click the badge to change options.'
-    return true
-  # Also do nothing if running in Tor Browser.
-  if mightBeTBB()
-    log 'Will not run within Tor Browser.'
-    return true
-  return false
-
 
 ###
 Entry point.
@@ -72,7 +60,7 @@ init = (isNode) ->
   snowflake = new Snowflake broker, ui
 
   log '== snowflake proxy =='
-  if snowflakeIsDisabled()
+  if Util.snowflakeIsDisabled()
     # Do not activate the proxy if any number of conditions are true.
     log 'Currently not active.'
     return
