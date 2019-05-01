@@ -33,8 +33,3 @@ With no parameters,
 snowflake uses the default relay `snowflake.bamsoftware.com:443` and
 uses automatic signaling with the default broker at
 `https://snowflake-broker.bamsoftware.com/`.
-
-Here are optional parameters to include in the query string.
-```
-manual - enables copy-paste signalling mode.
-```

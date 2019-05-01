@@ -284,14 +284,7 @@ func (c *WebRTCPeer) sendOfferToBroker() {
 // the Broker or signal pipe, then await for the SDP answer.
 func (c *WebRTCPeer) exchangeSDP() error {
 	select {
-	case offer := <-c.offerChannel:
-		// Display for copy-paste when no broker available.
-		if nil == c.broker {
-			log.Printf("Please Copy & Paste the following to the peer:")
-			log.Printf("----------------")
-			log.Printf("\n\n" + offer.Serialize() + "\n\n")
-			log.Printf("----------------")
-		}
+	case <-c.offerChannel:
 	case err := <-c.errorChannel:
 		log.Println("Failed to prepare offer", err)
 		c.Close()

@@ -12,12 +12,9 @@ ClientTransportPlugin snowflake exec ./client \
 -ice stun:stun.l.google.com:19302
 ```
 
-`-url` should be the URL of a Broker instance. This is required to have
-automated signalling (which is desired in most use cases).
-When omitted, the client uses copy-paste signalling instead.
+`-url` should be the URL of a Broker instance.
 
 `-front` is an optional front domain for the Broker request.
 
 `-ice` is a comma-separated list of ICE servers. These can be STUN or TURN
 servers.
-

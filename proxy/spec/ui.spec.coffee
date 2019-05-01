@@ -10,16 +10,12 @@ describe 'UI', ->
   it 'activates debug mode when badge does not exist', ->
     spyOn(document, 'getElementById').and.callFake (id) ->
       return null if 'badge' == id
-      return {
-        focus: ->
-      }
+      return {}
     u = new UI()
     expect(u.debug).toBe true
-    expect(document.getElementById.calls.count()).toEqual 5
+    expect(document.getElementById.calls.count()).toEqual 3
     expect(u.$status).not.toBeNull()
     expect(u.$msglog).not.toBeNull()
-    expect(u.$send).not.toBeNull()
-    expect(u.$input).not.toBeNull()
 
   it 'is not debug mode when badge exists', ->
     spyOn(document, 'getElementById').and.callFake (id) ->
@@ -31,8 +27,6 @@ describe 'UI', ->
     expect(document.getElementById.calls.count()).toEqual 1
     expect(u.$status).toBeNull()
     expect(u.$msglog).toBeNull()
-    expect(u.$send).toBeNull()
-    expect(u.$input).toBeNull()
 
   it 'sets status message only when in debug mode', ->
     u = new UI()

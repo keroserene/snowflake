@@ -113,14 +113,11 @@ func main() {
 
 	// Prepare to collect remote WebRTC peers.
 	snowflakes := sf.NewPeers(*max)
-	if "" != *brokerURL {
-		// Use potentially domain-fronting broker to rendezvous.
-		broker := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport())
-		snowflakes.Tongue = sf.NewWebRTCDialer(broker, iceServers)
-	} else {
-		// Otherwise, use manual copy and pasting of SDP messages.
-		snowflakes.Tongue = sf.NewCopyPasteDialer(iceServers)
-	}
+
+	// Use potentially domain-fronting broker to rendezvous.
+	broker := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport())
+	snowflakes.Tongue = sf.NewWebRTCDialer(broker, iceServers)
+
 	if nil == snowflakes.Tongue {
 		log.Fatal("Unable to prepare rendezvous method.")
 		return

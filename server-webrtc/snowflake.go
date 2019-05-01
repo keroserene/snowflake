@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -194,43 +193,6 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	return pc, nil
 }
 
-// Create a signaling named pipe and feed offers from it into
-// makePeerConnectionFromOffer.
-func receiveSignalsFIFO(filename string, config *webrtc.Configuration) error {
-	err := syscall.Mkfifo(filename, 0600)
-	if err != nil {
-		if err.(syscall.Errno) != syscall.EEXIST {
-			return err
-		}
-	}
-	signalFile, err := os.OpenFile(filename, os.O_RDONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer signalFile.Close()
-
-	s := bufio.NewScanner(signalFile)
-	for s.Scan() {
-		msg := s.Text()
-		sdp := webrtc.DeserializeSessionDescription(msg)
-		if sdp == nil {
-			log.Printf("ignoring invalid signal message %+q", msg)
-			continue
-		}
-
-		pc, err := makePeerConnectionFromOffer(sdp, config)
-		if err != nil {
-			log.Printf("makePeerConnectionFromOffer: %s", err)
-			continue
-		}
-		// Write offer to log for manual signaling.
-		log.Printf("----------------")
-		fmt.Fprintln(logFile, pc.LocalDescription().Serialize())
-		log.Printf("----------------")
-	}
-	return s.Err()
-}
-
 func main() {
 	var err error
 	var httpAddr string
@@ -260,23 +222,13 @@ func main() {
 
 	webRTCConfig := webrtc.NewConfiguration(webrtc.OptionIceServer("stun:stun.l.google.com:19302"))
 
-	// Start FIFO-based signaling receiver.
+	// Start HTTP-based signaling receiver.
 	go func() {
-		err := receiveSignalsFIFO("signal", webRTCConfig)
+		err := receiveSignalsHTTP(httpAddr, webRTCConfig)
 		if err != nil {
-			log.Printf("receiveSignalsFIFO: %s", err)
+			log.Printf("receiveSignalsHTTP: %s", err)
 		}
 	}()
-
-	// Start HTTP-based signaling receiver.
-	if httpAddr != "" {
-		go func() {
-			err := receiveSignalsHTTP(httpAddr, webRTCConfig)
-			if err != nil {
-				log.Printf("receiveSignalsHTTP: %s", err)
-			}
-		}()
-	}
 
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		switch bindaddr.MethodName {

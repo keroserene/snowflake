@@ -24,7 +24,6 @@ Pluggable Transport using WebRTC, inspired by Flashproxy.
   - [Test Environment](#test-environment)
 - [FAQ](#faq)
 - [Appendix](#appendix)
-    - [-- Testing Copy-Paste Via Browser Proxy --](#---testing-copy-paste-via-browser-proxy---)
     - [-- Testing directly via WebRTC Server --](#---testing-directly-via-webrtc-server---)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -69,9 +68,7 @@ comma-separated list of ICE servers, which are required for NAT traversal.
 
 For logging, run `tail -F snowflake.log` in a second terminal.
 
-You can modify the `torrc` to use your own broker,
-or remove the options entirely which will default to the old copy paste
-method (see `torrc-manual`):
+You can modify the `torrc` to use your own broker:
 
 ```
 ClientTransportPlugin snowflake exec ./client --meek
@@ -154,26 +151,6 @@ cd proxy-go
 go build
 ./proxy-go
 ```
-
-##### -- Testing Copy-Paste Via Browser Proxy --
-
-Open a browser proxy, passing the `manual` parameter; e.g.
-`http://127.0.0.1:8000/snowflake.html?manual=1`,
-
-Open up three terminals for the **client:**
-
-A: `tor -f torrc-manual SOCKSPort auto`
-
-B: `cat > signal`
-
-C: `tail -F snowflake.log`
-
-Then, in the browser proxy:
-
-- Look for the offer in terminal C; copy and paste it into the browser.
-- Copy and paste the answer generated in the browser back to terminal B.
-- Once WebRTC successfully connects, the browser terminal should turn green.
-  Shortly after, the tor client should bootstrap to 100%.
 
 ##### -- Testing directly via WebRTC Server --
 

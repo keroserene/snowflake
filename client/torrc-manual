@@ -1,7 +1,0 @@
-UseBridges 1
-DataDirectory datadir
-
-ClientTransportPlugin snowflake exec ./client \
--log snowflake.log
-
-Bridge snowflake 0.0.3.0:1

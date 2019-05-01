@@ -40,15 +40,11 @@ class ProxyPair
       ] }
     @pc.onicecandidate = (evt) =>
       # Browser sends a null candidate once the ICE gathering completes.
-      # In this case, it makes sense to send one copy-paste blob.
       if null == evt.candidate
         # TODO: Use a promise.all to tell Snowflake about all offers at once,
         # once multiple proxypairs are supported.
         dbg 'Finished gathering ICE candidates.'
-        if COPY_PASTE_ENABLED
-          Signalling.send @pc.localDescription
-        else
-          snowflake.broker.sendAnswer @id, @pc.localDescription
+        snowflake.broker.sendAnswer @id, @pc.localDescription
     # OnDataChannel triggered remotely from the client when connection succeeds.
     @pc.ondatachannel = (dc) =>
       channel = dc.channel
@@ -193,4 +189,3 @@ class ProxyPair
   webrtcIsReady: -> null != @client && 'open' == @client.readyState
   relayIsReady: -> (null != @relay) && (WebSocket.OPEN == @relay.readyState)
   isClosed: (ws) -> undefined == ws || WebSocket.CLOSED == ws.readyState
-

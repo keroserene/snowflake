@@ -18,13 +18,11 @@ RELAY =
   # Original non-wss relay:
   # host: '192.81.135.242'
   # port: 9902
-COPY_PASTE_ENABLED = false
 COOKIE_NAME = "snowflake-allow"
 
 silenceNotifications = false
 query = Query.parse(location)
 DEBUG = Params.getBool(query, 'debug', false)
-COPY_PASTE_ENABLED = Params.getBool(query, 'manual', false)
 
 # Bytes per second. Set to undefined to disable limit.
 DEFAULT_RATE_LIMIT = DEFAULT_RATE_LIMIT || undefined
@@ -78,17 +76,14 @@ class Snowflake
   setRelayAddr: (relayAddr) ->
     @relayAddr = relayAddr
     log 'Using ' + relayAddr.host + ':' + relayAddr.port + ' as Relay.'
-    log 'Input offer from the snowflake client:' if COPY_PASTE_ENABLED
     return true
 
   # Initialize WebRTC PeerConnection, which requires beginning the signalling
-  # process. If in copy paste mode, the user will need to copy and paste the SDP
-  # blobs. Otherwise, |pollBroker| automatically arranges signalling.
+  # process. |pollBroker| automatically arranges signalling.
   beginWebRTC: ->
     @state = MODE.WEBRTC_CONNECTING
     for i in [1..CONNECTIONS_PER_CLIENT]
       @makeProxyPair @relayAddr
-    return if COPY_PASTE_ENABLED
     log 'ProxyPair Slots: ' + @proxyPairs.length
     log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
     @pollBroker()
@@ -182,31 +177,6 @@ class Snowflake
 
 snowflake = null
 
-# Signalling channel - just tells user to copy paste to the peer.
-# When copy-paste mode is not enabled, this is handled automatically by Broker.
-Signalling =
-  send: (msg) ->
-    log '---- Please copy the below to peer ----\n'
-    log JSON.stringify msg
-    log '\n'
-
-  receive: (msg) ->
-    recv = ''
-    try
-      recv = JSON.parse msg
-    catch e
-      log 'Invalid JSON.'
-      return
-    desc = recv['sdp']
-    if !desc
-      log 'Invalid SDP.'
-      return false
-    pair = snowflake.nextAvailableProxyPair()
-    if !pair
-      log 'At client capacity.'
-      return false
-    snowflake.receiveOffer pair, msg
-
 # Log to both console and UI if applicable.
 # Requires that the snowflake and UI objects are hooked up in order to
 # log to console.
@@ -246,8 +216,7 @@ init = (isNode) ->
     return
 
   # Otherwise, begin setting up WebRTC and acting as a proxy.
-  log 'Copy-Paste mode detected.' if COPY_PASTE_ENABLED
-  dbg 'Contacting Broker at ' + broker.url if not COPY_PASTE_ENABLED
+  dbg 'Contacting Broker at ' + broker.url
   snowflake.setRelayAddr RELAY
   snowflake.beginWebRTC()
 
