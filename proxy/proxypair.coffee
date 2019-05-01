@@ -103,7 +103,7 @@ class ProxyPair
     if peer_ip?
       params.push(["client_ip", peer_ip])
 
-    @relay = makeWebsocket @relayAddr, params
+    @relay = WS.makeWebsocket @relayAddr, params
     @relay.label = 'websocket-relay'
     @relay.onopen = =>
       if @timer

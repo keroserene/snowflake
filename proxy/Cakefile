@@ -18,6 +18,7 @@ FILES_SPEC = [
   'spec/broker.spec.coffee'
   'spec/proxypair.spec.coffee'
   'spec/snowflake.spec.coffee'
+  'spec/websocket.spec.coffee'
 ]
 FILES_ALL = FILES.concat FILES_SPEC
 OUTFILE = 'build/snowflake.js'
