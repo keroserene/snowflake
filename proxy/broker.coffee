@@ -5,15 +5,14 @@ Browser snowflakes must register with the broker in order
 to get assigned to clients.
 ###
 
-STATUS_OK = 200
-STATUS_GONE = 410
-STATUS_GATEWAY_TIMEOUT = 504
-
-MESSAGE_TIMEOUT = 'Timed out waiting for a client offer.'
-MESSAGE_UNEXPECTED = 'Unexpected status.'
-
 # Represents a broker running remotely.
 class Broker
+  @STATUS_OK = 200
+  @STATUS_GONE = 410
+  @STATUS_GATEWAY_TIMEOUT = 504
+
+  @MESSAGE_TIMEOUT = 'Timed out waiting for a client offer.'
+  @MESSAGE_UNEXPECTED = 'Unexpected status.'
 
   clients: 0
 
@@ -39,15 +38,15 @@ class Broker
       xhr.onreadystatechange = ->
         return if xhr.DONE != xhr.readyState
         switch xhr.status
-          when STATUS_OK
+          when Broker.STATUS_OK
             fulfill xhr.responseText  # Should contain offer.
-          when STATUS_GATEWAY_TIMEOUT
-            reject MESSAGE_TIMEOUT
+          when Broker.STATUS_GATEWAY_TIMEOUT
+            reject Broker.MESSAGE_TIMEOUT
           else
             log 'Broker ERROR: Unexpected ' + xhr.status +
                 ' - ' + xhr.statusText
             snowflake.ui.setStatus ' failure. Please refresh.'
-            reject MESSAGE_UNEXPECTED
+            reject Broker.MESSAGE_UNEXPECTED
       @_xhr = xhr  # Used by spec to fake async Broker interaction
       @_postRequest id, xhr, 'proxy', id
 
@@ -60,10 +59,10 @@ class Broker
     xhr.onreadystatechange = ->
       return if xhr.DONE != xhr.readyState
       switch xhr.status
-        when STATUS_OK
+        when Broker.STATUS_OK
           dbg 'Broker: Successfully replied with answer.'
           dbg xhr.responseText
-        when STATUS_GONE
+        when Broker.STATUS_GONE
           dbg 'Broker: No longer valid to reply with answer.'
         else
           dbg 'Broker ERROR: Unexpected ' + xhr.status +

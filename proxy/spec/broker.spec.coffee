@@ -25,7 +25,7 @@ describe 'Broker', ->
       # fake successful request and response from broker.
       spyOn(b, '_postRequest').and.callFake ->
         b._xhr.readyState = b._xhr.DONE
-        b._xhr.status = STATUS_OK
+        b._xhr.status = Broker.STATUS_OK
         b._xhr.responseText = 'fake offer'
         b._xhr.onreadystatechange()
       poll = b.getClientOffer()
@@ -35,7 +35,7 @@ describe 'Broker', ->
         expect(desc).toEqual 'fake offer'
         done()
       .catch ->
-        fail 'should not reject on STATUS_OK'
+        fail 'should not reject on Broker.STATUS_OK'
         done()
 
     it 'rejects if the broker timed-out', (done) ->
@@ -43,7 +43,7 @@ describe 'Broker', ->
       # fake timed-out request from broker
       spyOn(b, '_postRequest').and.callFake ->
         b._xhr.readyState = b._xhr.DONE
-        b._xhr.status = STATUS_GATEWAY_TIMEOUT
+        b._xhr.status = Broker.STATUS_GATEWAY_TIMEOUT
         b._xhr.onreadystatechange()
       poll = b.getClientOffer()
       expect(poll).not.toBeNull()
@@ -52,7 +52,7 @@ describe 'Broker', ->
         fail 'should not fulfill on GATEWAY_TIMEOUT'
         done()
       , (err) ->
-        expect(err).toBe MESSAGE_TIMEOUT
+        expect(err).toBe Broker.MESSAGE_TIMEOUT
         done()
 
     it 'rejects on any other status', (done) ->
@@ -69,7 +69,7 @@ describe 'Broker', ->
         fail 'should not fulfill on non-OK status'
         done()
       , (err) ->
-        expect(err).toBe MESSAGE_UNEXPECTED
+        expect(err).toBe Broker.MESSAGE_UNEXPECTED
         expect(b._xhr.status).toBe 1337
         done()
 
