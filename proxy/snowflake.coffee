@@ -52,13 +52,14 @@ class Snowflake
   # serving at capacity, at which point stop polling.
   pollBroker: ->
     # Temporary countdown. TODO: Simplify
-    countdown = (msg, sec) =>
-      dbg msg
-      @ui?.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
-      sec--
-      if sec >= 0
-        setTimeout((-> countdown(msg, sec)), 1000)
+    countdown = (msg, sec, skip) =>
+      if not skip then dbg msg
+      if sec > 0
+        @ui?.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
+        sec--
+        setTimeout((-> countdown(msg, sec, true)), 1000)
       else
+        @ui?.setStatus msg
         findClients()
     # Poll broker for clients.
     findClients = =>
@@ -67,7 +68,7 @@ class Snowflake
         log 'At client capacity.'
         # Do nothing until a new proxyPair is available.
         return
-      msg = 'polling for client... '
+      msg = 'Polling for client ... '
       msg += '[retries: ' + @retries + ']' if @retries > 0
       @ui?.setStatus msg
       recv = @broker.getClientOffer pair.id
