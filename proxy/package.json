@@ -11,7 +11,6 @@
     "lint": "cake lint",
     "build": "cake build",
     "clean": "cake clean",
-    "modern": "modernizr -c modernizr-config.json -d static/",
     "prepublish": "npm run build",
     "start": "node build/snowflake.js"
   },
@@ -22,8 +21,7 @@
   "license": "BSD-3-Clause",
   "devDependencies": {
     "coffeelint": "^1.16.0",
-    "jasmine": "2.5.2",
-    "modernizr": "^3.3.1"
+    "jasmine": "2.5.2"
   },
   "dependencies": {
     "coffee-script": "^1.12.2",

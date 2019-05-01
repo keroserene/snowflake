@@ -22,17 +22,15 @@ else
   window = this
   location = window.location.search.substr(1)
 
-  prop = Modernizr.prefixed 'RTCPeerConnection', window, false
-  if not prop
-    console.log 'webrtc feature not detected. shutting down'
-    return
-
-  PeerConnection = window[prop]
-
-  ### FIXME: push these upstream ###
+  PeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection ||
+    window.webkitRTCPeerConnection
   IceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate
   SessionDescription = window.RTCSessionDescription ||
     window.mozRTCSessionDescription
+
+  if typeof PeerConnection isnt 'function'
+    console.log 'webrtc feature not detected. shutting down'
+    return
 
   WebSocket = window.WebSocket
   XMLHttpRequest = window.XMLHttpRequest
