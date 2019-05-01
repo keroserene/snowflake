@@ -5,6 +5,7 @@ fs = require 'fs'
 FILES = [
   'shims.coffee'
   'util.coffee'
+  'init.coffee'
   'proxypair.coffee'
   'websocket.coffee'
   'broker.coffee'
