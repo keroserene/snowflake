@@ -44,17 +44,23 @@ snowflake = null
 # log to console.
 log = (msg) ->
   console.log 'Snowflake: ' + msg
-  snowflake?.ui?.log msg
+  snowflake?.ui.log msg
 
-dbg = (msg) -> log msg if DEBUG or snowflake.ui?.debug
+dbg = (msg) -> log msg if DEBUG or (snowflake?.ui instanceof DebugUI)
 
 
 ###
 Entry point.
 ###
-init = (isNode) ->
-  # Hook up to the debug UI if available.
-  ui = if isNode then null else new UI()
+init = () ->
+  ui = null
+  if (document.getElementById('badge') != null)
+    ui = new BadgeUI()
+  else if (document.getElementById('status') != null)
+    ui = new DebugUI()
+  else
+    ui = new UI()
+
   silenceNotifications = Params.getBool(query, 'silent', false)
   broker = new Broker BROKER
   snowflake = new Snowflake broker, ui
@@ -80,4 +86,4 @@ window.onunload = ->
   pair.close() for pair in snowflake.proxyPairs
   null
 
-window.onload = init.bind null, false
+window.onload = init

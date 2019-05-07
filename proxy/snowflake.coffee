@@ -55,11 +55,11 @@ class Snowflake
     countdown = (msg, sec, skip) =>
       if not skip then dbg msg
       if sec > 0
-        @ui?.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
+        @ui.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
         sec--
         setTimeout((-> countdown(msg, sec, true)), 1000)
       else
-        @ui?.setStatus msg
+        @ui.setStatus msg
         findClients()
     # Poll broker for clients.
     findClients = =>
@@ -70,7 +70,7 @@ class Snowflake
         return
       msg = 'Polling for client ... '
       msg += '[retries: ' + @retries + ']' if @retries > 0
-      @ui?.setStatus msg
+      @ui.setStatus msg
       recv = @broker.getClientOffer pair.id
       recv.then (desc) =>
         @receiveOffer pair, desc

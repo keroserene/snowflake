@@ -17,11 +17,7 @@ class WebSocket
     @bufferedAmount = 0
   send: (data) ->
 log = ->
-class FakeUI
-  log: ->
-  setActive: ->
-  setStatus: ->
-fakeUI = new FakeUI()
+fakeUI = new UI()
 class FakeBroker
   getClientOffer: -> new Promise((F,R) -> {})
 # Fake snowflake to interact with

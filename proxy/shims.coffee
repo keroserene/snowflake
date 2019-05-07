@@ -4,6 +4,8 @@ WebRTC shims for multiple browsers.
 
 if module?.exports
   window = {}
+  document =
+    getElementById: () -> null,
   location = ''
 
   if not TESTING? or not TESTING
@@ -16,10 +18,11 @@ if module?.exports
     WebSocket = require 'ws'
     { XMLHttpRequest } = require 'xmlhttprequest'
 
-    process.nextTick () -> init true
+    process.nextTick () -> init
 
 else
   window = this
+  document = window.document
   location = window.location.search.substr(1)
 
   PeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection ||
