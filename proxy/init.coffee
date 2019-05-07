@@ -58,6 +58,8 @@ init = () ->
     ui = new BadgeUI()
   else if (document.getElementById('status') != null)
     ui = new DebugUI()
+  else if (document.getElementById('webext') != null)
+    ui = new WebExtUI()
   else
     ui = new UI()
 

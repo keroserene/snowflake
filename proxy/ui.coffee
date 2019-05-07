@@ -42,3 +42,12 @@ class DebugUI extends UI
     # Scroll to latest
     @$msglog.value += msg + '\n'
     @$msglog.scrollTop = @$msglog.scrollHeight
+
+
+class WebExtUI extends UI
+  setActive: (connected) =>
+    chrome.browserAction.setIcon {
+      "path": {
+        "32": "icons/status-" + (if connected then "on" else "off") + ".png"
+      }
+    }

@@ -5,7 +5,8 @@ WebRTC shims for multiple browsers.
 if module?.exports
   window = {}
   document =
-    getElementById: () -> null,
+    getElementById: () -> null
+  chrome = {}
   location = ''
 
   if not TESTING? or not TESTING
@@ -23,6 +24,7 @@ if module?.exports
 else
   window = this
   document = window.document
+  chrome = window.chrome
   location = window.location.search.substr(1)
 
   PeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection ||
