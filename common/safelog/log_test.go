@@ -72,6 +72,11 @@ func TestLogScrubberMessages(t *testing.T) {
 			"(1:2:3:4:c:d:e:f) {1:2:3:4:c:d:e:f}",
 			"([scrubbed]) {[scrubbed]}\n",
 		},
+		{
+			//Make sure it doesn't scrub timestamps
+			"2019/05/08 15:37:31 starting",
+			"2019/05/08 15:37:31 starting\n",
+		},
 	} {
 		var buff bytes.Buffer
 		log.SetFlags(0) //remove all extra log output for test comparisons
@@ -102,9 +107,12 @@ func TestLogScrubberGoodFormats(t *testing.T) {
 		"[1:2:3:4:c:d:e:f]:55",
 		"[1111:2222:3333:4444:CCCC:DDDD:EEEE:FFFF]:65535",
 		// compressed IPv6
+		"::f",
 		"::d:e:f",
 		"1:2:3::",
 		"1:2:3::d:e:f",
+		"1:2:3:d:e:f::",
+		"::1:2:3:d:e:f",
 		"1111:2222:3333::DDDD:EEEE:FFFF",
 		// compressed IPv6 with brackets
 		"[::d:e:f]",
