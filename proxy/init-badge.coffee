@@ -21,7 +21,9 @@ init = () ->
   config = new Config
 
   if 'off' != query['ratelimit']
-    config.rateLimitBytes = Params.getByteCount(query, 'ratelimit', config.rateLimitBytes)
+    config.rateLimitBytes = Params.getByteCount(
+      query,'ratelimit', config.rateLimitBytes
+    )
 
   ui = null
   if (document.getElementById('badge') != null)

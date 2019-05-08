@@ -96,7 +96,9 @@ describe 'ProxyPair', ->
       }
       spyOn pp.client, 'send'
       spyOn pp.relay, 'send'
-      msg = new MessageEvent("message", { data: Uint8Array.from([1, 2, 3]).buffer })
+      msg = new MessageEvent("message", {
+        data: Uint8Array.from([1, 2, 3]).buffer
+      })
       pp.onClientToRelayMessage(msg)
       pp.flush()
       expect(pp.client.send).not.toHaveBeenCalled()
@@ -105,7 +107,9 @@ describe 'ProxyPair', ->
     it 'proxies data from relay to client', ->
       spyOn pp.client, 'send'
       spyOn pp.relay, 'send'
-      msg = new MessageEvent("message", { data: Uint8Array.from([4, 5, 6]).buffer })
+      msg = new MessageEvent("message", {
+        data: Uint8Array.from([4, 5, 6]).buffer
+      })
       pp.onRelayToClientMessage(msg)
       pp.flush()
       expect(pp.client.send).toHaveBeenCalledWith arrayMatching([4, 5, 6])

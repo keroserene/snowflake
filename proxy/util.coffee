@@ -124,8 +124,8 @@ class Parse
       return null if null == units
     count * Number(units)
 
-  # Parse a connection-address out of the "c=" Connection Data field of a session
-  # description. Return undefined if none is found.
+  # Parse a connection-address out of the "c=" Connection Data field of a
+  # session description. Return undefined if none is found.
   # https://tools.ietf.org/html/rfc4566#section-5.7
   @ipFromSDP: (sdp) ->
     for pattern in [

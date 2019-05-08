@@ -24,8 +24,9 @@ describe 'BuildUrl', ->
   it 'should handle params', ->
     expect WS.buildUrl 'http', 'example.com', 80, '/test', [['k', '%#v']]
       .toBe 'http://example.com/test?k=%25%23v'
-    expect WS.buildUrl 'http', 'example.com', 80, '/test', [['a', 'b'], ['c', 'd']]
-      .toBe 'http://example.com/test?a=b&c=d'
+    expect(WS.buildUrl(
+      'http', 'example.com', 80, '/test', [['a', 'b'], ['c', 'd']]
+    )).toBe 'http://example.com/test?a=b&c=d'
   it 'should handle ips', ->
     expect WS.buildUrl 'http', '1.2.3.4'
       .toBe 'http://1.2.3.4'

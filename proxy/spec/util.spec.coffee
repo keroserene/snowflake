@@ -118,6 +118,7 @@ describe 'Parse', ->
       expected: '1.2.3.4'
     ,
       # Modified from SDP sent by snowflake-client.
+      # coffeelint: disable
       sdp: """
            v=0
            o=- 7860378660295630295 2 IN IP4 127.0.0.1
@@ -137,6 +138,7 @@ describe 'Parse', ->
            a=mid:data
            a=sctpmap:5000 webrtc-datachannel 1024
            """
+      # coffeelint: enable
       expected: '1.2.3.4'
     ,
       # Improper character within IPv4
@@ -164,7 +166,9 @@ describe 'Parse', ->
         # We represent the test cases with LF line endings for convenience, and
         # test them both that way and with CRLF line endings.
         expect(Parse.ipFromSDP(test.sdp)?.toLowerCase()).toEqual(test.expected)
-        expect(Parse.ipFromSDP(test.sdp.replace(/\n/, "\r\n"))?.toLowerCase()).toEqual(test.expected)
+        expect(
+          Parse.ipFromSDP(test.sdp.replace(/\n/, "\r\n"))?.toLowerCase()
+        ).toEqual(test.expected)
 
 describe 'query string', ->
   it 'should parse correctly', ->

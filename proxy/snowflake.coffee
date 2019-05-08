@@ -82,7 +82,10 @@ class Snowflake
       recv = @broker.getClientOffer pair.id
       recv.then (desc) =>
         @receiveOffer pair, desc
-        countdown('Serving 1 new client.', @config.defaultBrokerPollInterval / 1000)
+        countdown(
+          'Serving 1 new client.',
+          @config.defaultBrokerPollInterval / 1000
+        )
       , (err) =>
         countdown(err, @config.defaultBrokerPollInterval / 1000)
       @retries++

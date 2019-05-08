@@ -52,9 +52,10 @@ class WS
     url = @buildUrl wsProtocol, addr.host, addr.port, '/', params
     ws = new WebSocket url
     ###
-    'User agents can use this as a hint for how to handle incoming binary data: if
-    the attribute is set to 'blob', it is safe to spool it to disk, and if it is
-    set to 'arraybuffer', it is likely more efficient to keep the data in memory.'
+    'User agents can use this as a hint for how to handle incoming binary data:
+    if the attribute is set to 'blob', it is safe to spool it to disk, and if it
+    is set to 'arraybuffer', it is likely more efficient to keep the data in
+    memory.'
     ###
     ws.binaryType = 'arraybuffer'
     ws
