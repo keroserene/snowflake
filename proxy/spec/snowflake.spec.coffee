@@ -68,7 +68,7 @@ describe 'Snowflake', ->
   it 'can make a proxypair', ->
     s = new Snowflake(new FakeBroker(), fakeUI)
     s.makeProxyPair()
-    expect(s.proxyPairs.length).toBe 2
+    expect(s.proxyPairs.length).toBe 1
 
   it 'gives a dialog when closing, only while active', ->
     silenceNotifications = false

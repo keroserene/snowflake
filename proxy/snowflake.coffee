@@ -12,7 +12,6 @@ TODO: More documentation
 # Minimum viable snowflake for now - just 1 client.
 class Snowflake
   relayAddr:  null
-  proxyPairs: []
   rateLimit:  null
   retries:    0
 
@@ -25,6 +24,7 @@ class Snowflake
   # Prepare the Snowflake with a Broker (to find clients) and optional UI.
   constructor: (@broker, @ui) ->
     @state = Snowflake.MODE.INIT
+    @proxyPairs = []
 
     rateLimitBytes = undefined
     if 'off' != query['ratelimit']

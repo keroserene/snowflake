@@ -10,8 +10,6 @@ Broker with an WebRTC answer.
 class ProxyPair
   MAX_BUFFER: 10 * 1024 * 1024
   pc:          null
-  c2rSchedule: []
-  r2cSchedule: []
   client:      null  # WebRTC Data channel
   relay:       null   # websocket
   timer:       0
@@ -27,8 +25,9 @@ class ProxyPair
   - @rateLimit specifies a rate limit on traffic
   ###
   constructor: (@relayAddr, @rateLimit) ->
-    @active = false
     @id = Util.genSnowflakeID()
+    @c2rSchedule = []
+    @r2cSchedule = []
 
   # Prepare a WebRTC PeerConnection and await for an SDP offer.
   begin: ->
