@@ -10,10 +10,13 @@ import (
 )
 
 const ipv4Address = `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`
-const ipv6Address = `(([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?(` + ipv4Address + `))` +
-	`|(([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?)`
+const ipv6Address = `([0-9a-fA-F]{0,4}:){5,7}([0-9a-fA-F]{0,4})?`
+const ipv6Compressed = `([0-9a-fA-F]{0,4}:){0,5}([0-9a-fA-F]{0,4})?(::)([0-9a-fA-F]{0,4}:){0,5}([0-9a-fA-F]{0,4})?`
+const ipv6Full = `(` + ipv6Address + `(` + ipv4Address + `))` +
+	`|(` + ipv6Compressed + `(` + ipv4Address + `))` +
+	`|(` + ipv6Address + `)` + `|(` + ipv6Compressed + `)`
 const optionalPort = `(:\d{1,5})?`
-const addressPattern = `((` + ipv4Address + `)|(\[(` + ipv6Address + `)\])|(` + ipv6Address + `))` + optionalPort
+const addressPattern = `((` + ipv4Address + `)|(\[(` + ipv6Full + `)\])|(` + ipv6Full + `))` + optionalPort
 const fullAddrPattern = `(^|\s|[^\w:])` + addressPattern + `(\s|(:\s)|[^\w:]|$)`
 
 var scrubberPatterns = []*regexp.Regexp{
