@@ -2,7 +2,6 @@
 jasmine tests for Snowflake
 ###
 
-query = {}
 # Fake browser functionality:
 class PeerConnection
   setRemoteDescription: ->
@@ -31,7 +30,6 @@ describe 'Snowflake', ->
 
   it 'constructs correctly', ->
     s = new Snowflake({ fake: 'broker' }, fakeUI)
-    query['ratelimit'] = 'off'
     expect(s.rateLimit).not.toBeNull()
     expect(s.broker).toEqual { fake: 'broker' }
     expect(s.ui).not.toBeNull()

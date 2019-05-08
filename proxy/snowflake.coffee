@@ -22,14 +22,10 @@ class Snowflake
     WEBRTC_READY:      2
 
   # Prepare the Snowflake with a Broker (to find clients) and optional UI.
-  constructor: (@broker, @ui) ->
+  constructor: (@broker, @ui, rateLimitBytes) ->
     @state = Snowflake.MODE.INIT
     @proxyPairs = []
 
-    rateLimitBytes = undefined
-    if 'off' != query['ratelimit']
-      rateLimitBytes = Params.getByteCount(query, 'ratelimit',
-                                           DEFAULT_RATE_LIMIT)
     if undefined == rateLimitBytes
       @rateLimit = new DummyRateLimit()
     else

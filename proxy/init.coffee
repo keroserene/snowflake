@@ -9,12 +9,8 @@ RELAY =
   # port: 9902
 COOKIE_NAME = "snowflake-allow"
 
-silenceNotifications = false
-query = Query.parse(location)
-DEBUG = Params.getBool(query, 'debug', false)
-
 # Bytes per second. Set to undefined to disable limit.
-DEFAULT_RATE_LIMIT = DEFAULT_RATE_LIMIT || undefined
+DEFAULT_RATE_LIMIT = undefined
 MIN_RATE_LIMIT = 10 * 1024
 RATE_LIMIT_HISTORY = 5.0
 DEFAULT_BROKER_POLL_INTERVAL = 5.0 * 1000
@@ -31,7 +27,11 @@ config = {
 
 CONFIRMATION_MESSAGE = 'You\'re currently serving a Tor user via Snowflake.'
 
+query = Query.parse(location)
+DEBUG = Params.getBool(query, 'debug', false)
+
 snowflake = null
+silenceNotifications = false
 
 # Log to both console and UI if applicable.
 # Requires that the snowflake and UI objects are hooked up in order to
@@ -57,9 +57,13 @@ init = () ->
   else
     ui = new UI()
 
+  rateLimitBytes = undefined
+  if 'off' != query['ratelimit']
+    rateLimitBytes = Params.getByteCount(query, 'ratelimit', DEFAULT_RATE_LIMIT)
+
   silenceNotifications = Params.getBool(query, 'silent', false)
   broker = new Broker BROKER
-  snowflake = new Snowflake broker, ui
+  snowflake = new Snowflake broker, ui, rateLimitBytes
 
   log '== snowflake proxy =='
   if Util.snowflakeIsDisabled()
