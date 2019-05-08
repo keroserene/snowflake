@@ -14,11 +14,18 @@ class Snowflake
   relayAddr:  null
   proxyPairs: []
   rateLimit:  null
-  state:      MODE.INIT
   retries:    0
+
+  # Janky state machine
+  @MODE =
+    INIT:              0
+    WEBRTC_CONNECTING: 1
+    WEBRTC_READY:      2
 
   # Prepare the Snowflake with a Broker (to find clients) and optional UI.
   constructor: (@broker, @ui) ->
+    @state = Snowflake.MODE.INIT
+
     rateLimitBytes = undefined
     if 'off' != query['ratelimit']
       rateLimitBytes = Params.getByteCount(query, 'ratelimit',
@@ -41,7 +48,7 @@ class Snowflake
   # Initialize WebRTC PeerConnection, which requires beginning the signalling
   # process. |pollBroker| automatically arranges signalling.
   beginWebRTC: ->
-    @state = MODE.WEBRTC_CONNECTING
+    @state = Snowflake.MODE.WEBRTC_CONNECTING
     for i in [1..CONNECTIONS_PER_CLIENT]
       @makeProxyPair @relayAddr
     log 'ProxyPair Slots: ' + @proxyPairs.length

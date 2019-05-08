@@ -25,7 +25,7 @@ snowflake =
   ui: fakeUI
   broker:
     sendAnswer: ->
-  state: MODE.INIT
+  state: Snowflake.MODE.INIT
 
 describe 'Snowflake', ->
 
@@ -72,19 +72,19 @@ describe 'Snowflake', ->
 
   it 'gives a dialog when closing, only while active', ->
     silenceNotifications = false
-    snowflake.state = MODE.WEBRTC_READY
+    snowflake.state = Snowflake.MODE.WEBRTC_READY
     msg = window.onbeforeunload()
-    expect(snowflake.state).toBe MODE.WEBRTC_READY
+    expect(snowflake.state).toBe Snowflake.MODE.WEBRTC_READY
     expect(msg).toBe CONFIRMATION_MESSAGE
 
-    snowflake.state = MODE.INIT
+    snowflake.state = Snowflake.MODE.INIT
     msg = window.onbeforeunload()
-    expect(snowflake.state).toBe MODE.INIT
+    expect(snowflake.state).toBe Snowflake.MODE.INIT
     expect(msg).toBe null
 
   it 'does not give a dialog when silent flag is on', ->
     silenceNotifications = true
-    snowflake.state = MODE.WEBRTC_READY
+    snowflake.state = Snowflake.MODE.WEBRTC_READY
     msg = window.onbeforeunload()
-    expect(snowflake.state).toBe MODE.WEBRTC_READY
+    expect(snowflake.state).toBe Snowflake.MODE.WEBRTC_READY
     expect(msg).toBe null

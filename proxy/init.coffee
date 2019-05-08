@@ -29,12 +29,6 @@ config = {
   ]
 }
 
-# Janky state machine
-MODE =
-  INIT:              0
-  WEBRTC_CONNECTING: 1
-  WEBRTC_READY:      2
-
 CONFIRMATION_MESSAGE = 'You\'re currently serving a Tor user via Snowflake.'
 
 snowflake = null
@@ -80,7 +74,7 @@ init = () ->
 
 # Notification of closing tab with active proxy.
 window.onbeforeunload = ->
-  if !silenceNotifications && MODE.WEBRTC_READY == snowflake.state
+  if !silenceNotifications && Snowflake.MODE.WEBRTC_READY == snowflake.state
     return CONFIRMATION_MESSAGE
   null
 
