@@ -19,8 +19,6 @@ if module?.exports
     WebSocket = require 'ws'
     { XMLHttpRequest } = require 'xmlhttprequest'
 
-    process.nextTick () -> init
-
 else
   window = this
   document = window.document

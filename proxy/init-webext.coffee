@@ -1,9 +1,9 @@
+###
+Entry point.
+###
 
+debug = false
 snowflake = null
-
-query = Query.parse(location)
-debug = Params.getBool(query, 'debug', false)
-silenceNotifications = Params.getBool(query, 'silent', false)
 
 # Log to both console and UI if applicable.
 # Requires that the snowflake and UI objects are hooked up in order to
@@ -12,36 +12,15 @@ log = (msg) ->
   console.log 'Snowflake: ' + msg
   snowflake?.ui.log msg
 
-dbg = (msg) -> log msg if debug or (snowflake?.ui instanceof DebugUI)
+dbg = (msg) -> log msg if debug
 
-###
-Entry point.
-###
 init = () ->
   config = new Config
-
-  if 'off' != query['ratelimit']
-    config.rateLimitBytes = Params.getByteCount(query, 'ratelimit', config.rateLimitBytes)
-
-  ui = null
-  if (document.getElementById('badge') != null)
-    ui = new BadgeUI()
-  else if (document.getElementById('status') != null)
-    ui = new DebugUI()
-  else if (document.getElementById('webext') != null)
-    ui = new WebExtUI()
-  else
-    ui = new UI()
-
+  ui = new WebExtUI()
   broker = new Broker config.brokerUrl
   snowflake = new Snowflake config, ui, broker
 
   log '== snowflake proxy =='
-  if Util.snowflakeIsDisabled(config.cookieName)
-    # Do not activate the proxy if any number of conditions are true.
-    log 'Currently not active.'
-    return
-
   # Otherwise, begin setting up WebRTC and acting as a proxy.
   dbg 'Contacting Broker at ' + broker.url
   snowflake.setRelayAddr config.relayAddr

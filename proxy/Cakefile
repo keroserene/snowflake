@@ -3,41 +3,49 @@ fs = require 'fs'
 
 # All coffeescript files required.
 FILES = [
-  'shims.coffee'
-  'util.coffee'
-  'init.coffee'
-  'proxypair.coffee'
-  'websocket.coffee'
   'broker.coffee'
-  'ui.coffee'
-  'snowflake.coffee'
   'config.coffee'
+  'proxypair.coffee'
+  'snowflake.coffee'
+  'ui.coffee'
+  'util.coffee'
+  'websocket.coffee'
+
+  'shims.coffee'
 ]
+
+INITS = [
+  'init-badge.coffee'
+  'init-node.coffee'
+  'init-webext.coffee'
+]
+
 FILES_SPEC = [
-  'spec/util.spec.coffee'
-  'spec/ui.spec.coffee'
   'spec/broker.spec.coffee'
+  'spec/init.spec.coffee'
   'spec/proxypair.spec.coffee'
   'spec/snowflake.spec.coffee'
+  'spec/ui.spec.coffee'
+  'spec/util.spec.coffee'
   'spec/websocket.spec.coffee'
-  'spec/init.spec.coffee'
 ]
-FILES_ALL = FILES.concat FILES_SPEC
+
 OUTFILE = 'snowflake.js'
 STATIC = 'static'
 
 copyStaticFiles = ->
   exec 'cp ' + STATIC + '/* build/'
 
-compileCoffee = (outDir) ->
-  exec 'cat ' + FILES.join(' ') + ' | coffee -cs > ' + outDir + '/' + OUTFILE, (err, stdout, stderr) ->
+compileCoffee = (outDir, init) ->
+  files = FILES.concat('init-' + init + '.coffee')
+  exec 'cat ' + files.join(' ') + ' | coffee -cs > ' + outDir + '/' + OUTFILE, (err, stdout, stderr) ->
     throw err if err
 
 task 'test', 'snowflake unit tests', ->
   exec 'mkdir -p test'
   exec 'jasmine init >&-'
   # Simply concat all the files because we're not using node exports.
-  jasmineFiles = FILES_ALL
+  jasmineFiles = FILES.concat('init-badge.coffee', FILES_SPEC)
   outFile = 'test/bundle.spec.coffee'
   exec 'echo "TESTING = true" > ' + outFile
   exec 'cat ' + jasmineFiles.join(' ') +  ' | cat >> ' + outFile
@@ -50,15 +58,22 @@ task 'test', 'snowflake unit tests', ->
 task 'build', 'build the snowflake proxy', ->
   exec 'mkdir -p build'
   copyStaticFiles()
-  compileCoffee('build')
+  compileCoffee('build', 'badge')
   console.log 'Snowflake prepared.'
 
 task 'webext', 'build the webextension', ->
-  compileCoffee('webext')
+  exec 'mkdir -p webext'
+  compileCoffee('webext', 'webext')
   console.log 'Webextension prepared.'
 
+task 'node', 'build the node binary', ->
+  exec 'mkdir -p build'
+  compileCoffee('build', 'node')
+  console.log 'Node prepared.'
+
 task 'lint', 'ensure idiomatic coffeescript', ->
-  proc = spawn 'coffeelint', FILES_ALL, {
+  filesAll = FILES.concat(INITS, FILES_SPEC)
+  proc = spawn 'coffeelint', filesAll, {
     file: 'coffeelint.json'
     stdio: 'inherit'
   }
