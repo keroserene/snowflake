@@ -3,11 +3,11 @@ All of Snowflake's DOM manipulation and inputs.
 ###
 
 class UI
-  setStatus: (msg) =>
+  setStatus: (msg) ->
 
-  setActive: (connected) =>
+  setActive: (connected) ->
 
-  log: (msg) =>
+  log: (msg) ->
 
 
 class BadgeUI extends UI
@@ -45,7 +45,7 @@ class DebugUI extends UI
 
 
 class WebExtUI extends UI
-  setActive: (connected) =>
+  setActive: (connected) ->
     chrome.browserAction.setIcon {
       "path": {
         "32": "icons/status-" + (if connected then "on" else "off") + ".png"
