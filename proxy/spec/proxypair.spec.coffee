@@ -24,10 +24,11 @@ arrayMatching = (sample) -> {
 
 describe 'ProxyPair', ->
   fakeRelay = Parse.address '0.0.0.0:12345'
-  rateLimit = new DummyRateLimit()
+  rateLimit = new DummyRateLimit
+  config = new Config
   destination = []
   # Using the mock PeerConnection definition from spec/snowflake.spec.coffee.
-  pp = new ProxyPair(fakeRelay, rateLimit)
+  pp = new ProxyPair(fakeRelay, rateLimit, config.pcConfig)
 
   beforeEach ->
     pp.begin()

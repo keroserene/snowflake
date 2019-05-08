@@ -24,14 +24,14 @@ class ProxyPair
   - @relayAddr is the destination relay
   - @rateLimit specifies a rate limit on traffic
   ###
-  constructor: (@relayAddr, @rateLimit) ->
+  constructor: (@relayAddr, @rateLimit, @pcConfig) ->
     @id = Util.genSnowflakeID()
     @c2rSchedule = []
     @r2cSchedule = []
 
   # Prepare a WebRTC PeerConnection and await for an SDP offer.
   begin: ->
-    @pc = new PeerConnection config, {
+    @pc = new PeerConnection @pcConfig, {
       optional: [
         { DtlsSrtpKeyAgreement: true }
         { RtpDataChannels: false }
@@ -126,15 +126,13 @@ class ProxyPair
 
   # WebRTC --> websocket
   onClientToRelayMessage: (msg) =>
-    if DEBUG
-      log 'WebRTC --> websocket data: ' + msg.data.byteLength + ' bytes'
+    dbg 'WebRTC --> websocket data: ' + msg.data.byteLength + ' bytes'
     @c2rSchedule.push msg.data
     @flush()
 
   # websocket --> WebRTC
   onRelayToClientMessage: (event) =>
-    if DEBUG
-      log 'websocket --> WebRTC data: ' + event.data.byteLength + ' bytes'
+    dbg 'websocket --> WebRTC data: ' + event.data.byteLength + ' bytes'
     @r2cSchedule.push event.data
     @flush()
 

@@ -22,10 +22,10 @@ class Util
   @genSnowflakeID: ->
     Math.random().toString(36).substring(2)
 
-  @snowflakeIsDisabled = ->
+  @snowflakeIsDisabled = (cookieName) ->
     cookies = Parse.cookie document.cookie
     # Do nothing if snowflake has not been opted in by user.
-    if cookies[COOKIE_NAME] != '1'
+    if cookies[cookieName] != '1'
       log 'Not opted-in. Please click the badge to change options.'
       return true
     # Also do nothing if running in Tor Browser.

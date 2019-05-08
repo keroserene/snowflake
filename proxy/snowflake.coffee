@@ -16,21 +16,26 @@ class Snowflake
   retries:    0
 
   # Janky state machine
-  @MODE =
+  @MODE:
     INIT:              0
     WEBRTC_CONNECTING: 1
     WEBRTC_READY:      2
 
+  @MESSAGE:
+    CONFIRMATION: 'You\'re currently serving a Tor user via Snowflake.'
+
   # Prepare the Snowflake with a Broker (to find clients) and optional UI.
-  constructor: (@broker, @ui, rateLimitBytes) ->
+  constructor: (@config, @ui, @broker) ->
     @state = Snowflake.MODE.INIT
     @proxyPairs = []
 
-    if undefined == rateLimitBytes
+    if undefined == @config.rateLimitBytes
       @rateLimit = new DummyRateLimit()
     else
-      @rateLimit = new BucketRateLimit(rateLimitBytes * RATE_LIMIT_HISTORY,
-                                       RATE_LIMIT_HISTORY)
+      @rateLimit = new BucketRateLimit(
+        @config.rateLimitBytes * @config.rateLimitHistory,
+        @config.rateLimitHistory
+      )
     @retries = 0
 
   # Set the target relay address spec, which is expected to be websocket.
@@ -45,7 +50,7 @@ class Snowflake
   # process. |pollBroker| automatically arranges signalling.
   beginWebRTC: ->
     @state = Snowflake.MODE.WEBRTC_CONNECTING
-    for i in [1..CONNECTIONS_PER_CLIENT]
+    for i in [1..@config.connectionsPerClient]
       @makeProxyPair @relayAddr
     log 'ProxyPair Slots: ' + @proxyPairs.length
     log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
@@ -77,9 +82,9 @@ class Snowflake
       recv = @broker.getClientOffer pair.id
       recv.then (desc) =>
         @receiveOffer pair, desc
-        countdown('Serving 1 new client.', DEFAULT_BROKER_POLL_INTERVAL / 1000)
-      , (err) ->
-        countdown(err, DEFAULT_BROKER_POLL_INTERVAL / 1000)
+        countdown('Serving 1 new client.', @config.defaultBrokerPollInterval / 1000)
+      , (err) =>
+        countdown(err, @config.defaultBrokerPollInterval / 1000)
       @retries++
 
     findClients()
@@ -111,7 +116,7 @@ class Snowflake
     .catch fail
 
   makeProxyPair: (relay) ->
-    pair = new ProxyPair relay, @rateLimit
+    pair = new ProxyPair relay, @rateLimit, @config.pcConfig
     @proxyPairs.push pair
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.

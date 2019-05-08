@@ -11,6 +11,7 @@ FILES = [
   'broker.coffee'
   'ui.coffee'
   'snowflake.coffee'
+  'config.coffee'
 ]
 FILES_SPEC = [
   'spec/util.spec.coffee'
@@ -19,6 +20,7 @@ FILES_SPEC = [
   'spec/proxypair.spec.coffee'
   'spec/snowflake.spec.coffee'
   'spec/websocket.spec.coffee'
+  'spec/init.spec.coffee'
 ]
 FILES_ALL = FILES.concat FILES_SPEC
 OUTFILE = 'snowflake.js'
