@@ -4,7 +4,7 @@
 	"version": "0.0.0",
 	"description": "Snowflake ...",
 	"background": {
-		"page": "snowflake.html",
+		"scripts": ["snowflake.js"],
 		"persistent": true
 	},
 	"browser_action": {
