@@ -237,7 +237,6 @@ func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		s += fmt.Sprintf("\nsnowflake %d: %s", snowflake.index, snowflake.id)
 	}
 	s += fmt.Sprintf("\n\nroundtrip avg: %d", ctx.metrics.clientRoundtripEstimate)
-	s += fmt.Sprintf("\n\nsnowflake country stats: %s", ctx.metrics.countryStats.Display())
 	w.Write([]byte(s))
 }
 
