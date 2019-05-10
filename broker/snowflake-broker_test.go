@@ -178,6 +178,16 @@ func TestBroker(t *testing.T) {
 				proxyAnswers(ctx, w, r)
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
 			})
+
+			Convey("with error if the proxy writes too much data", func() {
+				data := bytes.NewReader(make([]byte, 100001, 100001))
+				r, err := http.NewRequest("POST", "snowflake.broker/answer", data)
+				r.Header.Set("X-Session-ID", "test")
+				So(err, ShouldBeNil)
+				proxyAnswers(ctx, w, r)
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
+			})
+
 		})
 	})
 

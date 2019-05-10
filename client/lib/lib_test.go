@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/keroserene/go-webrtc"
@@ -33,11 +32,14 @@ func (m *MockResponse) Read(p []byte) (int, error) {
 }
 func (m *MockResponse) Close() error { return nil }
 
-type MockTransport struct{ statusOverride int }
+type MockTransport struct {
+	statusOverride int
+	body           []byte
+}
 
 // Just returns a response with fake SDP answer.
 func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	s := ioutil.NopCloser(strings.NewReader(`{"type":"answer","sdp":"fake"}`))
+	s := ioutil.NopCloser(bytes.NewReader(m.body))
 	r := &http.Response{
 		StatusCode: m.statusOverride,
 		Body:       s,
@@ -263,7 +265,10 @@ func TestSnowflakeClient(t *testing.T) {
 
 	Convey("Rendezvous", t, func() {
 		webrtc.SetLoggingVerbosity(0)
-		transport := &MockTransport{http.StatusOK}
+		transport := &MockTransport{
+			http.StatusOK,
+			[]byte(`{"type":"answer","sdp":"fake"}`),
+		}
 		fakeOffer := webrtc.DeserializeSessionDescription("test")
 
 		Convey("Construct BrokerChannel with no front domain", func() {
@@ -291,7 +296,7 @@ func TestSnowflakeClient(t *testing.T) {
 
 		Convey("BrokerChannel.Negotiate fails with 503", func() {
 			b := NewBrokerChannel("test.broker", "",
-				&MockTransport{http.StatusServiceUnavailable})
+				&MockTransport{http.StatusServiceUnavailable, []byte("\n")})
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldNotBeNil)
 			So(answer, ShouldBeNil)
@@ -300,16 +305,25 @@ func TestSnowflakeClient(t *testing.T) {
 
 		Convey("BrokerChannel.Negotiate fails with 400", func() {
 			b := NewBrokerChannel("test.broker", "",
-				&MockTransport{http.StatusBadRequest})
+				&MockTransport{http.StatusBadRequest, []byte("\n")})
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldNotBeNil)
 			So(answer, ShouldBeNil)
 			So(err.Error(), ShouldResemble, BrokerError400)
 		})
 
+		Convey("BrokerChannel.Negotiate fails with large read", func() {
+			b := NewBrokerChannel("test.broker", "",
+				&MockTransport{http.StatusOK, make([]byte, 100001, 100001)})
+			answer, err := b.Negotiate(fakeOffer)
+			So(err, ShouldNotBeNil)
+			So(answer, ShouldBeNil)
+			So(err.Error(), ShouldResemble, "unexpected EOF")
+		})
+
 		Convey("BrokerChannel.Negotiate fails with unexpected error", func() {
 			b := NewBrokerChannel("test.broker", "",
-				&MockTransport{123})
+				&MockTransport{123, []byte("")})
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldNotBeNil)
 			So(answer, ShouldBeNil)
