@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"sync"
 	"time"
 )
@@ -28,7 +27,7 @@ type Metrics struct {
 }
 
 func (s CountryStats) Display() string {
-	return fmt.Sprintln(s.counts)
+	return fmt.Sprint(s.counts)
 }
 
 func (m *Metrics) UpdateCountryStats(addr string) {
@@ -56,9 +55,7 @@ func (m *Metrics) UpdateCountryStats(addr string) {
 	}
 
 	//update map of countries and counts
-	if country != "" {
-		m.countryStats.counts[country]++
-	}
+	m.countryStats.counts[country]++
 
 	return
 }
@@ -88,16 +85,8 @@ func (m *Metrics) LoadGeoipDatabases(geoipDB string, geoip6DB string) error {
 	return nil
 }
 
-func NewMetrics() (*Metrics, error) {
+func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 	m := new(Metrics)
-
-	f, err := os.OpenFile("metrics.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-
-	if err != nil {
-		return nil, err
-	}
-
-	metricsLogger := log.New(f, "", log.LstdFlags|log.LUTC)
 
 	m.countryStats = CountryStats{
 		counts: make(map[string]int),

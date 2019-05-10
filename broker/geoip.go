@@ -209,7 +209,8 @@ func GeoIPLoadFile(table GeoIPTable, pathname string) error {
 	return nil
 }
 
-//Returns the country location of an IPv4 or IPv6 address.
+//Returns the country location of an IPv4 or IPv6 address, and a boolean value
+//that indicates whether the IP address was present in the geoip database
 func GetCountryByAddr(table GeoIPTable, ip net.IP) (string, bool) {
 
 	table.Lock()

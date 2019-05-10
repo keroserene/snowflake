@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -37,10 +38,10 @@ type BrokerContext struct {
 	metrics       *Metrics
 }
 
-func NewBrokerContext() *BrokerContext {
+func NewBrokerContext(metricsLogger *log.Logger) *BrokerContext {
 	snowflakes := new(SnowflakeHeap)
 	heap.Init(snowflakes)
-	metrics, err := NewMetrics()
+	metrics, err := NewMetrics(metricsLogger)
 
 	if err != nil {
 		panic(err.Error())
@@ -253,6 +254,7 @@ func main() {
 	var geoip6Database string
 	var disableTLS bool
 	var disableGeoip bool
+	var metricsFilename string
 
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
@@ -261,11 +263,27 @@ func main() {
 	flag.StringVar(&geoip6Database, "geoip6db", "/usr/share/tor/geoip6", "path to correctly formatted geoip database mapping IPv6 address ranges to country codes")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.BoolVar(&disableGeoip, "disable-geoip", false, "don't use geoip for stats collection")
+	flag.StringVar(&metricsFilename, "metrics-log", "", "path to metrics logging output")
 	flag.Parse()
+
+	var metricsFile io.Writer = os.Stdout
+	var err error
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
-	ctx := NewBrokerContext()
+	if metricsFilename != "" {
+		metricsFile, err = os.OpenFile(metricsFilename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	} else {
+		metricsFile = os.Stdout
+	}
+
+	metricsLogger := log.New(metricsFile, "", log.LstdFlags|log.LUTC)
+
+	ctx := NewBrokerContext(metricsLogger)
 
 	if !disableGeoip {
 		err := ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
@@ -283,7 +301,6 @@ func main() {
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
 
-	var err error
 	server := http.Server{
 		Addr: addr,
 	}
