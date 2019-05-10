@@ -32,6 +32,8 @@ const pollInterval = 5 * time.Second
 //client is not going to connect
 const dataChannelTimeout = 20 * time.Second
 
+const readLimit = 100000 //Maximum number of bytes to be read from an HTTP request
+
 var brokerURL *url.URL
 var relayURL string
 
@@ -137,6 +139,23 @@ func genSessionID() string {
 	return strings.TrimRight(base64.StdEncoding.EncodeToString(buf), "=")
 }
 
+func limitedRead(r io.Reader, limit int64) ([]byte, error) {
+	p, err := ioutil.ReadAll(&io.LimitedReader{r, limit})
+	if err != nil {
+		return p, err
+	}
+
+	//Check to see if limit was exceeded
+	var tmp [1]byte
+	_, err = io.ReadFull(r, tmp[:])
+	if err == io.EOF {
+		err = nil
+	} else if err == nil {
+		err = io.ErrUnexpectedEOF
+	}
+	return p, err
+}
+
 func pollOffer(sid string) *webrtc.SessionDescription {
 	broker := brokerURL.ResolveReference(&url.URL{Path: "proxy"})
 	timeOfNextPoll := time.Now()
@@ -162,7 +181,7 @@ func pollOffer(sid string) *webrtc.SessionDescription {
 			if resp.StatusCode != http.StatusOK {
 				log.Printf("broker returns: %d", resp.StatusCode)
 			} else {
-				body, err := ioutil.ReadAll(http.MaxBytesReader(nil, resp.Body, 100000))
+				body, err := limitedRead(resp.Body, readLimit)
 				if err != nil {
 					log.Printf("error reading broker response: %s", err)
 				} else {
