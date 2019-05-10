@@ -162,7 +162,7 @@ func pollOffer(sid string) *webrtc.SessionDescription {
 			if resp.StatusCode != http.StatusOK {
 				log.Printf("broker returns: %d", resp.StatusCode)
 			} else {
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := ioutil.ReadAll(http.MaxBytesReader(nil, resp.Body, 100000))
 				if err != nil {
 					log.Printf("error reading broker response: %s", err)
 				} else {

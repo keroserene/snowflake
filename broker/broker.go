@@ -136,7 +136,7 @@ For snowflake proxies to request a client from the Broker.
 */
 func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	id := r.Header.Get("X-Session-ID")
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, 100000))
 	if nil != err {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
@@ -166,7 +166,7 @@ the HTTP response back to the client.
 */
 func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
-	offer, err := ioutil.ReadAll(r.Body)
+	offer, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, 100000))
 	if nil != err {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
@@ -213,7 +213,7 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, 100000))
 	if nil != err || nil == body || len(body) <= 0 {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)

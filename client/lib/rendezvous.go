@@ -91,7 +91,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(http.MaxBytesReader(nil, resp.Body, 100000))
 		if nil != err {
 			return nil, err
 		}
