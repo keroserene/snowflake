@@ -251,6 +251,7 @@ func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	var acmeEmail string
 	var acmeHostnamesCommas string
+	var acmeCertCacheDir string
 	var addr string
 	var geoipDatabase string
 	var geoip6Database string
@@ -263,6 +264,7 @@ func main() {
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
 	flag.StringVar(&certFilename, "cert", "", "TLS certificate file")
 	flag.StringVar(&keyFilename, "key", "", "TLS private key file")
+	flag.StringVar(&acmeCertCacheDir, "acme-cert-cache", "acme-cert-cache", "directory in which certificates should be cached")
 	flag.StringVar(&addr, "addr", ":443", "address to listen on")
 	flag.StringVar(&geoipDatabase, "geoipdb", "/usr/share/tor/geoip", "path to correctly formatted geoip database mapping IPv4 address ranges to country codes")
 	flag.StringVar(&geoip6Database, "geoip6db", "/usr/share/tor/geoip6", "path to correctly formatted geoip database mapping IPv6 address ranges to country codes")
@@ -329,7 +331,7 @@ func main() {
 
 	// Handle the various ways of setting up TLS. The legal configurations
 	// are:
-	//   --acme-hostnames (with optional --acme-email)
+	//   --acme-hostnames (with optional --acme-email and/or --acme-cert-cache)
 	//   --cert and --key together
 	//   --disable-tls
 	// The outputs of this block of code are the disableTLS,
@@ -338,7 +340,15 @@ func main() {
 		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
 		log.Printf("ACME hostnames: %q", acmeHostnames)
 
+		var cache autocert.Cache
+		if err = os.MkdirAll(acmeCertCacheDir, 0700); err != nil {
+			log.Printf("Warning: Couldn't create cache directory %q (reason: %s) so we're *not* using our certificate cache.", acmeCertCacheDir, err)
+		} else {
+			cache = autocert.DirCache(acmeCertCacheDir)
+		}
+
 		certManager := autocert.Manager{
+			Cache:      cache,
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
 			Email:      acmeEmail,
