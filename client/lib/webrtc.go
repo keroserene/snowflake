@@ -176,14 +176,15 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 			}
 		}()
 	}
-	// Allow candidates to accumulate until OnIceComplete.
+	// Allow candidates to accumulate until IceGatheringStateComplete.
 	pc.OnIceCandidate = func(candidate webrtc.IceCandidate) {
 		log.Printf(candidate.Candidate)
 	}
-	// TODO: This may soon be deprecated, consider OnIceGatheringStateChange.
-	pc.OnIceComplete = func() {
-		log.Printf("WebRTC: OnIceComplete")
-		c.offerChannel <- pc.LocalDescription()
+	pc.OnIceGatheringStateChange = func(state webrtc.IceGatheringState) {
+		if state == webrtc.IceGatheringStateComplete {
+			log.Printf("WebRTC: IceGatheringStateComplete")
+			c.offerChannel <- pc.LocalDescription()
+		}
 	}
 	// This callback is not expected, as the Client initiates the creation
 	// of the data channel, not the remote peer.
