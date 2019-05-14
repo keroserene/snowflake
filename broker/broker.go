@@ -229,9 +229,12 @@ func main() {
 	var acmeHostnamesCommas string
 	var addr string
 	var disableTLS bool
+	var certFilename, keyFilename string
 
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
+	flag.StringVar(&certFilename, "cert", "", "TLS certificate file")
+	flag.StringVar(&keyFilename, "key", "", "TLS private key file")
 	flag.StringVar(&addr, "addr", ":443", "address to listen on")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.Parse()
@@ -258,6 +261,13 @@ func main() {
 		Addr: addr,
 	}
 
+	// Handle the various ways of setting up TLS. The legal configurations
+	// are:
+	//   --acme-hostnames (with optional --acme-email)
+	//   --cert and --key together
+	//   --disable-tls
+	// The outputs of this block of code are the disableTLS,
+	// needHTTP01Listener, certManager, and getCertificate variables.
 	if acmeHostnamesCommas != "" {
 		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
 		log.Printf("ACME hostnames: %q", acmeHostnames)
@@ -274,10 +284,15 @@ func main() {
 
 		server.TLSConfig = &tls.Config{GetCertificate: certManager.GetCertificate}
 		err = server.ListenAndServeTLS("", "")
+	} else if certFilename != "" && keyFilename != "" {
+		if acmeEmail != "" || acmeHostnamesCommas != "" {
+			log.Fatalf("The --cert and --key options are not allowed with --acme-email or --acme-hostnames.")
+		}
+		err = server.ListenAndServeTLS(certFilename, keyFilename)
 	} else if disableTLS {
 		err = server.ListenAndServe()
 	} else {
-		log.Fatal("the --acme-hostnames or --disable-tls option is required")
+		log.Fatal("the --acme-hostnames, --cert and --key, or --disable-tls option is required")
 	}
 
 	if err != nil {
