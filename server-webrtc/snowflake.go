@@ -113,18 +113,12 @@ func datachannelHandler(conn *webRTCConn) {
 // Installs an OnDataChannel callback that creates a webRTCConn and passes it to
 // datachannelHandler.
 func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
-	errChan := make(chan error)
-	answerChan := make(chan struct{})
-
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("accept: NewPeerConnection: %s", err)
 	}
 	pc.OnNegotiationNeeded = func() {
 		panic("OnNegotiationNeeded")
-	}
-	pc.OnIceComplete = func() {
-		answerChan <- struct{}{}
 	}
 	pc.OnDataChannel = func(dc *webrtc.DataChannel) {
 		log.Println("OnDataChannel")
@@ -164,30 +158,22 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	}
 	log.Println("sdp offer successfully received.")
 
-	go func() {
-		log.Println("Generating answer...")
-		answer, err := pc.CreateAnswer() // blocking
-		if err != nil {
-			errChan <- err
-			return
-		}
-		err = pc.SetLocalDescription(answer)
-		if err != nil {
-			errChan <- err
-			return
-		}
-	}()
-
-	// Wait until answer is ready.
-	select {
-	case err = <-errChan:
+	log.Println("Generating answer...")
+	answer, err := pc.CreateAnswer()
+	if err != nil {
 		pc.Destroy()
 		return nil, err
-	case _, ok := <-answerChan:
-		if !ok {
-			pc.Destroy()
-			return nil, fmt.Errorf("Failed gathering ICE candidates.")
-		}
+	}
+
+	if answer == nil {
+		pc.Destroy()
+		return nil, fmt.Errorf("Failed gathering ICE candidates.")
+	}
+
+	err = pc.SetLocalDescription(answer)
+	if err != nil {
+		pc.Destroy()
+		return nil, err
 	}
 
 	return pc, nil
