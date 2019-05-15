@@ -13,9 +13,12 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
@@ -36,14 +39,24 @@ type BrokerContext struct {
 	metrics       *Metrics
 }
 
-func NewBrokerContext() *BrokerContext {
+func NewBrokerContext(metricsLogger *log.Logger) *BrokerContext {
 	snowflakes := new(SnowflakeHeap)
 	heap.Init(snowflakes)
+	metrics, err := NewMetrics(metricsLogger)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if metrics == nil {
+		panic("Failed to create metrics")
+	}
+
 	return &BrokerContext{
 		snowflakes:    snowflakes,
 		idToSnowflake: make(map[string]*Snowflake),
 		proxyPolls:    make(chan *ProxyPoll),
-		metrics:       new(Metrics),
+		metrics:       metrics,
 	}
 }
 
@@ -206,6 +219,16 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	// Get proxy country stats
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		log.Println("Error processing proxy IP: ", err.Error())
+	} else {
+
+		ctx.metrics.UpdateCountryStats(remoteIP)
+	}
+
 	log.Println("Received answer.")
 	snowflake.answerChannel <- body
 }
@@ -228,24 +251,53 @@ func main() {
 	var acmeEmail string
 	var acmeHostnamesCommas string
 	var addr string
+	var geoipDatabase string
+	var geoip6Database string
 	var disableTLS bool
 	var certFilename, keyFilename string
+	var disableGeoip bool
+	var metricsFilename string
 
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
 	flag.StringVar(&certFilename, "cert", "", "TLS certificate file")
 	flag.StringVar(&keyFilename, "key", "", "TLS private key file")
 	flag.StringVar(&addr, "addr", ":443", "address to listen on")
+	flag.StringVar(&geoipDatabase, "geoipdb", "/usr/share/tor/geoip", "path to correctly formatted geoip database mapping IPv4 address ranges to country codes")
+	flag.StringVar(&geoip6Database, "geoip6db", "/usr/share/tor/geoip6", "path to correctly formatted geoip database mapping IPv6 address ranges to country codes")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
+	flag.BoolVar(&disableGeoip, "disable-geoip", false, "don't use geoip for stats collection")
+	flag.StringVar(&metricsFilename, "metrics-log", "", "path to metrics logging output")
 	flag.Parse()
 
+	var err error
+	var metricsFile io.Writer = os.Stdout
 	var logOutput io.Writer = os.Stderr
 	//We want to send the log output through our scrubber first
 	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
-	ctx := NewBrokerContext()
+	if metricsFilename != "" {
+		metricsFile, err = os.OpenFile(metricsFilename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	} else {
+		metricsFile = os.Stdout
+	}
+
+	metricsLogger := log.New(metricsFile, "", log.LstdFlags|log.LUTC)
+
+	ctx := NewBrokerContext(metricsLogger)
+
+	if !disableGeoip {
+		err := ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
 
 	go ctx.Broker()
 
@@ -256,10 +308,23 @@ func main() {
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
 
-	var err error
 	server := http.Server{
 		Addr: addr,
 	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+
+	// go routine to handle a SIGHUP signal to allow the broker operator to send
+	// a SIGHUP signal when the geoip database files are updated, without requiring
+	// a restart of the broker
+	go func() {
+		for {
+			signal := <-sigChan
+			log.Println("Received signal:", signal, ". Reloading geoip databases.")
+			ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
+		}
+	}()
 
 	// Handle the various ways of setting up TLS. The legal configurations
 	// are:
