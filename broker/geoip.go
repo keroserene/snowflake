@@ -70,8 +70,8 @@ type GeoIPv6Table struct {
 	lock sync.Mutex // synchronization for geoip table accesses and reloads
 }
 
-func (table GeoIPv4Table) Len() int { return len(table.table) }
-func (table GeoIPv6Table) Len() int { return len(table.table) }
+func (table *GeoIPv4Table) Len() int { return len(table.table) }
+func (table *GeoIPv6Table) Len() int { return len(table.table) }
 
 func (table *GeoIPv4Table) Append(entry GeoIPEntry) {
 	(*table).table = append(table.table, entry)
@@ -80,8 +80,8 @@ func (table *GeoIPv6Table) Append(entry GeoIPEntry) {
 	(*table).table = append(table.table, entry)
 }
 
-func (table GeoIPv4Table) ElementAt(i int) GeoIPEntry { return table.table[i] }
-func (table GeoIPv6Table) ElementAt(i int) GeoIPEntry { return table.table[i] }
+func (table *GeoIPv4Table) ElementAt(i int) GeoIPEntry { return table.table[i] }
+func (table *GeoIPv6Table) ElementAt(i int) GeoIPEntry { return table.table[i] }
 
 func (table *GeoIPv4Table) Lock() { (*table).lock.Lock() }
 func (table *GeoIPv6Table) Lock() { (*table).lock.Lock() }
