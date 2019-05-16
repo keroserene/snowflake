@@ -4,16 +4,25 @@ import (
 	"bytes"
 	"container/heap"
 	. "github.com/smartystreets/goconvey/convey"
+	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
+
+func NullLogger() *log.Logger {
+	logger := log.New(os.Stdout, "", 0)
+	logger.SetOutput(ioutil.Discard)
+	return logger
+}
 
 func TestBroker(t *testing.T) {
 
 	Convey("Context", t, func() {
-		ctx := NewBrokerContext()
+		ctx := NewBrokerContext(NullLogger())
 
 		Convey("Adds Snowflake", func() {
 			So(ctx.snowflakes.Len(), ShouldEqual, 0)
@@ -175,7 +184,7 @@ func TestBroker(t *testing.T) {
 	Convey("End-To-End", t, func() {
 		done := make(chan bool)
 		polled := make(chan bool)
-		ctx := NewBrokerContext()
+		ctx := NewBrokerContext(NullLogger())
 
 		// Proxy polls with its ID first...
 		dataP := bytes.NewReader([]byte("test"))
@@ -364,7 +373,7 @@ func TestGeoip(t *testing.T) {
 		})
 
 		// Make sure things behave properly if geoip file fails to load
-		ctx := NewBrokerContext()
+		ctx := NewBrokerContext(NullLogger())
 		ctx.metrics.LoadGeoipDatabases("invalid_filename", "invalid_filename6")
 		ctx.metrics.UpdateCountryStats("127.0.0.1")
 		So(ctx.metrics.tablev4, ShouldEqual, nil)
