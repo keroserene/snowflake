@@ -263,9 +263,7 @@ func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 // candidates is complete and the answer is available in LocalDescription.
 // Installs an OnDataChannel callback that creates a webRTCConn and passes it to
 // datachannelHandler.
-func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
-
-	dataChan := make(chan struct{})
+func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.Configuration, dataChan chan struct{}) (*webrtc.PeerConnection, error) {
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("accept: NewPeerConnection: %s", err)
@@ -333,21 +331,6 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 		return nil, err
 	}
 
-	// Set a timeout on peerconnection. If the connection state has not
-	// advanced to PeerConnectionStateConnected in this time,
-	// destroy the peer connection and return the token.
-	go func() {
-		select {
-		case <-dataChan:
-			log.Println("Connection successful.")
-		case <-time.After(dataChannelTimeout):
-			log.Println("Timed out waiting for client to open data channel.")
-			pc.Destroy()
-			retToken()
-		}
-
-	}()
-
 	return pc, nil
 }
 
@@ -358,7 +341,8 @@ func runSession(sid string) {
 		retToken()
 		return
 	}
-	pc, err := makePeerConnectionFromOffer(offer, config)
+	dataChan := make(chan struct{})
+	pc, err := makePeerConnectionFromOffer(offer, config, dataChan)
 	if err != nil {
 		log.Printf("error making WebRTC connection: %s", err)
 		retToken()
@@ -370,6 +354,17 @@ func runSession(sid string) {
 		pc.Destroy()
 		retToken()
 		return
+	}
+	// Set a timeout on peerconnection. If the connection state has not
+	// advanced to PeerConnectionStateConnected in this time,
+	// destroy the peer connection and return the token.
+	select {
+	case <-dataChan:
+		log.Println("Connection successful.")
+	case <-time.After(dataChannelTimeout):
+		log.Println("Timed out waiting for client to open data channel.")
+		pc.Destroy()
+		retToken()
 	}
 }
 
