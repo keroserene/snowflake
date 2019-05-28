@@ -140,18 +140,11 @@ func genSessionID() string {
 }
 
 func limitedRead(r io.Reader, limit int64) ([]byte, error) {
-	p, err := ioutil.ReadAll(&io.LimitedReader{r, limit})
+	p, err := ioutil.ReadAll(&io.LimitedReader{r, limit + 1})
 	if err != nil {
 		return p, err
-	}
-
-	//Check to see if limit was exceeded
-	var tmp [1]byte
-	_, err = io.ReadFull(r, tmp[:])
-	if err == io.EOF {
-		err = nil
-	} else if err == nil {
-		err = io.ErrUnexpectedEOF
+	} else if int64(len(p)) == limit+1 {
+		return p[0:limit], io.ErrUnexpectedEOF
 	}
 	return p, err
 }
