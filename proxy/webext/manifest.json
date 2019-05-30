@@ -11,6 +11,7 @@
 		"default_icon": {
 			"32": "icons/status-off.png"
 		},
-		"default_title": "Snowflake"
+		"default_title": "Snowflake",
+		"default_popup": "popup.html"
 	}
 }

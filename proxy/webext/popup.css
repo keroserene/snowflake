@@ -1,0 +1,19 @@
+body {
+	margin: 1em;
+}
+
+#active {
+	padding: 2em;
+	text-align: center;
+}
+
+.learn {
+	padding-top: 1em;
+	border-top: 1px solid grey;
+}
+
+.learn a {
+	display: block;
+	color: grey;
+	text-decoration: none;
+}
