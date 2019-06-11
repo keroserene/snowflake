@@ -21,11 +21,15 @@ type CountryStats struct {
 
 // Implements Observable
 type Metrics struct {
-	tablev4      *GeoIPv4Table
-	tablev6      *GeoIPv6Table
-	countryStats CountryStats
-	// snowflakes	timeseries.Float
+	logger  *log.Logger
+	tablev4 *GeoIPv4Table
+	tablev6 *GeoIPv6Table
+
+	countryStats            CountryStats
 	clientRoundtripEstimate time.Duration
+	proxyIdleCount          int
+	clientDeniedCount       int
+	clientProxyMatchCount   int
 }
 
 func (s CountryStats) Display() string {
@@ -94,17 +98,25 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 		counts: make(map[string]int),
 	}
 
+	m.logger = metricsLogger
+
 	// Write to log file every hour with updated metrics
-	go once.Do(func() {
-		heartbeat := time.Tick(metricsResolution)
-		for range heartbeat {
-			metricsLogger.Println("Country stats: ", m.countryStats.Display())
-
-			//restore all metrics to original values
-			m.countryStats.counts = make(map[string]int)
-
-		}
-	})
+	go once.Do(m.logMetrics)
 
 	return m, nil
+}
+
+func (m *Metrics) logMetrics() {
+
+	heartbeat := time.Tick(metricsResolution)
+	for range heartbeat {
+		m.logger.Println("snowflake-stats-end ")
+		m.logger.Println("snowflake-ips ", m.countryStats.Display())
+		m.logger.Println("snowflake-idle-count ", m.proxyIdleCount)
+		m.logger.Println("client-denied-count ", m.clientDeniedCount)
+		m.logger.Println("client-snowflake-match-count ", m.clientProxyMatchCount)
+
+		//restore all metrics to original values
+		m.countryStats.counts = make(map[string]int)
+	}
 }

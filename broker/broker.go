@@ -153,6 +153,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	offer := ctx.RequestOffer(id)
 	if nil == offer {
 		log.Println("Proxy " + id + " did not receive a Client offer.")
+		ctx.metrics.proxyIdleCount++
 		w.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}
@@ -176,6 +177,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	// Immediately fail if there are no snowflakes available.
 	if ctx.snowflakes.Len() <= 0 {
 		log.Println("Client: No snowflake proxies available.")
+		ctx.metrics.clientDeniedCount++
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -189,6 +191,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	select {
 	case answer := <-snowflake.answerChannel:
 		log.Println("Client: Retrieving answer")
+		ctx.metrics.clientProxyMatchCount++
 		w.Write(answer)
 		// Initial tracking of elapsed time.
 		ctx.metrics.clientRoundtripEstimate = time.Since(startTime) /
