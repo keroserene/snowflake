@@ -4,6 +4,7 @@ import (
 	// "golang.org/x/net/internal/timeseries"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"sync"
 	"time"
@@ -112,9 +113,9 @@ func (m *Metrics) logMetrics() {
 	for range heartbeat {
 		m.logger.Println("snowflake-stats-end ")
 		m.logger.Println("snowflake-ips ", m.countryStats.Display())
-		m.logger.Println("snowflake-idle-count ", m.proxyIdleCount)
-		m.logger.Println("client-denied-count ", m.clientDeniedCount)
-		m.logger.Println("client-snowflake-match-count ", m.clientProxyMatchCount)
+		m.logger.Println("snowflake-idle-count ", binCount(m.proxyIdleCount))
+		m.logger.Println("client-denied-count ", binCount(m.clientDeniedCount))
+		m.logger.Println("client-snowflake-match-count ", binCount(m.clientProxyMatchCount))
 
 		//restore all metrics to original values
 		m.proxyIdleCount = 0
@@ -122,4 +123,9 @@ func (m *Metrics) logMetrics() {
 		m.clientProxyMatchCount = 0
 		m.countryStats.counts = make(map[string]int)
 	}
+}
+
+// Rounds up a count to the nearest multiple of 8.
+func binCount(count int) int {
+	return int((math.Ceil(float64(count) / 8)) * 8)
 }
