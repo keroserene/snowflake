@@ -117,6 +117,9 @@ func (m *Metrics) logMetrics() {
 		m.logger.Println("client-snowflake-match-count ", m.clientProxyMatchCount)
 
 		//restore all metrics to original values
+		m.proxyIdleCount = 0
+		m.clientDeniedCount = 0
+		m.clientProxyMatchCount = 0
 		m.countryStats.counts = make(map[string]int)
 	}
 }
