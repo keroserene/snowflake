@@ -14,7 +14,7 @@ var (
 	once sync.Once
 )
 
-const metricsResolution = 24 * time.Hour
+const metricsResolution = 86400 * time.Second
 
 type CountryStats struct {
 	counts map[string]int
@@ -34,7 +34,11 @@ type Metrics struct {
 }
 
 func (s CountryStats) Display() string {
-	return fmt.Sprint(s.counts)
+	output := ""
+	for cc, count := range s.counts {
+		output += fmt.Sprintf("%s=%d,", cc, count)
+	}
+	return output
 }
 
 func (m *Metrics) UpdateCountryStats(addr string) {
@@ -111,11 +115,11 @@ func (m *Metrics) logMetrics() {
 
 	heartbeat := time.Tick(metricsResolution)
 	for range heartbeat {
-		m.logger.Println("snowflake-stats-end ")
-		m.logger.Println("snowflake-ips ", m.countryStats.Display())
-		m.logger.Println("snowflake-idle-count ", binCount(m.proxyIdleCount))
-		m.logger.Println("client-denied-count ", binCount(m.clientDeniedCount))
-		m.logger.Println("client-snowflake-match-count ", binCount(m.clientProxyMatchCount))
+		m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), "(", int(metricsResolution.Seconds()), "s)")
+		m.logger.Println("snowflake-ips", m.countryStats.Display())
+		m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
+		m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
+		m.logger.Println("client-snowflake-match-count", binCount(m.clientProxyMatchCount))
 
 		//restore all metrics to original values
 		m.proxyIdleCount = 0

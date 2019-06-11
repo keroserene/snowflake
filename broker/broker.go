@@ -292,7 +292,7 @@ func main() {
 		metricsFile = os.Stdout
 	}
 
-	metricsLogger := log.New(metricsFile, "", log.LstdFlags|log.LUTC)
+	metricsLogger := log.New(metricsFile, "", 0)
 
 	ctx := NewBrokerContext(metricsLogger)
 
