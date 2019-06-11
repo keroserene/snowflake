@@ -149,6 +149,15 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Received snowflake: ", id)
+
+	// Log geoip stats
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		log.Println("Error processing proxy IP: ", err.Error())
+	} else {
+		ctx.metrics.UpdateCountryStats(remoteIP)
+	}
+
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
 	offer := ctx.RequestOffer(id)
 	if nil == offer {
@@ -222,15 +231,6 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	// Get proxy country stats
-	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		log.Println("Error processing proxy IP: ", err.Error())
-	} else {
-
-		ctx.metrics.UpdateCountryStats(remoteIP)
 	}
 
 	log.Println("Received answer.")

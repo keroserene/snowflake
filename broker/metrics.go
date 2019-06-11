@@ -17,6 +17,7 @@ var (
 const metricsResolution = 86400 * time.Second
 
 type CountryStats struct {
+	ips    map[string]bool
 	counts map[string]int
 }
 
@@ -65,8 +66,11 @@ func (m *Metrics) UpdateCountryStats(addr string) {
 		log.Println("Unknown geoip")
 	}
 
-	//update map of countries and counts
-	m.countryStats.counts[country]++
+	//update map of unique ips and counts
+	if !m.countryStats.ips[addr] {
+		m.countryStats.counts[country]++
+		m.countryStats.ips[addr] = true
+	}
 
 	return
 }
@@ -101,6 +105,7 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 
 	m.countryStats = CountryStats{
 		counts: make(map[string]int),
+		ips:    make(map[string]bool),
 	}
 
 	m.logger = metricsLogger
@@ -126,6 +131,7 @@ func (m *Metrics) logMetrics() {
 		m.clientDeniedCount = 0
 		m.clientProxyMatchCount = 0
 		m.countryStats.counts = make(map[string]int)
+		m.countryStats.ips = make(map[string]bool)
 	}
 }
 
