@@ -13,6 +13,8 @@ var (
 	once sync.Once
 )
 
+const metricsResolution = 24 * time.Hour
+
 type CountryStats struct {
 	counts map[string]int
 }
@@ -94,7 +96,7 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 
 	// Write to log file every hour with updated metrics
 	go once.Do(func() {
-		heartbeat := time.Tick(time.Hour)
+		heartbeat := time.Tick(metricsResolution)
 		for range heartbeat {
 			metricsLogger.Println("Country stats: ", m.countryStats.Display())
 
