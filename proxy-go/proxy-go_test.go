@@ -1,14 +1,55 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"github.com/pion/webrtc"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+// Set up a mock broker to communicate with
+type MockTransport struct {
+	statusOverride int
+	body           []byte
+}
+
+// Just returns a response with fake SDP answer.
+func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	s := ioutil.NopCloser(bytes.NewReader(m.body))
+	r := &http.Response{
+		StatusCode: m.statusOverride,
+		Body:       s,
+	}
+	return r, nil
+}
+
+// Set up a mock faulty transport
+type FaultyTransport struct {
+	statusOverride int
+	body           []byte
+}
+
+// Just returns a response with fake SDP answer.
+func (f *FaultyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return nil, fmt.Errorf("TransportFailed")
+}
+
+const SDP = "v=0\r\no=- 4358805017720277108 2 IN IP4 8.8.8.8\r\ns=-\r\nt=0 0\r\na=group:BUNDLE data\r\na=msid-semantic: WMS\r\nm=application 56688 DTLS/SCTP 5000\r\nc=IN IP4 8.8.8.8\r\na=candidate:3769337065 1 udp 2122260223 8.8.8.8 56688 typ host generation 0 network-id 1 network-cost 50\r\na=candidate:2921887769 1 tcp 1518280447 8.8.8.8 35441 typ host tcptype passive generation 0 network-id 1 network-cost 50\r\na=ice-ufrag:aMAZ\r\na=ice-pwd:jcHb08Jjgrazp2dzjdrvPPvV\r\na=ice-options:trickle\r\na=fingerprint:sha-256 C8:88:EE:B9:E7:02:2E:21:37:ED:7A:D1:EB:2B:A3:15:A2:3B:5B:1C:3D:D4:D5:1F:06:CF:52:40:03:F8:DD:66\r\na=setup:actpass\r\na=mid:data\r\na=sctpmap:5000 webrtc-datachannel 1024\r\n"
+
+const sampleSDP = `"v=0\r\no=- 4358805017720277108 2 IN IP4 8.8.8.8\r\ns=-\r\nt=0 0\r\na=group:BUNDLE data\r\na=msid-semantic: WMS\r\nm=application 56688 DTLS/SCTP 5000\r\nc=IN IP4 8.8.8.8\r\na=candidate:3769337065 1 udp 2122260223 8.8.8.8 56688 typ host generation 0 network-id 1 network-cost 50\r\na=candidate:2921887769 1 tcp 1518280447 8.8.8.8 35441 typ host tcptype passive generation 0 network-id 1 network-cost 50\r\na=ice-ufrag:aMAZ\r\na=ice-pwd:jcHb08Jjgrazp2dzjdrvPPvV\r\na=ice-options:trickle\r\na=fingerprint:sha-256 C8:88:EE:B9:E7:02:2E:21:37:ED:7A:D1:EB:2B:A3:15:A2:3B:5B:1C:3D:D4:D5:1F:06:CF:52:40:03:F8:DD:66\r\na=setup:actpass\r\na=mid:data\r\na=sctpmap:5000 webrtc-datachannel 1024\r\n"`
+
+var sampleOffer = `{"type":"offer","sdp":` + sampleSDP + `}`
+
+const sampleAnswer = `{"type":"answer","sdp":` + sampleSDP + `}`
 
 func TestRemoteIPFromSDP(t *testing.T) {
 	tests := []struct {
@@ -183,6 +224,108 @@ func TestSessionDescriptions(t *testing.T) {
 			msg := serializeSessionDescription(test.desc)
 			So(msg, ShouldResemble, test.ret)
 		}
+	})
+}
+
+func TestBrokerInteractions(t *testing.T) {
+	Convey("Proxy connections to broker", t, func() {
+		broker := new(Broker)
+		broker.url, _ = url.Parse("localhost")
+
+		//Mock peerConnection
+		config = webrtc.Configuration{
+			ICEServers: []webrtc.ICEServer{
+				{
+					URLs: []string{"stun:stun.l.google.com:19302"},
+				},
+			},
+		}
+		pc, _ := webrtc.NewPeerConnection(config)
+		offer := deserializeSessionDescription(sampleOffer)
+		pc.SetRemoteDescription(*offer)
+		answer, _ := pc.CreateAnswer(nil)
+		pc.SetLocalDescription(answer)
+
+		Convey("polls broker correctly", func() {
+			var err error
+
+			b, err := messages.EncodePollResponse(sampleOffer, true)
+			So(err, ShouldEqual, nil)
+			broker.transport = &MockTransport{
+				http.StatusOK,
+				b,
+			}
+
+			sdp := broker.pollOffer(sampleOffer)
+			So(sdp.SDP, ShouldEqual, SDP)
+		})
+		Convey("handles poll error", func() {
+			var err error
+
+			b := []byte("test")
+			So(err, ShouldEqual, nil)
+			broker.transport = &MockTransport{
+				http.StatusOK,
+				b,
+			}
+
+			sdp := broker.pollOffer(sampleOffer)
+			So(sdp, ShouldBeNil)
+		})
+		Convey("sends answer to broker", func() {
+			var err error
+
+			b, err := messages.EncodeAnswerResponse(true)
+			So(err, ShouldEqual, nil)
+			broker.transport = &MockTransport{
+				http.StatusOK,
+				b,
+			}
+
+			err = broker.sendAnswer(sampleAnswer, pc)
+			So(err, ShouldEqual, nil)
+
+			b, err = messages.EncodeAnswerResponse(false)
+			So(err, ShouldEqual, nil)
+			broker.transport = &MockTransport{
+				http.StatusOK,
+				b,
+			}
+
+			err = broker.sendAnswer(sampleAnswer, pc)
+			So(err, ShouldNotBeNil)
+		})
+		Convey("handles answer error", func() {
+			//Error if faulty transport
+			broker.transport = &FaultyTransport{}
+			err := broker.sendAnswer(sampleAnswer, pc)
+			So(err, ShouldNotBeNil)
+
+			//Error if status code is not ok
+			broker.transport = &MockTransport{
+				http.StatusGone,
+				[]byte(""),
+			}
+			err = broker.sendAnswer("test", pc)
+			So(err, ShouldNotEqual, nil)
+			So(err.Error(), ShouldResemble, "broker returned 410")
+
+			//Error if we can't parse broker message
+			broker.transport = &MockTransport{
+				http.StatusOK,
+				[]byte("test"),
+			}
+			err = broker.sendAnswer("test", pc)
+			So(err, ShouldNotBeNil)
+
+			//Error if broker message surpasses read limit
+			broker.transport = &MockTransport{
+				http.StatusOK,
+				make([]byte, 100001),
+			}
+			err = broker.sendAnswer("test", pc)
+			So(err, ShouldNotBeNil)
+		})
 	})
 }
 
