@@ -116,23 +116,30 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 	return m, nil
 }
 
+// Logs metrics in intervals specified by metricsResolution
 func (m *Metrics) logMetrics() {
-
 	heartbeat := time.Tick(metricsResolution)
 	for range heartbeat {
-		m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), "(", int(metricsResolution.Seconds()), "s)")
-		m.logger.Println("snowflake-ips", m.countryStats.Display())
-		m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
-		m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
-		m.logger.Println("client-snowflake-match-count", binCount(m.clientProxyMatchCount))
-
-		//restore all metrics to original values
-		m.proxyIdleCount = 0
-		m.clientDeniedCount = 0
-		m.clientProxyMatchCount = 0
-		m.countryStats.counts = make(map[string]int)
-		m.countryStats.ips = make(map[string]bool)
+		m.printMetrics()
+		m.zeroMetrics()
 	}
+}
+
+func (m *Metrics) printMetrics() {
+	m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), "(", int(metricsResolution.Seconds()), "s)")
+	m.logger.Println("snowflake-ips", m.countryStats.Display())
+	m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
+	m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
+	m.logger.Println("client-snowflake-match-count", binCount(m.clientProxyMatchCount))
+}
+
+// Restores all metrics to original values
+func (m *Metrics) zeroMetrics() {
+	m.proxyIdleCount = 0
+	m.clientDeniedCount = 0
+	m.clientProxyMatchCount = 0
+	m.countryStats.counts = make(map[string]int)
+	m.countryStats.ips = make(map[string]bool)
 }
 
 // Rounds up a count to the nearest multiple of 8.
