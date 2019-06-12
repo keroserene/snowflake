@@ -1,3 +1,38 @@
+/*
+We export metrics in the following format:
+
+    "snowflake-stats-end" YYYY-MM-DD HH:MM:SS (NSEC s) NL
+        [At most once.]
+
+        YYYY-MM-DD HH:MM:SS defines the end of the included measurement
+        interval of length NSEC seconds (86400 seconds by default).
+
+    "snowflake-ips" CC=NUM,CC=NUM,... NL
+        [At most once.]
+
+        List of mappings from two-letter country codes to the number of
+        unique IP addresses of snowflake proxies that have polled.
+
+    "snowflake-idle-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a proxy has polled but received
+        no client offer, rounded up to the nearest multiple of 8.
+
+    "client-denied-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a client has requested a proxy
+        from the broker but no proxies were available, rounded up to
+        the nearest multiple of 8.
+
+    "client-snowflake-match-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a client successfully received a
+        proxy from the broker, rounded up to the nearest multiple of 8.
+*/
+
 package main
 
 import (
