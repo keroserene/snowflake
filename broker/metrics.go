@@ -49,10 +49,10 @@ var (
 	once sync.Once
 )
 
-const metricsResolution = 86400 * time.Second
+const metricsResolution = 60 * 60 * 24 * time.Second //86400 seconds
 
 type CountryStats struct {
-	ips    map[string]bool
+	addrs  map[string]bool
 	counts map[string]int
 }
 
@@ -64,9 +64,9 @@ type Metrics struct {
 
 	countryStats            CountryStats
 	clientRoundtripEstimate time.Duration
-	proxyIdleCount          int
-	clientDeniedCount       int
-	clientProxyMatchCount   int
+	proxyIdleCount          uint
+	clientDeniedCount       uint
+	clientProxyMatchCount   uint
 }
 
 func (s CountryStats) Display() string {
@@ -81,6 +81,10 @@ func (m *Metrics) UpdateCountryStats(addr string) {
 
 	var country string
 	var ok bool
+
+	if m.countryStats.addrs[addr] {
+		return
+	}
 
 	ip := net.ParseIP(addr)
 	if ip.To4() != nil {
@@ -102,10 +106,8 @@ func (m *Metrics) UpdateCountryStats(addr string) {
 	}
 
 	//update map of unique ips and counts
-	if !m.countryStats.ips[addr] {
-		m.countryStats.counts[country]++
-		m.countryStats.ips[addr] = true
-	}
+	m.countryStats.counts[country]++
+	m.countryStats.addrs[addr] = true
 
 	return
 }
@@ -140,7 +142,7 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 
 	m.countryStats = CountryStats{
 		counts: make(map[string]int),
-		ips:    make(map[string]bool),
+		addrs:  make(map[string]bool),
 	}
 
 	m.logger = metricsLogger
@@ -174,10 +176,10 @@ func (m *Metrics) zeroMetrics() {
 	m.clientDeniedCount = 0
 	m.clientProxyMatchCount = 0
 	m.countryStats.counts = make(map[string]int)
-	m.countryStats.ips = make(map[string]bool)
+	m.countryStats.addrs = make(map[string]bool)
 }
 
 // Rounds up a count to the nearest multiple of 8.
-func binCount(count int) int {
-	return int((math.Ceil(float64(count) / 8)) * 8)
+func binCount(count uint) uint {
+	return uint((math.Ceil(float64(count) / 8)) * 8)
 }
