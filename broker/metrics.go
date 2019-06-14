@@ -74,6 +74,12 @@ func (s CountryStats) Display() string {
 	for cc, count := range s.counts {
 		output += fmt.Sprintf("%s=%d,", cc, count)
 	}
+
+	// cut off trailing ","
+	if len(output) > 0 {
+		return output[:len(output)-1]
+	}
+
 	return output
 }
 
@@ -163,7 +169,7 @@ func (m *Metrics) logMetrics() {
 }
 
 func (m *Metrics) printMetrics() {
-	m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), "(", int(metricsResolution.Seconds()), "s)")
+	m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), fmt.Sprintf("(%d s)", int(metricsResolution.Seconds())))
 	m.logger.Println("snowflake-ips", m.countryStats.Display())
 	m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
 	m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
