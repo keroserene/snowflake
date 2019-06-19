@@ -5,6 +5,7 @@ body {
 #active {
 	padding: 2em;
 	text-align: center;
+	min-width: 128px;
 }
 
 .learn {

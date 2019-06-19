@@ -51,13 +51,26 @@ class DebugUI extends UI
 
 class WebExtUI extends UI
   port: null
+  stats: null
 
   constructor: ->
+    @initStats()
     chrome.runtime.onConnect.addListener @onConnect
+
+  initStats: ->
+    @stats = [0]
+    setInterval (() =>
+      @stats.unshift 0
+      @stats.splice 24
+      @postActive()
+    ), 60 * 60 * 1000
 
   postActive: ->
     @port?.postMessage
       active: @active
+      total: @stats.reduce ((t, c) ->
+        t + c
+      ), 0
 
   onConnect: (port) =>
     @port = port
@@ -69,6 +82,7 @@ class WebExtUI extends UI
 
   setActive: (connected) ->
     super connected
+    if connected then @stats[0] += 1
     @postActive()
     chrome.browserAction.setIcon
       path:
