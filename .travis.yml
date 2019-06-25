@@ -24,6 +24,7 @@ before_install:
 install:
     - go get -u github.com/smartystreets/goconvey
     - go get -u github.com/keroserene/go-webrtc
+    - go get -u github.com/pion/webrtc
     - go get -u github.com/dchest/uniuri
     - go get -u git.torproject.org/pluggable-transports/goptlib.git
     - go get -u git.torproject.org/pluggable-transports/websocket.git/websocket
