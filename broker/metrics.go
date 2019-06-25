@@ -13,6 +13,12 @@ We export metrics in the following format:
         List of mappings from two-letter country codes to the number of
         unique IP addresses of snowflake proxies that have polled.
 
+    "snowflake-ips-total" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of snowflake
+        proxies that have polled.
+
     "snowflake-idle-count" NUM NL
         [At most once.]
 
@@ -171,6 +177,7 @@ func (m *Metrics) logMetrics() {
 func (m *Metrics) printMetrics() {
 	m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), fmt.Sprintf("(%d s)", int(metricsResolution.Seconds())))
 	m.logger.Println("snowflake-ips", m.countryStats.Display())
+	m.logger.Println("snowflake-ips-total", len(m.countryStats.addrs))
 	m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
 	m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
 	m.logger.Println("client-snowflake-match-count", binCount(m.clientProxyMatchCount))
