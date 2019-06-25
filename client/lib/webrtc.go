@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dchest/uniuri"
-	"github.com/keroserene/go-webrtc"
+	"github.com/pion/webrtc"
 )
 
 // Remote WebRTC peer.
@@ -151,48 +151,54 @@ func (c *WebRTCPeer) Connect() error {
 // Create and prepare callbacks on a new WebRTC PeerConnection.
 func (c *WebRTCPeer) preparePeerConnection() error {
 	if nil != c.pc {
-		c.pc.Destroy()
+		c.pc.Close()
 		c.pc = nil
 	}
-	pc, err := webrtc.NewPeerConnection(c.config)
+	s := webrtc.SettingEngine{}
+	s.SetTrickle(true)
+	api := webrtc.NewAPI(webrtc.WithSettingEngine(s))
+	pc, err := api.NewPeerConnection(*c.config)
 	if err != nil {
 		log.Printf("NewPeerConnection ERROR: %s", err)
 		return err
 	}
 	// Prepare PeerConnection callbacks.
-	pc.OnNegotiationNeeded = func() {
-		log.Println("WebRTC: OnNegotiationNeeded")
-		go func() {
-			offer, err := pc.CreateOffer()
-			// TODO: Potentially timeout and retry if ICE isn't working.
-			if err != nil {
-				c.errorChannel <- err
-				return
-			}
-			err = pc.SetLocalDescription(offer)
-			if err != nil {
-				c.errorChannel <- err
-				return
-			}
-		}()
-	}
-	// Allow candidates to accumulate until IceGatheringStateComplete.
-	pc.OnIceCandidate = func(candidate webrtc.IceCandidate) {
-		log.Printf(candidate.Candidate)
-	}
-	pc.OnIceGatheringStateChange = func(state webrtc.IceGatheringState) {
-		if state == webrtc.IceGatheringStateComplete {
-			log.Printf("WebRTC: IceGatheringStateComplete")
+	// Allow candidates to accumulate until ICEGatheringStateComplete.
+	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+		if candidate == nil {
+			log.Printf("WebRTC: Done gathering candidates")
+		} else {
+			log.Printf("WebRTC: Got ICE candidate: %s", candidate.String())
+		}
+	})
+	pc.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
+		if state == webrtc.ICEGathererStateComplete {
+			log.Println("WebRTC: ICEGatheringStateComplete")
 			c.offerChannel <- pc.LocalDescription()
 		}
-	}
+	})
 	// This callback is not expected, as the Client initiates the creation
 	// of the data channel, not the remote peer.
-	pc.OnDataChannel = func(channel *webrtc.DataChannel) {
+	pc.OnDataChannel(func(channel *webrtc.DataChannel) {
 		log.Println("OnDataChannel")
 		panic("Unexpected OnDataChannel!")
-	}
+	})
 	c.pc = pc
+	go func() {
+		offer, err := pc.CreateOffer(nil)
+		// TODO: Potentially timeout and retry if ICE isn't working.
+		if err != nil {
+			c.errorChannel <- err
+			return
+		}
+		log.Println("WebRTC: Created offer")
+		err = pc.SetLocalDescription(offer)
+		if err != nil {
+			c.errorChannel <- err
+			return
+		}
+		log.Println("WebRTC: Set local description")
+	}()
 	log.Println("WebRTC: PeerConnection created.")
 	return nil
 }
@@ -204,7 +210,11 @@ func (c *WebRTCPeer) establishDataChannel() error {
 	if c.transport != nil {
 		panic("Unexpected datachannel already exists!")
 	}
-	dc, err := c.pc.CreateDataChannel(c.id)
+	ordered := true
+	dataChannelOptions := &webrtc.DataChannelInit{
+		Ordered: &ordered,
+	}
+	dc, err := c.pc.CreateDataChannel(c.id, dataChannelOptions)
 	// Triggers "OnNegotiationNeeded" on the PeerConnection, which will prepare
 	// an SDP offer while other goroutines operating on this struct handle the
 	// signaling. Eventually fires "OnOpen".
@@ -212,7 +222,7 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		log.Printf("CreateDataChannel ERROR: %s", err)
 		return err
 	}
-	dc.OnOpen = func() {
+	dc.OnOpen(func() {
 		c.lock.Lock()
 		defer c.lock.Unlock()
 		log.Println("WebRTC: DataChannel.OnOpen")
@@ -227,8 +237,8 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		}
 		// Then enable the datachannel.
 		c.transport = dc
-	}
-	dc.OnClose = func() {
+	})
+	dc.OnClose(func() {
 		c.lock.Lock()
 		// Future writes will go to the buffer until a new DataChannel is available.
 		if nil == c.transport {
@@ -241,29 +251,29 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		// Disable the DataChannel as a write destination.
 		log.Println("WebRTC: DataChannel.OnClose [remotely]")
 		c.transport = nil
-		c.pc.DeleteDataChannel(dc)
+		dc.Close()
 		// Unlock before Close'ing, since it calls cleanup and asks for the
 		// lock to check if the transport needs to be be deleted.
 		c.lock.Unlock()
 		c.Close()
-	}
-	dc.OnMessage = func(msg []byte) {
-		if len(msg) <= 0 {
+	})
+	dc.OnMessage(func(msg webrtc.DataChannelMessage) {
+		if len(msg.Data) <= 0 {
 			log.Println("0 length message---")
 		}
-		c.BytesLogger.AddInbound(len(msg))
-		n, err := c.writePipe.Write(msg)
+		c.BytesLogger.AddInbound(len(msg.Data))
+		n, err := c.writePipe.Write(msg.Data)
 		if err != nil {
 			// TODO: Maybe shouldn't actually close.
 			log.Println("Error writing to SOCKS pipe")
 			c.writePipe.CloseWithError(err)
 		}
-		if n != len(msg) {
+		if n != len(msg.Data) {
 			log.Println("Error: short write")
 			panic("short write")
 		}
 		c.lastReceive = time.Now()
-	}
+	})
 	log.Println("WebRTC: DataChannel created.")
 	return nil
 }
@@ -304,7 +314,7 @@ func (c *WebRTCPeer) exchangeSDP() error {
 		}
 	}
 	log.Printf("Received Answer.\n")
-	err := c.pc.SetRemoteDescription(answer)
+	err := c.pc.SetRemoteDescription(*answer)
 	if nil != err {
 		log.Println("WebRTC: Unable to SetRemoteDescription:", err)
 		return err
@@ -342,13 +352,13 @@ func (c *WebRTCPeer) cleanup() {
 		if c.pc == nil {
 			panic("DataChannel w/o PeerConnection, not good.")
 		}
-		c.pc.DeleteDataChannel(dataChannel.(*webrtc.DataChannel))
+		dataChannel.(*webrtc.DataChannel).Close()
 	} else {
 		c.lock.Unlock()
 	}
 	if nil != c.pc {
 		log.Printf("WebRTC: closing PeerConnection")
-		err := c.pc.Destroy()
+		err := c.pc.Close()
 		if nil != err {
 			log.Printf("Error closing peerconnection...")
 		}

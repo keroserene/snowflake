@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/keroserene/go-webrtc"
+	"github.com/pion/webrtc"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -17,9 +17,10 @@ type MockDataChannel struct {
 	done        chan bool
 }
 
-func (m *MockDataChannel) Send(data []byte) {
+func (m *MockDataChannel) Send(data []byte) error {
 	m.destination.Write(data)
 	m.done <- true
+	return nil
 }
 
 func (*MockDataChannel) Close() error { return nil }
@@ -217,11 +218,11 @@ func TestSnowflakeClient(t *testing.T) {
 				c.offerChannel = make(chan *webrtc.SessionDescription, 1)
 				c.answerChannel = make(chan *webrtc.SessionDescription, 1)
 
-				c.config = webrtc.NewConfiguration()
+				c.config = &webrtc.Configuration{}
 				c.preparePeerConnection()
 
 				c.offerChannel <- nil
-				answer := webrtc.DeserializeSessionDescription(
+				answer := deserializeSessionDescription(
 					`{"type":"answer","sdp":""}`)
 				c.answerChannel <- answer
 				c.exchangeSDP()
@@ -264,12 +265,11 @@ func TestSnowflakeClient(t *testing.T) {
 	})
 
 	Convey("Rendezvous", t, func() {
-		webrtc.SetLoggingVerbosity(0)
 		transport := &MockTransport{
 			http.StatusOK,
 			[]byte(`{"type":"answer","sdp":"fake"}`),
 		}
-		fakeOffer := webrtc.DeserializeSessionDescription("test")
+		fakeOffer := deserializeSessionDescription(`{"type":"offer","sdp":"test"}`)
 
 		Convey("Construct BrokerChannel with no front domain", func() {
 			b := NewBrokerChannel("test.broker", "", transport)
@@ -291,7 +291,7 @@ func TestSnowflakeClient(t *testing.T) {
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldBeNil)
 			So(answer, ShouldNotBeNil)
-			So(answer.Sdp, ShouldResemble, "fake")
+			So(answer.SDP, ShouldResemble, "fake")
 		})
 
 		Convey("BrokerChannel.Negotiate fails with 503", func() {

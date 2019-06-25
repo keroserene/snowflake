@@ -17,7 +17,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/keroserene/go-webrtc"
+	"github.com/pion/webrtc"
 )
 
 const (
@@ -84,7 +84,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
 	log.Println("Negotiating via BrokerChannel...\nTarget URL: ",
 		bc.Host, "\nFront URL:  ", bc.url.Host)
-	data := bytes.NewReader([]byte(offer.Serialize()))
+	data := bytes.NewReader([]byte(serializeSessionDescription(offer)))
 	// Suffix with broker's client registration handler.
 	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
 	request, err := http.NewRequest("POST", clientURL.String(), data)
@@ -107,7 +107,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		if nil != err {
 			return nil, err
 		}
-		answer := webrtc.DeserializeSessionDescription(string(body))
+		answer := deserializeSessionDescription(string(body))
 		return answer, nil
 
 	case http.StatusServiceUnavailable:
@@ -126,15 +126,18 @@ type WebRTCDialer struct {
 }
 
 func NewWebRTCDialer(
-	broker *BrokerChannel, iceServers IceServerList) *WebRTCDialer {
-	config := webrtc.NewConfiguration(iceServers...)
-	if nil == config {
-		log.Println("Unable to prepare WebRTC configuration.")
-		return nil
+	broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebRTCDialer {
+	var config webrtc.Configuration
+	if iceServers == nil {
+		config = webrtc.Configuration{
+			ICEServers: iceServers,
+		}
+	} else {
+		config = webrtc.Configuration{}
 	}
 	return &WebRTCDialer{
 		BrokerChannel: broker,
-		webrtcConfig:  config,
+		webrtcConfig:  &config,
 	}
 }
 

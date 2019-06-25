@@ -17,7 +17,7 @@ import (
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
-	"github.com/keroserene/go-webrtc"
+	"github.com/pion/webrtc"
 )
 
 const (
@@ -65,6 +65,25 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) err
 	}
 }
 
+//s is a comma-separated list of ICE server URLs
+func parseIceServers(s string) []webrtc.ICEServer {
+	var servers []webrtc.ICEServer
+	log.Println(s)
+	s = strings.TrimSpace(s)
+	if len(s) == 0 {
+		return nil
+	}
+	urls := strings.Split(s, ",")
+	log.Printf("Using ICE Servers:")
+	for _, url := range urls {
+		log.Printf("url: %s", url)
+		servers = append(servers, webrtc.ICEServer{
+			URLs: []string{url},
+		})
+	}
+	return servers
+}
+
 func main() {
 	iceServersCommas := flag.String("ice", "", "comma-separated list of ICE servers")
 	brokerURL := flag.String("url", "", "URL of signaling broker")
@@ -75,7 +94,6 @@ func main() {
 		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
 
-	webrtc.SetLoggingVerbosity(1)
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
 	// Don't write to stderr; versions of tor earlier than about
@@ -105,11 +123,7 @@ func main() {
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
-	var iceServers sf.IceServerList
-	if len(strings.TrimSpace(*iceServersCommas)) > 0 {
-		option := webrtc.OptionIceServer(*iceServersCommas)
-		iceServers = append(iceServers, option)
-	}
+	iceServers := parseIceServers(*iceServersCommas)
 
 	// Prepare to collect remote WebRTC peers.
 	snowflakes := sf.NewPeers(*max)

@@ -52,5 +52,5 @@ type SocksConnector interface {
 // Interface for the Snowflake's transport. (Typically just webrtc.DataChannel)
 type SnowflakeDataChannel interface {
 	io.Closer
-	Send([]byte)
+	Send([]byte) error
 }
