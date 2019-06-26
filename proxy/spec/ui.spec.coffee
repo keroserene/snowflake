@@ -4,6 +4,7 @@ jasmine tests for Snowflake UI
 
 document =
   getElementById: (id) -> {}
+  createTextNode: (txt) -> txt
 
 describe 'UI', ->
 
@@ -27,7 +28,9 @@ describe 'UI', ->
 
   it 'sets status message when in debug mode', ->
     u = new DebugUI()
-    u.$status = { innerHTML: '' }
+    u.$status =
+      innerHTML: ''
+      appendChild: (txt) -> @innerHTML = txt
     u.setStatus('test')
     expect(u.$status.innerHTML).toEqual 'Status: test'
 

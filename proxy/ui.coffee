@@ -37,7 +37,10 @@ class DebugUI extends UI
 
   # Status bar
   setStatus: (msg) ->
-    @$status.innerHTML = 'Status: ' + msg
+    txt = document.createTextNode('Status: ' + msg)
+    while @$status.firstChild
+      @$status.removeChild @$status.firstChild
+    @$status.appendChild txt
 
   setActive: (connected) ->
     super connected
