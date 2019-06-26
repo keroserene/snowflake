@@ -2,20 +2,107 @@ body {
 	margin: 10px;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 	width: 300px;
+        font-size:12px;
 }
 
 #active {
-	padding: 20px;
+	margin: 20px 0;
 	text-align: center;
 }
 
-.learn {
-	padding-top: 10px;
-	border-top: 1px solid grey;
+.b {
+  border-top: 1px solid gainsboro;
+  padding: 10px;
+  position: relative;
 }
 
-.learn a {
-	display: block;
-	color: grey;
+.b a {
+  color: black;
+	display: inline-block;
 	text-decoration: none;
+}
+
+.learn:before {
+  content : " ";
+  display: block;
+  position: absolute;
+  top: 12px;
+  background-image: url(https://design.firefox.com/icons/icons/desktop/arrowhead-right-12.svg);
+  width: 12px;
+  height: 12px;
+  opacity : 0.6;
+  z-index: 9999;
+  right: 0px;
+  margin-right: 10px;
+
+}
+
+/* Snowflake Status */
+
+.transfering {
+    -webkit-animation:spin 8s linear infinite;
+    -moz-animation:spin 8s linear infinite;
+    animation:spin 8s linear infinite;
+
+    fill: BlueViolet;
+}
+@-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
+@-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+@keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg); } }
+
+
+/* Toggle */
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+  float: right;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+  .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+  border-radius: 17px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 13px;
+  width: 13px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: BlueViolet;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px BlueViolet;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(13px);
+  -ms-transform: translateX(13px);
+  transform: translateX(13px);
 }
