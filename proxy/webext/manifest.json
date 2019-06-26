@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "Snowflake",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"description": "Snowflake ...",
 	"background": {
 		"scripts": ["snowflake.js"],
