@@ -82,7 +82,7 @@ class WebExtUI extends UI
     port.onDisconnect.addListener @onDisconnect
     port.onMessage.addListener @onMessage
     @postActive()
-  
+
   onMessage: (m) =>
     @enabled = m.enabled
     update()

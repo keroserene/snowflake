@@ -55,7 +55,9 @@ class Snowflake
       @makeProxyPair @relayAddr
     log 'ProxyPair Slots: ' + @proxyPairs.length
     log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
-    @pollInterval = setInterval((=> @pollBroker()), config.defaultBrokerPollInterval)
+    @pollBroker()
+    @pollInterval = setInterval((=> @pollBroker()),
+      config.defaultBrokerPollInterval)
     log @pollInterval
 
   # Regularly poll Broker for clients to serve until this snowflake is
@@ -72,9 +74,9 @@ class Snowflake
     msg += '[retries: ' + @retries + ']' if @retries > 0
     @ui.setStatus msg
     recv = @broker.getClientOffer pair.id
-    recv.then (desc) =>
+    recv.then (desc) ->
       @receiveOffer pair, desc
-    , (err) =>
+    , (err) ->
       pair.active = false
     @retries++
 
