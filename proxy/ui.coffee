@@ -86,6 +86,9 @@ class WebExtUI extends UI
   onMessage: (m) =>
     @enabled = m.enabled
     update()
+    chrome.browserAction.setIcon
+      path:
+        32: "icons/status-" + (if @enabled then "on" else "off") + ".png"
     @postActive()
 
   onDisconnect: (port) =>
@@ -95,6 +98,3 @@ class WebExtUI extends UI
     super connected
     if connected then @stats[0] += 1
     @postActive()
-    chrome.browserAction.setIcon
-      path:
-        32: "icons/status-" + (if connected then "on" else "off") + ".png"
