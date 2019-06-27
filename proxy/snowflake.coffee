@@ -58,7 +58,6 @@ class Snowflake
     @pollBroker()
     @pollInterval = setInterval((=> @pollBroker()),
       config.defaultBrokerPollInterval)
-    log @pollInterval
 
   # Regularly poll Broker for clients to serve until this snowflake is
   # serving at capacity, at which point stop polling.
@@ -119,7 +118,6 @@ class Snowflake
   cease: ->
     while @proxyPairs.length > 0
       @proxyPairs.pop().close()
-    log @pollInterval
     clearInterval(@pollInterval)
 
   disable: ->
