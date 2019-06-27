@@ -13,6 +13,7 @@ TODO: More documentation
 class Snowflake
   relayAddr:  null
   rateLimit:  null
+  pollInterval: null
   retries:    0
 
   # Janky state machine
@@ -54,43 +55,29 @@ class Snowflake
       @makeProxyPair @relayAddr
     log 'ProxyPair Slots: ' + @proxyPairs.length
     log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
-    @pollBroker()
+    @pollInterval = setInterval((=> @pollBroker()), config.defaultBrokerPollInterval)
+    log @pollInterval
 
   # Regularly poll Broker for clients to serve until this snowflake is
   # serving at capacity, at which point stop polling.
   pollBroker: ->
-    # Temporary countdown. TODO: Simplify
-    countdown = (msg, sec, skip) =>
-      if not skip then dbg msg
-      if sec > 0
-        @ui.setStatus msg + ' (Polling in ' + sec + ' seconds...)'
-        sec--
-        setTimeout((-> countdown(msg, sec, true)), 1000)
-      else
-        @ui.setStatus msg
-        findClients()
     # Poll broker for clients.
-    findClients = =>
-      pair = @nextAvailableProxyPair()
-      if !pair
-        log 'At client capacity.'
-        # Do nothing until a new proxyPair is available.
-        return
-      msg = 'Polling for client ... '
-      msg += '[retries: ' + @retries + ']' if @retries > 0
-      @ui.setStatus msg
-      recv = @broker.getClientOffer pair.id
-      recv.then (desc) =>
-        @receiveOffer pair, desc
-        countdown(
-          'Serving 1 new client.',
-          @config.defaultBrokerPollInterval / 1000
-        )
-      , (err) =>
-        countdown(err, @config.defaultBrokerPollInterval / 1000)
-      @retries++
+    pair = @nextAvailableProxyPair()
+    if !pair
+      log 'At client capacity.'
+      # Do nothing until a new proxyPair is available.
+      return
+    pair.active = true
+    msg = 'Polling for client ... '
+    msg += '[retries: ' + @retries + ']' if @retries > 0
+    @ui.setStatus msg
+    recv = @broker.getClientOffer pair.id
+    recv.then (desc) =>
+      @receiveOffer pair, desc
+    , (err) =>
+      pair.active = false
+    @retries++
 
-    findClients()
 
   # Returns the first ProxyPair that's available to connect.
   nextAvailableProxyPair: ->
@@ -99,7 +86,6 @@ class Snowflake
   # Receive an SDP offer from some client assigned by the Broker,
   # |pair| - an available ProxyPair.
   receiveOffer: (pair, desc) =>
-    console.assert !pair.active
     try
       offer = JSON.parse desc
       dbg 'Received:\n\n' + offer.sdp + '\n'
@@ -131,6 +117,8 @@ class Snowflake
   cease: ->
     while @proxyPairs.length > 0
       @proxyPairs.pop().close()
+    log @pollInterval
+    clearInterval(@pollInterval)
 
   disable: ->
     log 'Disabling Snowflake.'

@@ -60,7 +60,6 @@ class ProxyPair
       log 'Invalid SDP message.'
       return false
     dbg 'SDP ' + offer.type + ' successfully received.'
-    @active = true
     true
 
   # Given a WebRTC DataChannel, prepare callbacks.
