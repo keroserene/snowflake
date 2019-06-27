@@ -4,6 +4,9 @@ Entry point.
 
 debug = false
 snowflake = null
+config = null
+broker = null
+ui = null
 
 # Log to both console and UI if applicable.
 # Requires that the snowflake and UI objects are hooked up in order to
@@ -21,8 +24,17 @@ init = () ->
   snowflake = new Snowflake config, ui, broker
 
   log '== snowflake proxy =='
+
+update = () ->
+  if !ui.enabled
+    # Do not activate the proxy if any number of conditions are true.
+    snowflake.disable()
+    log 'Currently not active.'
+    return
+
   # Otherwise, begin setting up WebRTC and acting as a proxy.
   dbg 'Contacting Broker at ' + broker.url
+  log 'Starting snowflake'
   snowflake.setRelayAddr config.relayAddr
   snowflake.beginWebRTC()
 
