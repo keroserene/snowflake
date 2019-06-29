@@ -51,8 +51,6 @@ class Snowflake
   # process. |pollBroker| automatically arranges signalling.
   beginWebRTC: ->
     @state = Snowflake.MODE.WEBRTC_CONNECTING
-    for i in [1..@config.connectionsPerClient]
-      @makeProxyPair @relayAddr
     log 'ProxyPair Slots: ' + @proxyPairs.length
     log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
     @pollBroker()
@@ -82,6 +80,8 @@ class Snowflake
 
   # Returns the first ProxyPair that's available to connect.
   nextAvailableProxyPair: ->
+    if @proxyPairs.length < @config.connectionsPerClient
+      return @makeProxyPair @relayAddr
     return @proxyPairs.find (pp, i, arr) -> return !pp.active
 
   # Receive an SDP offer from some client assigned by the Broker,
@@ -110,27 +110,14 @@ class Snowflake
     @proxyPairs.push pair
     pair.onCleanup = (event) =>
       # Delete from the list of active proxy pairs.
-      @proxyPairs.splice(@proxyPairs.indexOf(pair), 1)
-      @pollBroker()
+      ind = @proxyPairs.indexOf(pair)
+      if ind > -1 then @proxyPairs.splice(ind, 1)
     pair.begin()
+    return pair
 
   # Stop all proxypairs.
-  cease: ->
-    while @proxyPairs.length > 0
-      @proxyPairs.pop().close()
-    clearInterval(@pollInterval)
-
   disable: ->
     log 'Disabling Snowflake.'
-    @cease()
-
-  die: ->
-    log 'Snowflake died.'
-    @cease()
-
-  # Close all existing ProxyPairs and begin finding new clients from scratch.
-  reset: ->
-    @cease()
-    log 'Snowflake resetting...'
-    @retries = 0
-    @beginWebRTC()
+    clearInterval(@pollInterval)
+    while @proxyPairs.length > 0
+      @proxyPairs.pop().close()

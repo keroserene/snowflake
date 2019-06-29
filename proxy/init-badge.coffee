@@ -54,7 +54,7 @@ window.onbeforeunload = ->
   null
 
 window.onunload = ->
-  pair.close() for pair in snowflake.proxyPairs
+  snowflake.disable()
   null
 
 window.onload = init

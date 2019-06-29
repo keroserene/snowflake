@@ -78,8 +78,6 @@ class ProxyPair
       snowflake.state = Snowflake.MODE.INIT
       @flush()
       @close()
-      # TODO: Change this for multiplexing.
-      snowflake.reset()
     channel.onerror = -> log 'Data channel error!'
     channel.binaryType = "arraybuffer"
     channel.onmessage = @onClientToRelayMessage
@@ -149,6 +147,7 @@ class ProxyPair
     @client.close() if @webrtcIsReady()
     @relay.close() if @relayIsReady()
     relay = null
+    @onCleanup()
 
   # Send as much data in both directions as the rate limit currently allows.
   flush: =>
