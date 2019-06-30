@@ -72,7 +72,7 @@ class Snowflake
     @ui.setStatus msg
     recv = @broker.getClientOffer pair.id
     recv.then (desc) =>
-      @receiveOffer pair, desc
+      if pair.running then @receiveOffer pair, desc
     , (err) ->
       pair.active = false
     @retries++
