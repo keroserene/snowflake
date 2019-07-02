@@ -16,6 +16,9 @@ port.onMessage.addListener((m) => {
     enabledText.innerText = 'Turn Off';
     ps[0].innerText = `${clients} client${(clients !== 1) ? 's' : ''} connected.`;
     ps[1].innerText = `Your snowflake has helped ${m.total} user${(m.total !== 1) ? 's' : ''} circumvent censorship in the last 24 hours.`;
+      if (active) {
+        img.src = `icons/status-running.png`;
+      }
   } else {
     ps[0].innerText = "Snowflake is off";
     ps[1].innerText = "";

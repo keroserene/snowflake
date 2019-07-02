@@ -98,3 +98,7 @@ class WebExtUI extends UI
     super connected
     if connected then @stats[0] += 1
     @postActive()
+    if @active
+      chrome.browserAction.setIcon
+        path:
+          32: "icons/status-running.png"
