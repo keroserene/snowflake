@@ -1,13 +1,13 @@
 body {
-	margin: 10px;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-	width: 300px;
-        font-size:12px;
+  margin: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  width: 300px;
+  font-size:12px;
 }
 
 #active {
-	margin: 20px 0;
-	text-align: center;
+  margin: 20px 0;
+  text-align: center;
 }
 
 .b {
@@ -18,8 +18,8 @@ body {
 
 .b a {
   color: black;
-	display: inline-block;
-	text-decoration: none;
+  display: inline-block;
+  text-decoration: none;
 }
 
 .learn:before {
@@ -40,11 +40,11 @@ body {
 /* Snowflake Status */
 
 .transfering {
-    -webkit-animation:spin 8s linear infinite;
-    -moz-animation:spin 8s linear infinite;
-    animation:spin 8s linear infinite;
+  -webkit-animation:spin 8s linear infinite;
+  -moz-animation:spin 8s linear infinite;
+  animation:spin 8s linear infinite;
 
-    fill: BlueViolet;
+  fill: BlueViolet;
 }
 @-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
 @-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
@@ -67,7 +67,7 @@ body {
   height: 0;
 }
 
-  .slider {
+.slider {
   position: absolute;
   cursor: pointer;
   top: 0;
