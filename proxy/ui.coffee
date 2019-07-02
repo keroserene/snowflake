@@ -72,7 +72,7 @@ class WebExtUI extends UI
 
   initToggle: ->
     try
-      getting = chrome.storage.local.get("snowflake-enabled", (result) => 
+      getting = chrome.storage.local.get("snowflake-enabled", (result) =>
         @enabled = result['snowflake-enabled']
         update()
         chrome.browserAction.setIcon
@@ -103,7 +103,8 @@ class WebExtUI extends UI
       path:
         32: "icons/status-" + (if @enabled then "on" else "off") + ".png"
     @postActive()
-    storing = chrome.storage.local.set({"snowflake-enabled":@enabled}, () -> log "Stored toggle state")
+    storing = chrome.storage.local.set({ "snowflake-enabled": @enabled },
+      () -> log "Stored toggle state")
 
   onDisconnect: (port) =>
     @port = null
