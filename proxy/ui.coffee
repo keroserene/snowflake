@@ -59,6 +59,7 @@ class WebExtUI extends UI
 
   constructor: ->
     @initStats()
+    @initToggle()
     chrome.runtime.onConnect.addListener @onConnect
 
   initStats: ->
@@ -68,6 +69,18 @@ class WebExtUI extends UI
       @stats.splice 24
       @postActive()
     ), 60 * 60 * 1000
+
+  initToggle: ->
+    try
+      getting = chrome.storage.local.get("snowflake-enabled", (result) => 
+        @enabled = result['snowflake-enabled']
+        update()
+        chrome.browserAction.setIcon
+          path:
+            32: "icons/status-" + (if @enabled then "on" else "off") + ".png"
+      )
+    catch
+      log "Toggle state not yet saved"
 
   postActive: ->
     @port?.postMessage
@@ -90,6 +103,7 @@ class WebExtUI extends UI
       path:
         32: "icons/status-" + (if @enabled then "on" else "off") + ".png"
     @postActive()
+    storing = chrome.storage.local.set({"snowflake-enabled":@enabled}, () -> log "Stored toggle state")
 
   onDisconnect: (port) =>
     @port = null
