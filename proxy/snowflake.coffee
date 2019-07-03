@@ -72,7 +72,11 @@ class Snowflake
     @ui.setStatus msg
     recv = @broker.getClientOffer pair.id
     recv.then (desc) =>
-      if pair.running then @receiveOffer pair, desc
+      if pair.running
+        if !@receiveOffer pair, desc
+          pair.active = false
+      else
+        pair.active = false
     , (err) ->
       pair.active = false
     @retries++
@@ -91,9 +95,14 @@ class Snowflake
       offer = JSON.parse desc
       dbg 'Received:\n\n' + offer.sdp + '\n'
       sdp = new SessionDescription offer
-      @sendAnswer pair if pair.receiveWebRTCOffer sdp
+      if pair.receiveWebRTCOffer sdp
+        @sendAnswer pair
+        return true
+      else
+        return false
     catch e
       log 'ERROR: Unable to receive Offer: ' + e
+      return false
 
   sendAnswer: (pair) ->
     next = (sdp) ->
