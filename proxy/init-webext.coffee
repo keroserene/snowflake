@@ -24,6 +24,7 @@ init = () ->
   snowflake = new Snowflake config, ui, broker
 
   log '== snowflake proxy =='
+  update()
 
 update = () ->
   if !ui.enabled

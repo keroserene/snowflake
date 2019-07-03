@@ -7,7 +7,6 @@ port.onMessage.addListener((m) => {
   const div = document.getElementById('active');
   const img = div.querySelector('img');
   const enabled = m.enabled
-  img.src = `icons/status-${enabled ? "on" : "off"}.png`;
   const ps = div.querySelectorAll('p');
   const clients = active ? 1 : 0;
   const enabledText = document.getElementById('toggle');
@@ -16,15 +15,13 @@ port.onMessage.addListener((m) => {
     enabledText.innerText = 'Turn Off';
     ps[0].innerText = `${clients} client${(clients !== 1) ? 's' : ''} connected.`;
     ps[1].innerText = `Your snowflake has helped ${m.total} user${(m.total !== 1) ? 's' : ''} circumvent censorship in the last 24 hours.`;
-      if (active) {
-        img.src = `icons/status-running.png`;
-      }
   } else {
     ps[0].innerText = "Snowflake is off";
     ps[1].innerText = "";
     document.getElementById('enabled').checked = false;
     enabledText.innerText = 'Turn On';
   }
+  img.src = `icons/status-${active? "running" : enabled? "on" : "off"}.png`;
 });
 
 document.addEventListener('change', (event) => {

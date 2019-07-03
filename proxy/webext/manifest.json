@@ -9,7 +9,7 @@
 	},
 	"browser_action": {
 		"default_icon": {
-			"32": "icons/status-off.png"
+			"32": "icons/status-on.png"
 		},
 		"default_title": "Snowflake",
 		"default_popup": "popup.html"

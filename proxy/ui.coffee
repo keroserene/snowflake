@@ -4,7 +4,7 @@ All of Snowflake's DOM manipulation and inputs.
 
 class UI
   active: false
-  enabled: false
+  enabled: true
 
   setStatus: (msg) ->
 
@@ -73,14 +73,14 @@ class WebExtUI extends UI
   initToggle: ->
     try
       getting = chrome.storage.local.get("snowflake-enabled", (result) =>
-        @enabled = result['snowflake-enabled']
-        update()
-        chrome.browserAction.setIcon
-          path:
-            32: "icons/status-" + (if @enabled then "on" else "off") + ".png"
+        if result['snowflake-enabled'] != undefined
+          @enabled = result['snowflake-enabled']
+          @setEnabled @enabled
+        else
+          log "Toggle state not yet saved"
       )
     catch
-      log "Toggle state not yet saved"
+      log "Error retrieving toggle state"
 
   postActive: ->
     @port?.postMessage
@@ -98,10 +98,7 @@ class WebExtUI extends UI
 
   onMessage: (m) =>
     @enabled = m.enabled
-    update()
-    chrome.browserAction.setIcon
-      path:
-        32: "icons/status-" + (if @enabled then "on" else "off") + ".png"
+    @setEnabled @enabled
     @postActive()
     storing = chrome.storage.local.set({ "snowflake-enabled": @enabled },
       () -> log "Stored toggle state")
@@ -117,3 +114,10 @@ class WebExtUI extends UI
       chrome.browserAction.setIcon
         path:
           32: "icons/status-running.png"
+
+  setEnabled: (enabled) ->
+    update()
+    chrome.browserAction.setIcon
+      path:
+        32: "icons/status-" + (if enabled then "on" else "off") + ".png"
+
