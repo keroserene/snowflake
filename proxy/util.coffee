@@ -34,6 +34,8 @@ class Util
       return true
     return false
 
+  @featureDetect = () ->
+    return typeof PeerConnection is 'function'
 
 class Query
   ###

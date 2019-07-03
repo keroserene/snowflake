@@ -3,11 +3,19 @@ const port = chrome.runtime.connect({
 });
 
 port.onMessage.addListener((m) => {
-  const active = m.active;
   const div = document.getElementById('active');
-  const img = div.querySelector('img');
-  const enabled = m.enabled
   const ps = div.querySelectorAll('p');
+  if (m.missingFeature) {
+    div.querySelector('img').src = "icons/status-off.png";
+    ps[0].innerText = "Snowflake is off";
+    ps[1].innerText = "WebRTC feature is not detected.";
+    ps[1].style.color = 'firebrick';
+    document.querySelector('.toggle').style.display = 'none';
+    return;
+  }
+  const active = m.active;
+  const img = div.querySelector('img');
+  const enabled = m.enabled;
   const clients = active ? 1 : 0;
   const enabledText = document.getElementById('toggle');
   if (enabled) {

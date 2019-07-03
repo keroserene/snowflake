@@ -2,6 +2,10 @@
 Entry point.
 ###
 
+if (not TESTING? or not TESTING) and not Util.featureDetect()
+  console.log 'webrtc feature not detected. shutting down'
+  return
+
 snowflake = null
 
 query = Query.parse(location)

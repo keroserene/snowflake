@@ -31,9 +31,5 @@ else
   SessionDescription = window.RTCSessionDescription ||
     window.mozRTCSessionDescription
 
-  if typeof PeerConnection isnt 'function'
-    console.log 'webrtc feature not detected. shutting down'
-    return
-
   WebSocket = window.WebSocket
   XMLHttpRequest = window.XMLHttpRequest

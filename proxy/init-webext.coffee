@@ -17,6 +17,12 @@ log = (msg) ->
 
 dbg = (msg) -> log msg if debug
 
+if not Util.featureDetect()
+  chrome.runtime.onConnect.addListener (port) ->
+    port.postMessage
+      missingFeature: true
+  return
+
 init = () ->
   config = new Config
   ui = new WebExtUI()
