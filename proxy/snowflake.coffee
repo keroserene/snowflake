@@ -55,7 +55,7 @@ class Snowflake
     log 'Snowflake IDs: ' + (@proxyPairs.map (p) -> p.id).join ' | '
     @pollBroker()
     @pollInterval = setInterval((=> @pollBroker()),
-      config.defaultBrokerPollInterval)
+      @config.defaultBrokerPollInterval)
 
   # Regularly poll Broker for clients to serve until this snowflake is
   # serving at capacity, at which point stop polling.
