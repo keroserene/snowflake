@@ -1,7 +1,7 @@
 {
   "name": "snowflake-pt",
   "version": "0.0.0-git",
-  "description": "WebRTC Pluggable Transport",
+  "description": "Snowflake is a WebRTC pluggable transport for Tor.",
   "main": "snowflake.coffee",
   "directories": {
     "test": "test"

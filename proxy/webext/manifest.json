@@ -2,7 +2,7 @@
 	"manifest_version": 2,
 	"name": "Snowflake",
 	"version": "0.0.1",
-	"description": "Snowflake ...",
+	"description": "Snowflake is a WebRTC pluggable transport for Tor.",
 	"background": {
 		"scripts": ["snowflake.js"],
 		"persistent": true
