@@ -2,36 +2,62 @@ const port = chrome.runtime.connect({
   name: "popup"
 });
 
+class Popup {
+  constructor() {
+    this.div = document.getElementById('active');
+    this.ps = this.div.querySelectorAll('p');
+    this.img = this.div.querySelector('img');
+  }
+  setImgSrc(src) {
+    this.img.src = `icons/status-${src}.png`;
+  }
+  setStatusText(txt) {
+    this.ps[0].innerText = txt;
+  }
+  setStatusDesc(desc, color) {
+    this.ps[1].innerText = desc;
+    this.ps[1].style.color = color || 'black';
+  }
+  hideButton() {
+    document.querySelector('.button').style.display = 'none';
+  }
+  setChecked(checked) {
+    document.getElementById('enabled').checked = checked;
+  }
+  setToggleText(txt) {
+    document.getElementById('toggle').innerText = txt;
+  }
+}
+
 port.onMessage.addListener((m) => {
-  const div = document.getElementById('active');
-  const ps = div.querySelectorAll('p');
-  if (m.missingFeature) {
-    div.querySelector('img').src = "icons/status-off.png";
-    ps[0].innerText = "Snowflake is off";
-    ps[1].innerText = "WebRTC feature is not detected.";
-    ps[1].style.color = 'firebrick';
-    document.querySelector('.toggle').style.display = 'none';
+  const { active, enabled, total, missingFeature } = m;
+  const popup = new Popup();
+
+  if (missingFeature) {
+    popup.setImgSrc('off');
+    popup.setStatusText("Snowflake is off");
+    popup.setStatusDesc("WebRTC feature is not detected.", 'firebrick');
+    popup.hideButton();
     return;
   }
-  const active = m.active;
-  const img = div.querySelector('img');
-  const enabled = m.enabled;
+
   const clients = active ? 1 : 0;
-  const enabledText = document.getElementById('toggle');
+
   if (enabled) {
-    document.getElementById('enabled').checked = true;
-    enabledText.innerText = 'Turn Off';
-    ps[0].innerText = `${clients} client${(clients !== 1) ? 's' : ''} connected.`;
-    ps[1].innerText = `Your snowflake has helped ${m.total} user${(m.total !== 1) ? 's' : ''} circumvent censorship in the last 24 hours.`;
+    popup.setChecked(true);
+    popup.setToggleText('Turn Off');
+    popup.setStatusText(`${clients} client${(clients !== 1) ? 's' : ''} connected.`);
+    popup.setStatusDesc(`Your snowflake has helped ${total} user${(total !== 1) ? 's' : ''} circumvent censorship in the last 24 hours.`);
   } else {
-    ps[0].innerText = "Snowflake is off";
-    ps[1].innerText = "";
-    document.getElementById('enabled').checked = false;
-    enabledText.innerText = 'Turn On';
+    popup.setChecked(false);
+    popup.setToggleText('Turn On');
+    popup.setStatusText("Snowflake is off");
+    popup.setStatusDesc("");
   }
-  img.src = `icons/status-${active? "running" : enabled? "on" : "off"}.png`;
+
+  popup.setImgSrc(active ? "running" : enabled ? "on" : "off");
 });
 
 document.addEventListener('change', (event) => {
-  port.postMessage({enabled: event.target.checked});
+  port.postMessage({ enabled: event.target.checked });
 })
