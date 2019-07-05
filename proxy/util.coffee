@@ -88,7 +88,7 @@ class Parse
       return null if -1 == j
       name  = decodeURIComponent string.substr(0, j).trim()
       value = decodeURIComponent string.substr(j + 1).trim()
-      result[name] = value if !(name in result)
+      result[name] = value if name not of result
     result
 
   # Parse an address in the form 'host:port'. Returns an Object with keys 'host'
