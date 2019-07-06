@@ -2,73 +2,76 @@
 Entry point.
 */
 
-var debug = false;
+var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotifications;
 
-var snowflake = null;
+;(function () {
 
-var config = null;
+  silenceNotifications = false;
+  debug = false;
+  snowflake = null;
+  config = null;
+  broker = null;
+  ui = null;
 
-var broker = null;
+  // Log to both console and UI if applicable.
+  // Requires that the snowflake and UI objects are hooked up in order to
+  // log to console.
+  log = function(msg) {
+    console.log('Snowflake: ' + msg);
+    return snowflake != null ? snowflake.ui.log(msg) : void 0;
+  };
 
-var ui = null;
+  dbg = function(msg) {
+    if (debug) {
+      return log(msg);
+    }
+  };
 
-// Log to both console and UI if applicable.
-// Requires that the snowflake and UI objects are hooked up in order to
-// log to console.
-var log = function(msg) {
-  console.log('Snowflake: ' + msg);
-  return snowflake != null ? snowflake.ui.log(msg) : void 0;
-};
-
-var dbg = function(msg) {
-  if (debug) {
-    return log(msg);
-  }
-};
-
-if (!Util.featureDetect()) {
-  chrome.runtime.onConnect.addListener(function(port) {
-    return port.postMessage({
-      missingFeature: true
+  if (!Util.featureDetect()) {
+    chrome.runtime.onConnect.addListener(function(port) {
+      return port.postMessage({
+        missingFeature: true
+      });
     });
-  });
-  return;
-}
-
-var init = function() {
-  config = new Config;
-  ui = new WebExtUI();
-  broker = new Broker(config.brokerUrl);
-  snowflake = new Snowflake(config, ui, broker);
-  log('== snowflake proxy ==');
-  return ui.initToggle();
-};
-
-var update = function() {
-  if (!ui.enabled) {
-    // Do not activate the proxy if any number of conditions are true.
-    snowflake.disable();
-    log('Currently not active.');
     return;
   }
-  // Otherwise, begin setting up WebRTC and acting as a proxy.
-  dbg('Contacting Broker at ' + broker.url);
-  log('Starting snowflake');
-  snowflake.setRelayAddr(config.relayAddr);
-  return snowflake.beginWebRTC();
-};
 
-// Notification of closing tab with active proxy.
-window.onbeforeunload = function() {
-  if (!silenceNotifications && Snowflake.MODE.WEBRTC_READY === snowflake.state) {
-    return Snowflake.MESSAGE.CONFIRMATION;
-  }
-  return null;
-};
+  init = function() {
+    config = new Config;
+    ui = new WebExtUI();
+    broker = new Broker(config.brokerUrl);
+    snowflake = new Snowflake(config, ui, broker);
+    log('== snowflake proxy ==');
+    return ui.initToggle();
+  };
 
-window.onunload = function() {
-  snowflake.disable();
-  return null;
-};
+  update = function() {
+    if (!ui.enabled) {
+      // Do not activate the proxy if any number of conditions are true.
+      snowflake.disable();
+      log('Currently not active.');
+      return;
+    }
+    // Otherwise, begin setting up WebRTC and acting as a proxy.
+    dbg('Contacting Broker at ' + broker.url);
+    log('Starting snowflake');
+    snowflake.setRelayAddr(config.relayAddr);
+    return snowflake.beginWebRTC();
+  };
 
-window.onload = init;
+  // Notification of closing tab with active proxy.
+  window.onbeforeunload = function() {
+    if (!silenceNotifications && Snowflake.MODE.WEBRTC_READY === snowflake.state) {
+      return Snowflake.MESSAGE.CONFIRMATION;
+    }
+    return null;
+  };
+
+  window.onunload = function() {
+    snowflake.disable();
+    return null;
+  };
+
+  window.onload = init;
+
+}());
