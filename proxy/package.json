@@ -2,17 +2,16 @@
   "name": "snowflake-pt",
   "version": "0.0.0-git",
   "description": "Snowflake is a WebRTC pluggable transport for Tor.",
-  "main": "snowflake.coffee",
+  "main": "build/snowflake.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "cake test",
-    "lint": "cake lint",
-    "build": "cake build",
-    "webext": "cake webext",
-    "clean": "cake clean",
-    "prepublish": "cake node",
+    "test": "node make.js test",
+    "build": "node make.js build",
+    "webext": "node make.js webext",
+    "clean": "node make.js clean",
+    "prepublish": "node make.js node",
     "start": "node build/snowflake.js"
   },
   "bin": {
@@ -21,11 +20,9 @@
   "author": "Serene Han",
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "coffeelint": "^1.16.0",
     "jasmine": "2.5.2"
   },
   "dependencies": {
-    "coffeescript": "^2.4.1",
     "wrtc": "^0.0.61",
     "ws": "^3.3.1",
     "xmlhttprequest": "^1.8.0"
