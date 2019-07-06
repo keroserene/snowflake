@@ -40,7 +40,7 @@ describe('ProxyPair', function() {
   config = new Config;
   destination = [];
 
-  // Using the mock PeerConnection definition from spec/snowflake.spec.coffee.
+  // Using the mock PeerConnection definition from spec/snowflake.spec.js
   var pp = new ProxyPair(fakeRelay, rateLimit, config.pcConfig);
 
   beforeEach(function() {

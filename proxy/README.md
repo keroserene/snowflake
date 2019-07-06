@@ -10,9 +10,8 @@ See https://snowflake.torproject.org/ for more info:
 ### Building
 
 ```
-cake build
+npm run build
 ```
-(Type `cake` by itself to see possible commands)
 
 ### Testing
 

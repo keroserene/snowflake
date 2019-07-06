@@ -115,9 +115,7 @@ describe('Parse', function() {
       },
       {
         // Modified from SDP sent by snowflake-client.
-        // coffeelint: disable
         sdp: "v=0\no=- 7860378660295630295 2 IN IP4 127.0.0.1\ns=-\nt=0 0\na=group:BUNDLE data\na=msid-semantic: WMS\nm=application 54653 DTLS/SCTP 5000\nc=IN IP4 1.2.3.4\na=candidate:3581707038 1 udp 2122260223 192.168.0.1 54653 typ host generation 0 network-id 1 network-cost 50\na=candidate:2617212910 1 tcp 1518280447 192.168.0.1 59673 typ host tcptype passive generation 0 network-id 1 network-cost 50\na=candidate:2082671819 1 udp 1686052607 1.2.3.4 54653 typ srflx raddr 192.168.0.1 rport 54653 generation 0 network-id 1 network-cost 50\na=ice-ufrag:IBdf\na=ice-pwd:G3lTrrC9gmhQx481AowtkhYz\na=fingerprint:sha-256 53:F8:84:D9:3C:1F:A0:44:AA:D6:3C:65:80:D3:CB:6F:23:90:17:41:06:F9:9C:10:D8:48:4A:A8:B6:FA:14:A1\na=setup:actpass\na=mid:data\na=sctpmap:5000 webrtc-datachannel 1024",
-        // coffeelint: enable
         expected: '1.2.3.4'
       },
       {

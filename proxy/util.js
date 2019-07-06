@@ -1,5 +1,5 @@
 /*
-A Coffeescript WebRTC snowflake proxy
+A JavaScript WebRTC snowflake proxy
 
 Contains helpers for parsing query strings and other utilities.
 */

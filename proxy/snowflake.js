@@ -1,5 +1,5 @@
 /*
-A Coffeescript WebRTC snowflake proxy
+A JavaScript WebRTC snowflake proxy
 
 Uses WebRTC from the client, and Websocket to the server.
 

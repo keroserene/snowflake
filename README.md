@@ -45,7 +45,7 @@ Client:
 - Go 1.5+
 
 Proxy:
-- [CoffeeScript](coffeescript.org)
+- JavaScript
 
 ---
 
@@ -85,9 +85,8 @@ To run your own:
 
 ```
 cd proxy/
-cake build
+npm run build
 ```
-(Type `cake` by itself to see possible commands)
 
 Then, start a local http server in the `proxy/build/` in any way you like.
 For instance:
