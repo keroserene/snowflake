@@ -16,7 +16,7 @@ go:
     - 1.10.x
 
 env:
-    - TRAVIS_NODE_VERSION="4.2" CC="gcc-5" CXX="g++-5"
+    - TRAVIS_NODE_VERSION="6" CC="gcc-5" CXX="g++-5"
 
 before_install:
     - nvm install $TRAVIS_NODE_VERSION
