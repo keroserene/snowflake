@@ -19,8 +19,7 @@ class Config
   connectionsPerClient: 1
 
   # TODO: Different ICE servers.
-  pcConfig = {
+  pcConfig:
     iceServers: [
       { urls: ['stun:stun.l.google.com:19302'] }
     ]
-  }
