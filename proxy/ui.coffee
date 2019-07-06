@@ -18,6 +18,7 @@ class BadgeUI extends UI
   $badge: null
 
   constructor: ->
+    super()
     @$badge = document.getElementById('badge')
 
   setActive: (connected) ->
@@ -31,6 +32,7 @@ class DebugUI extends UI
   $status: null
 
   constructor: ->
+    super()
     # Setup other DOM handlers if it's debug mode.
     @$status = document.getElementById('status')
     @$msglog = document.getElementById('msglog')
@@ -58,6 +60,7 @@ class WebExtUI extends UI
   stats: null
 
   constructor: ->
+    super()
     @initStats()
     chrome.runtime.onConnect.addListener @onConnect
 
@@ -120,4 +123,3 @@ class WebExtUI extends UI
     chrome.browserAction.setIcon
       path:
         32: "icons/status-" + (if enabled then "on" else "off") + ".png"
-
