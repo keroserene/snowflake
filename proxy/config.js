@@ -30,7 +30,7 @@ Config.prototype.connectionsPerClient = 1;
 Config.prototype.pcConfig = {
   iceServers: [
     {
-      urls: ['stun:stun.l.google.com:19302']
+      urls: ['stun:stun.l.google.com']
     }
   ]
 };
