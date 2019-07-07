@@ -121,18 +121,18 @@ class ProxyPair {
     if (peer_ip != null) {
       params.push(["client_ip", peer_ip]);
     }
-    this.relay = WS.makeWebsocket(this.relayAddr, params);
+    var relay = this.relay = WS.makeWebsocket(this.relayAddr, params);
     this.relay.label = 'websocket-relay';
     this.relay.onopen = () => {
       if (this.timer) {
         clearTimeout(this.timer);
         this.timer = 0;
       }
-      log(this.relay.label + ' connected!');
+      log(relay.label + ' connected!');
       return snowflake.ui.setStatus('connected');
     };
     this.relay.onclose = () => {
-      log(this.relay.label + ' closed.');
+      log(relay.label + ' closed.');
       snowflake.ui.setStatus('disconnected.');
       snowflake.ui.setActive(false);
       snowflake.state = Snowflake.MODE.INIT;
@@ -146,8 +146,8 @@ class ProxyPair {
       if (0 === this.timer) {
         return;
       }
-      log(this.relay.label + ' timed out connecting.');
-      return this.relay.onclose();
+      log(relay.label + ' timed out connecting.');
+      return relay.onclose();
     }), 5000);
   }
 
@@ -172,7 +172,6 @@ class ProxyPair {
 
   // Close both WebRTC and websocket.
   close() {
-    var relay;
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = 0;
@@ -181,11 +180,12 @@ class ProxyPair {
     if (this.webrtcIsReady()) {
       this.client.close();
     }
+    this.client = null;
     if (this.relayIsReady()) {
       this.relay.close();
     }
-    relay = null;
-    return this.onCleanup();
+    this.relay = null;
+    this.onCleanup();
   }
 
   flush() {
