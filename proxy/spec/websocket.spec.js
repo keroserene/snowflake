@@ -1,3 +1,5 @@
+/* global expect, it, describe, WS */
+
 /*
 jasmine tests for Snowflake websocket
 */

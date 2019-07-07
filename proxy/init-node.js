@@ -1,3 +1,5 @@
+/* global Config, UI, Broker, Snowflake */
+
 /*
 Entry point.
 */

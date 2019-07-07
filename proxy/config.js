@@ -1,5 +1,5 @@
 
-class Config {};
+class Config {}
 
 Config.prototype.brokerUrl = 'snowflake-broker.bamsoftware.com';
 

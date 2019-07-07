@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-var fs = require('fs');
-var { exec, spawn, execSync } = require('child_process');
+/* global require, process */
+
+var { exec, spawn } = require('child_process');
 
 // All files required.
 var FILES = [
@@ -13,12 +14,6 @@ var FILES = [
   'util.js',
   'websocket.js',
   'shims.js'
-];
-
-var INITS = [
-  'init-badge.js',
-  'init-node.js',
-  'init-webext.js'
 ];
 
 var FILES_SPEC = [
@@ -42,7 +37,7 @@ var copyStaticFiles = function() {
 var concatJS = function(outDir, init) {
   var files;
   files = FILES.concat(`init-${init}.js`);
-  return exec(`cat ${files.join(' ')} > ${outDir}/${OUTFILE}`, function(err, stdout, stderr) {
+  return exec(`cat ${files.join(' ')} > ${outDir}/${OUTFILE}`, function(err) {
     if (err) {
       throw err;
     }

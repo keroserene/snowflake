@@ -1,3 +1,5 @@
+/* global module, require */
+
 /*
 WebRTC shims for multiple browsers.
 */

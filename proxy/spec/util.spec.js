@@ -1,3 +1,5 @@
+/* global expect, it, describe, Parse, Query, Params */
+
 /*
 jasmine tests for Snowflake utils
 */

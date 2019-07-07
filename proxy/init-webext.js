@@ -1,10 +1,13 @@
+/* global Util, chrome, Config, WebExtUI, Broker, Snowflake */
+/* eslint no-unused-vars: 0 */
+
 /*
 Entry point.
 */
 
 var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotifications;
 
-;(function () {
+(function () {
 
   silenceNotifications = false;
   debug = false;

@@ -1,3 +1,5 @@
+/* global log, dbg, DummyRateLimit, BucketRateLimit, SessionDescription, ProxyPair */
+
 /*
 A JavaScript WebRTC snowflake proxy
 
@@ -79,7 +81,7 @@ class Snowflake {
       } else {
         return pair.active = false;
       }
-    }, function(err) {
+    }, function() {
       return pair.active = false;
     });
     return this.retries++;
@@ -90,7 +92,7 @@ class Snowflake {
     if (this.proxyPairs.length < this.config.connectionsPerClient) {
       return this.makeProxyPair(this.relayAddr);
     }
-    return this.proxyPairs.find(function(pp, i, arr) {
+    return this.proxyPairs.find(function(pp) {
       return !pp.active;
     });
   }
@@ -130,7 +132,7 @@ class Snowflake {
     var pair;
     pair = new ProxyPair(relay, this.rateLimit, this.config.pcConfig);
     this.proxyPairs.push(pair);
-    pair.onCleanup = (event) => {
+    pair.onCleanup = () => {
       var ind;
       // Delete from the list of active proxy pairs.
       ind = this.proxyPairs.indexOf(pair);
@@ -154,7 +156,7 @@ class Snowflake {
     return results;
   }
 
-};
+}
 
 Snowflake.prototype.relayAddr = null;
 

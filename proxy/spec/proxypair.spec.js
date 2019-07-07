@@ -1,3 +1,5 @@
+/* global expect, it, describe, spyOn */
+
 /*
 jasmine tests for Snowflake proxypair
 */

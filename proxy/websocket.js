@@ -1,3 +1,5 @@
+/* global Query */
+
 /*
 Only websocket-specific stuff.
 */
@@ -27,7 +29,7 @@ class WS {
       if (!path.match(/^\//)) {
         path = '/' + path;
       }
-      path = path.replace(/[^\/]+/, function(m) {
+      path = path.replace(/[^/]+/, function(m) {
         return encodeURIComponent(m);
       });
       parts.push(path);
@@ -54,7 +56,7 @@ class WS {
     return ws;
   }
 
-};
+}
 
 WS.WSS_ENABLED = true;
 

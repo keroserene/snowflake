@@ -1,18 +1,20 @@
+/* global chrome, log, update */
+
 /*
 All of Snowflake's DOM manipulation and inputs.
 */
 
 class UI {
 
-  setStatus(msg) {}
+  setStatus() {}
 
   setActive(connected) {
     return this.active = connected;
   }
 
-  log(msg) {}
+  log() {}
 
-};
+}
 
 UI.prototype.active = false;
 
@@ -31,7 +33,7 @@ class BadgeUI extends UI {
     return this.$badge.className = connected ? 'active' : '';
   }
 
-};
+}
 
 BadgeUI.prototype.$badge = null;
 
@@ -67,7 +69,7 @@ class DebugUI extends UI {
     return this.$msglog.scrollTop = this.$msglog.scrollHeight;
   }
 
-};
+}
 
 // DOM elements references.
 DebugUI.prototype.$msglog = null;
@@ -96,14 +98,13 @@ class WebExtUI extends UI {
   }
 
   initToggle() {
-    var getting;
-    return getting = chrome.storage.local.get("snowflake-enabled", (result) => {
+    chrome.storage.local.get("snowflake-enabled", (result) => {
       if (result['snowflake-enabled'] !== void 0) {
         this.enabled = result['snowflake-enabled'];
       } else {
         log("Toggle state not yet saved");
       }
-      return this.setEnabled(this.enabled);
+      this.setEnabled(this.enabled);
     });
   }
 
@@ -126,19 +127,18 @@ class WebExtUI extends UI {
   }
 
   onMessage(m) {
-    var storing;
     this.enabled = m.enabled;
     this.setEnabled(this.enabled);
     this.postActive();
-    return storing = chrome.storage.local.set({
+    chrome.storage.local.set({
       "snowflake-enabled": this.enabled
     }, function() {
-      return log("Stored toggle state");
+      log("Stored toggle state");
     });
   }
 
-  onDisconnect(port) {
-    return this.port = null;
+  onDisconnect() {
+    this.port = null;
   }
 
   setActive(connected) {
@@ -171,7 +171,7 @@ class WebExtUI extends UI {
     });
   }
 
-};
+}
 
 WebExtUI.prototype.port = null;
 

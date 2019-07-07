@@ -1,0 +1,7 @@
+build/
+test/
+webext/snowflake.js
+
+# FIXME: Whittle these away
+spec/
+shims.js

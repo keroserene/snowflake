@@ -1,3 +1,5 @@
+/* global expect, it, describe, Snowflake, UI */
+
 // Fake snowflake to interact with
 
 var snowflake = {

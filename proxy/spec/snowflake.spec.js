@@ -1,3 +1,5 @@
+/* global expect, it, describe, spyOn, Snowflake, Config, UI */
+
 /*
 jasmine tests for Snowflake
 */
@@ -7,34 +9,34 @@ class PeerConnection {
   setRemoteDescription() {
     return true;
   }
-  send(data) {}
-};
+  send() {}
+}
 
-class SessionDescription {};
+class SessionDescription {}
 SessionDescription.prototype.type = 'offer';
 
 class WebSocket {
   constructor() {
     this.bufferedAmount = 0;
   }
-  send(data) {}
-};
+  send() {}
+}
 WebSocket.prototype.OPEN = 1;
 WebSocket.prototype.CLOSED = 0;
 
 var log = function() {};
 
-var config = new Config;
+var config = new Config();
 
-var ui = new UI;
+var ui = new UI();
 
 class FakeBroker {
   getClientOffer() {
-    return new Promise(function(F, R) {
+    return new Promise(function() {
       return {};
     });
   }
-};
+}
 
 describe('Snowflake', function() {
 

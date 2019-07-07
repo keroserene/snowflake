@@ -1,3 +1,5 @@
+/* global snowflake, log, dbg, Util, PeerConnection, Snowflake, Parse, WS */
+
 /*
 Represents a single:
 
@@ -66,15 +68,13 @@ class ProxyPair {
   }
 
   receiveWebRTCOffer(offer) {
-    var e, err;
     if ('offer' !== offer.type) {
       log('Invalid SDP received -- was not an offer.');
       return false;
     }
     try {
-      err = this.pc.setRemoteDescription(offer);
+      this.pc.setRemoteDescription(offer);
     } catch (error) {
-      e = error;
       log('Invalid SDP message.');
       return false;
     }
@@ -233,7 +233,7 @@ class ProxyPair {
     return void 0 === ws || WebSocket.CLOSED === ws.readyState;
   }
 
-};
+}
 
 ProxyPair.prototype.MAX_BUFFER = 10 * 1024 * 1024;
 

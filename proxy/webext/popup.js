@@ -1,3 +1,5 @@
+/* global chrome */
+
 const port = chrome.runtime.connect({
   name: "popup"
 });

@@ -1,10 +1,12 @@
+/* global TESTING, Util, Query, Params, Config, DebugUI, BadgeUI, UI, Broker, Snowflake */
+
 /*
 Entry point.
 */
 
 var snowflake, query, debug, silenceNotifications, log, dbg, init;
 
-;(function() {
+(function() {
 
   if (((typeof TESTING === "undefined" || TESTING === null) || !TESTING) && !Util.featureDetect()) {
     console.log('webrtc feature not detected. shutting down');

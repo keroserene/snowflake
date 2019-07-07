@@ -1,3 +1,5 @@
+/* global log, dbg, snowflake */
+
 /*
 Communication with the snowflake broker.
 
@@ -104,7 +106,7 @@ class Broker {
     return xhr.send(payload);
   }
 
-};
+}
 
 Broker.STATUS = {
   OK: 200,

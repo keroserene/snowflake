@@ -1,8 +1,12 @@
+/* global expect, it, describe, spyOn, DebugUI, BadgeUI */
+/* eslint no-redeclare: 0 */
+
 /*
 jasmine tests for Snowflake UI
 */
+
 var document = {
-  getElementById: function(id) {
+  getElementById: function() {
     return {};
   },
   createTextNode: function(txt) {

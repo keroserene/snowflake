@@ -1,3 +1,5 @@
+/* global expect, it, describe, spyOn, Broker */
+
 /*
 jasmine tests for Snowflake broker
 */

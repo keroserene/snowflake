@@ -1,3 +1,6 @@
+/* global log */
+/* exported Query, Params, DummyRateLimit */
+
 /*
 A JavaScript WebRTC snowflake proxy
 
@@ -34,7 +37,7 @@ class Util {
     return typeof PeerConnection === 'function';
   }
 
-};
+}
 
 // It would not be effective for Tor Browser users to run the proxy.
 // Do we seem to be running in Tor Browser? Check the user-agent string and for
@@ -99,7 +102,7 @@ class Query {
     return parts.join('&');
   }
 
-};
+}
 
 
 class Parse {
@@ -203,7 +206,7 @@ class Parse {
     }
   }
 
-};
+}
 
 
 class Params {
@@ -257,7 +260,7 @@ class Params {
     return val;
   }
 
-};
+}
 
 
 class BucketRateLimit {
@@ -295,7 +298,7 @@ class BucketRateLimit {
     return this.amount > this.capacity;
   }
 
-};
+}
 
 BucketRateLimit.prototype.amount = 0.0;
 
@@ -310,7 +313,7 @@ class DummyRateLimit {
     this.time = time;
   }
 
-  update(n) {
+  update() {
     return true;
   }
 
@@ -322,4 +325,4 @@ class DummyRateLimit {
     return false;
   }
 
-};
+}
