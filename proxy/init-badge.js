@@ -13,7 +13,7 @@ var snowflake, query, debug, silenceNotifications, log, dbg, init;
 
   snowflake = null;
 
-  query = Query.parse(location);
+  query = Query.parse(location.search.substr(1));
 
   debug = Params.getBool(query, 'debug', false);
 

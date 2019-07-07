@@ -10,7 +10,7 @@ if (typeof module !== "undefined" && module !== null ? module.exports : void 0) 
     }
   };
   chrome = {};
-  location = '';
+  location = { search: '' };
   if ((typeof TESTING === "undefined" || TESTING === null) || !TESTING) {
     webrtc = require('wrtc');
     PeerConnection = webrtc.RTCPeerConnection;
@@ -20,9 +20,6 @@ if (typeof module !== "undefined" && module !== null ? module.exports : void 0) 
     ({ XMLHttpRequest } = require('xmlhttprequest'));
   }
 } else {
-  document = window.document;
-  chrome = window.chrome;
-  location = window.location.search.substr(1);
   PeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
   IceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
   SessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
