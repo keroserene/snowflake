@@ -16,7 +16,7 @@ go:
     - 1.10.x
 
 env:
-    - TRAVIS_NODE_VERSION="6" CC="gcc-5" CXX="g++-5"
+    - TRAVIS_NODE_VERSION="8" CC="gcc-5" CXX="g++-5"
 
 before_install:
     - nvm install $TRAVIS_NODE_VERSION
@@ -39,4 +39,5 @@ script:
     - go vet ./...
     - go test -v -race ./...
     - cd proxy
+    - npm run lint
     - npm test
