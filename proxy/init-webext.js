@@ -61,14 +61,18 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
 
   // Notification of closing tab with active proxy.
   window.onbeforeunload = function() {
-    if (!silenceNotifications && Snowflake.MODE.WEBRTC_READY === snowflake.state) {
+    if (
+      !silenceNotifications &&
+      snowflake !== null &&
+      Snowflake.MODE.WEBRTC_READY === snowflake.state
+    ) {
       return Snowflake.MESSAGE.CONFIRMATION;
     }
     return null;
   };
 
   window.onunload = function() {
-    snowflake.disable();
+    if (snowflake !== null) { snowflake.disable(); }
     return null;
   };
 
