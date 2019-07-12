@@ -1,184 +1,82 @@
 <!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Snowflake</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div id="header">
+      <a href="https://www.torproject.org/">
+        <img src="tor-logo@2x.png" alt="Tor" height="50px" />
+      </a>
+    </div>
+    <div id="content">
+      <h1>SNOWFLAKE</h1>
 
-<head>
-<title>Snowflake</title>
-<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-<style>
-body {
-  text-align: center; margin: auto;
-  width: 50%;
-  min-width: 40em;
-}
-textarea {
-  width: 100%;
-  height: 4em;
-  font-size: 12px;
-  resize: none;
-  padding: 1em;
-}
-#options {
-  background-color: rgba(0,0,0,0.8);
-  color: #fff;
-  resize: none;
-  position: relative; border: none;
-  width: 30rem;
-  padding: 3rem; margin: auto; margin-top: 1rem;
-  cursor: default;
-}
-#options .active {
-  color: #2F2 !important;
-}
-</style>
-</head>
+      <p class="diagram"><img src="https://trac.torproject.org/projects/tor/raw-attachment/wiki/doc/Snowflake/snowflake-schematic.png" alt="Diagram" /></p>
 
-<body>
+      <p>Snowflake is a system to defeat internet censorship. People who are
+      censored can use Snowflake to access the internet. Their connection goes
+      through Snowflake proxies, which are run by volunteers. For more detailed
+      information about how Snowflake works see our
+      <a href="https://trac.torproject.org/projects/tor/wiki/doc/Snowflake/">documentation wiki</a>.</p>
 
-<h1>Snowflake</h1>
+      <div class="clear">
 
-<p>
-<a href="https://trac.torproject.org/projects/tor/wiki/doc/Snowflake" target="_blank">Snowflake</a>
-is a WebRTC pluggable transport for Tor.
-</p>
+        <div class="browser"><div class="padding">
+          <h3>Browser</h3>
 
-<p>
-This page enables you to use your web browser as a proxy to help other
-Internet users in censored places.
-When you click yes, your browser will act as a
-censorship circumvention proxy
-as long as you are viewing a page with the snowflake badge.
-</p>
+          <p>If your internet access is censored, you should download
+          <a href="https://www.torproject.org/download/">Tor Browser</a>.</p>
 
-<div id='options'>
+          <p class="screenshot"><img src="screenshot.png" alt="Tor Browser screenshot" /></p>
+        </div></div>
 
-<noscript>
-<hr/>
-Snowflake proxy requires javascript.
-<br/>
-To volunteer as a proxy, please enable javascript.
-</noscript>
+        <div class="extension"><div class="padding">
+          <h3>Extension</h3>
 
-<div id='buttons' style='display:none'>
-<p>
-Do you want your browser to act as a proxy?
-</p>
+          <p>If your internet access is <strong>not</strong> censored, you should
+          consider installing the Snowflake extension to help users in censored
+          networks. There is no need to worry about which websites people are
+          accessing through your proxy. Their visible browsing IP address will
+          match their Tor exit node, not yours.</p>
 
-<p>
-<button onclick="enableSnowflake()">
-  Yes
-</button>
-<button onclick="disableSnowflake()">
-  No
-</button>
-</p>
-<div id="snowflake-status"></div>
-</div>
+          <p class="addon">
+            <a href="https://addons.mozilla.org/en-US/firefox/addon/torproject-snowflake/">
+              <img src="firefox150.jpg" alt="Install in Firefox" height="100px" /><br />
+              <span>Install in Firefox</span>
+            </a>
+            <a href="https://chrome.google.com/webstore/detail/snowflake/mafpmfcccpbjnhfhjnllmmalhifmlcie">
+              <img src="chrome150.jpg" alt="Install in Chrome" height="100px" /><br />
+              <span>Install in Chrome</span>
+            </a>
+            <span class="clear"></span>
+          </p>
+        </div></div>
 
-<div id='cookies-disabled' style='display:none'>
-<hr/>
-<p>
-Your browser has cookies disabled. You will need to enable them in order
-to set Snowflake preferences.
-</p>
-</div>
+      </div>
 
-</div>
+      <h3>REPORTING BUGS</h3>
+      
+      <p>If you encounter problems with Snowflake as a client or a proxy,
+      please consider filing a bug.  To do so, you will have to,</p>
+      
+      <ol>
+        <li>
+        Either <a href="https://trac.torproject.org/projects/tor/register">create an
+        account</a> or <a href="https://trac.torproject.org/projects/tor/login">log in</a>
+        using the shared <b>cypherpunks</b> account with password <b>writecode</b>.</li>
+        <li><a href="https://trac.torproject.org/projects/tor/newticket?component=Circumvention%2FSnowflake">File a ticket</a>
+        using our bug tracker.</li>
+      </ol>
 
-<p>
-Minimum functionality has been achieved, and it is possible
-to bootstrap a Tor client to 100% using Snowflake, and the
-browsing experience using this PT is reasonable enough.
-</p>
-
-<p>
-However, Snowflake is also under active development and much work is needed.
-<br/>
-It is not yet stable or audited, probably has many issues,
-and should not yet be relied upon!!
-</p>
-
-See
-<a href="https://trac.torproject.org/projects/tor/wiki/doc/Snowflake"
-target="_blank">
-here</a> for more information.
-
-<hr>
-
-<p>
-It is now possible to embed the Snowflake badge on any website:
-</p>
-
-<textarea readonly>
-&lt;iframe src="https://snowflake.torproject.org/embed.html" width="88" height="16" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;
-</textarea>
-
-<p>
-Which looks like this:
-</p>
-<iframe src="embed.html" width="88" height="16" frameborder="0" scrolling="no"></iframe>
-
-<p>
-If it animates, then congratulations -- you are currently acting as a Tor bridge.
-</p>
-<hr>
-
-Repo: <a target="_blank"
-href="https://gitweb.torproject.org/pluggable-transports/snowflake.git/">
-gitweb.torproject.org/pluggable-transports/snowflake.git
-</a>
-<br/>
-Last update: <time>2019-01-22</time>
-
-<script>
-
-// Defaults to opt-in.
-var COOKIE_NAME = "snowflake-allow";
-var COOKIE_LIFETIME = "Thu, 01 Jan 2038 00:00:00 GMT";
-
-function readCookie(cookie) {
-  c = document.cookie.split('; ');
-  cookies = {};
-  for (i = 0 ; i < c.length ; i++) {
-    pair = c[i].split('=');
-    cookies[pair[0]] = pair[1];
-  }
-  return cookies[cookie];
-}
-
-function enableSnowflake() {
-  setSnowflakeCookie(1);
-  location.reload();
-}
-
-function disableSnowflake() {
-  setSnowflakeCookie(0);
-  location.reload();
-}
-
-function setSnowflakeCookie(val) {
-  document.cookie = COOKIE_NAME + "=" + val + ";path=/ ;expires=" + COOKIE_LIFETIME;
-}
-
-window.onload = function() {
-  if (navigator.cookieEnabled) {
-    // Both JS and cookies enabled -- display normal buttons.
-    document.getElementById('buttons').style = '';
-  } else {
-    // Display the cookies disabled message if necessary.
-    document.getElementById('cookies-disabled').style = '';
-  }
-  var enabled = readCookie(COOKIE_NAME);
-  var $status = document.getElementById('snowflake-status');
-  if ("1" === enabled) {
-    $status.innerHTML = 'Snowflake Proxy is ACTIVE <br/><br/>' +
-    'Thank you for contributing to internet freedom!';
-    $status.className = 'active';
-  } else {
-    $status.innerHTML = 'Snowflake Proxy is OFF';
-    $status.className = '';
-  }
-}
-</script>
-
-</body>
+      <p>Please try to be as descriptive as possible with your ticket and if
+      possible include log messages that will help us reproduce the bug.
+      Consider adding keywords <em>snowflake-webextension</em> or <em>snowflake-client</em>
+      to let us know how which part of the Snowflake system is experiencing
+      problems.</p>
+    </div>
+  </body>
 </html>
