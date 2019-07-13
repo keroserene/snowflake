@@ -36,6 +36,7 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
         missingFeature: true
       });
     });
+    chrome.browserAction.setIcon({ path: { 32: "icons/status-off.png" } });
     return;
   }
 
