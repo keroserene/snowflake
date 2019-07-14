@@ -10,31 +10,21 @@ Contains helpers for parsing query strings and other utilities.
 class Util {
 
   static mightBeTBB() {
-    return Util.TBB_UAS.indexOf(window.navigator.userAgent) > -1 && (window.navigator.mimeTypes && window.navigator.mimeTypes.length === 0);
+    return Util.TBB_UAS.indexOf(window.navigator.userAgent) > -1 && (
+      window.navigator.mimeTypes && window.navigator.mimeTypes.length === 0
+    );
   }
 
   static genSnowflakeID() {
     return Math.random().toString(36).substring(2);
   }
 
-  static snowflakeIsDisabled(cookieName) {
-    var cookies;
-    cookies = Parse.cookie(document.cookie);
-    // Do nothing if snowflake has not been opted in by user.
-    if (cookies[cookieName] !== '1') {
-      log('Not opted-in. Please click the badge to change options.');
-      return true;
-    }
-    // Also do nothing if running in Tor Browser.
-    if (Util.mightBeTBB()) {
-      log('Will not run within Tor Browser.');
-      return true;
-    }
-    return false;
+  static hasWebRTC() {
+    return typeof PeerConnection === 'function';
   }
 
-  static featureDetect() {
-    return typeof PeerConnection === 'function';
+  static hasCookies() {
+    return navigator.cookieEnabled;
   }
 
 }

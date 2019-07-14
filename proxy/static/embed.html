@@ -1,52 +1,28 @@
 <!doctype html>
 <html>
-<head>
-  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-  <meta http-equiv="refresh" content="86400">
-  <script type="text/javascript" src="snowflake.js"></script>
-  <style>
-  * {
-    box-sizing: border-box;
-  }
-  body {
-    position: absolute; width: 100%; height: 100%;
-    top: 0; margin: 0 auto; padding: 0;
-    background-color: #424;
-    text-align: center; cursor: default;
-  }
-  #badge {
-    margin: auto; padding: 0;
-    width: 88px; height: 16px;
-    background-image: url('koch.jpg');
-    white-space: nowrap;
-    color: #000;
-    font-size: 12px; font-weight: 900;
-    font-variant: small-caps;
-    text-shadow: 0 0 5px #fef,
-                 0 1px 2px #fef,
-                 0 -1px 2px #fef,
-                 1px 0px 3px #fef,
-                 -1px 0px 3px #fef;
-  }
-  .active {
-    -webkit-animation: bgScroll 8s linear infinite;
-    animation: bgScroll 8s linear infinite;
-  }
-  @-webkit-keyframes bgScroll {
-    from {background-position: 0 -4%;}
-    to {background-position: 0 104%;}
-  }
-  @keyframes bgScroll {
-    from {background-position: 0 -4%;}
-    to {background-position: 0 104%;}
-  }
-  </style>
-</head>
-<body>
-  <a target="_blank" href="index.html">
-    <div id="badge">
-      Internet Freedom
+  <head>
+    <meta charset="utf-8" />
+    <!-- This should be essentially be a no-opt in the popup -->
+    <meta http-equiv="refresh" content="86400" />
+    <link rel="stylesheet" href="embed.css" />
+    <script src="popup.js"></script>
+    <script src="embed.js"></script>
+  </head>
+  <body>
+    <div id="active">
+      <img src="icons/status-off.png" />
+      <p>Snowflake is off</p>
+      <p></p>
     </div>
-  </a>
-</body>
+    <div class="b button">
+      <label id="toggle" for="enabled">Turn On</label>
+      <label class="switch">
+        <input id="enabled" type="checkbox" />
+        <span class="slider round"></span>
+      </label>
+    </div>
+    <div class="b learn">
+      <a target="_blank" href="https://snowflake.torproject.org/">Learn more</a>
+    </div>
+  </body>
 </html>

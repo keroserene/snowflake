@@ -76,3 +76,8 @@ h3 {
 .diagram img, .screenshot img {
   max-width: 100%;
 }
+
+textarea {
+  max-width: 100%;
+  width: 600px;
+}

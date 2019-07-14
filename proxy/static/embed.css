@@ -2,7 +2,7 @@ body {
   margin: 10px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   width: 300px;
-  font-size:12px;
+  font-size: 12px;
 }
 
 #active {
@@ -27,14 +27,13 @@ body {
   display: block;
   position: absolute;
   top: 12px;
-  background-image: url(../icons/arrowhead-right-12.svg);
+  background-image: url('icons/arrowhead-right-12.svg');
   width: 12px;
   height: 12px;
   opacity : 0.6;
   z-index: 9999;
   right: 0px;
   margin-right: 10px;
-
 }
 
 /* Snowflake Status */
@@ -43,13 +42,11 @@ body {
   -webkit-animation:spin 8s linear infinite;
   -moz-animation:spin 8s linear infinite;
   animation:spin 8s linear infinite;
-
   fill: BlueViolet;
 }
 @-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
 @-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
 @keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg); } }
-
 
 /* Toggle */
 

@@ -26,14 +26,19 @@ var FILES_SPEC = [
   'spec/websocket.spec.js'
 ];
 
-var OUTFILE = 'snowflake.js';
-
 var STATIC = 'static';
 
-var concatJS = function(outDir, init) {
+var SHARED_FILES = [
+  'embed.html',
+  'embed.css',
+  'popup.js',
+  'icons'
+];
+
+var concatJS = function(outDir, init, outFile) {
   var files;
   files = FILES.concat(`init-${init}.js`);
-  return exec(`cat ${files.join(' ')} > ${outDir}/${OUTFILE}`, function(err) {
+  return exec(`cat ${files.join(' ')} > ${outDir}/${outFile}`, function(err) {
     if (err) {
       throw err;
     }
@@ -53,7 +58,7 @@ task('test', 'snowflake unit tests', function() {
   exec('mkdir -p test');
   exec('jasmine init >&-');
   // Simply concat all the files because we're not using node exports.
-  jasmineFiles = FILES.concat('init-badge.js', FILES_SPEC);
+  jasmineFiles = FILES.concat('init-testing.js', FILES_SPEC);
   outFile = 'test/bundle.spec.js';
   exec('echo "TESTING = true" > ' + outFile);
   exec('cat ' + jasmineFiles.join(' ') + ' | cat >> ' + outFile);
@@ -68,19 +73,20 @@ task('test', 'snowflake unit tests', function() {
 task('build', 'build the snowflake proxy', function() {
   exec('rm -r build');
   exec('cp -r ' + STATIC + '/ build/');
-  concatJS('build', 'badge');
+  concatJS('build', 'badge', 'embed.js');
   console.log('Snowflake prepared.');
 });
 
 task('webext', 'build the webextension', function() {
   exec('mkdir -p webext');
-  concatJS('webext', 'webext');
+  exec(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} webext/`);
+  concatJS('webext', 'webext', 'snowflake.js');
   console.log('Webextension prepared.');
 });
 
 task('node', 'build the node binary', function() {
   exec('mkdir -p build');
-  concatJS('build', 'node');
+  concatJS('build', 'node', 'snowflake.js');
   console.log('Node prepared.');
 });
 

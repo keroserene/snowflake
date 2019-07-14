@@ -1,18 +1,18 @@
 {
-	"manifest_version": 2,
-	"name": "Snowflake",
-	"version": "0.0.8",
-	"description": "Snowflake is a WebRTC pluggable transport for Tor.",
-	"background": {
-		"scripts": ["snowflake.js"],
-		"persistent": true
-	},
-	"browser_action": {
-		"default_icon": {
-			"32": "icons/status-on.png"
-		},
-		"default_title": "Snowflake",
-		"default_popup": "popup.html"
-	},
-	"permissions": ["storage"]
+  "manifest_version": 2,
+  "name": "Snowflake",
+  "version": "0.0.8",
+  "description": "Snowflake is a WebRTC pluggable transport for Tor.",
+  "background": {
+    "scripts": ["snowflake.js"],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_icon": {
+      "32": "icons/status-on.png"
+    },
+    "default_title": "Snowflake",
+    "default_popup": "embed.html"
+  },
+  "permissions": ["storage"]
 }

@@ -15,5 +15,9 @@ proxy/build
 proxy/node_modules
 proxy/spec/support
 proxy/webext/snowflake.js
+proxy/webext/popup.js
+proxy/webext/embed.html
+proxy/webext/embed.css
+proxy/webext/icons/
 ignore/
 npm-debug.log
