@@ -1,5 +1,3 @@
-/* global chrome, log, update */
-
 /*
 All of Snowflake's DOM manipulation and inputs.
 */

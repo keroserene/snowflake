@@ -1,4 +1,4 @@
-/* global TESTING, Util, Params, Config, DebugUI, BadgeUI, UI, Broker, Snowflake */
+/* global Util, Params, Config, UI, Broker, Snowflake, Popup, Parse */
 
 /*
 UI
@@ -41,7 +41,7 @@ class BadgeUI extends UI {
 
   setActive(connected) {
     super.setActive(connected);
-    turnOn();
+    this.turnOn();
   }
 
 }
@@ -83,9 +83,7 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
   };
 
   dbg = function(msg) {
-    if (debug || ((snowflake != null ? snowflake.ui : void 0) instanceof DebugUI)) {
-      return log(msg);
-    }
+    if (debug) { log(msg); }
   };
 
   update = function() {

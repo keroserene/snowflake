@@ -1,4 +1,3 @@
-/* global log */
 /* exported Params, DummyRateLimit */
 
 /*

@@ -1,4 +1,4 @@
-/* global Util, chrome, Config, WebExtUI, Broker, Snowflake */
+/* global Util, chrome, Config, UI, Broker, Snowflake */
 /* eslint no-unused-vars: 0 */
 
 /*
