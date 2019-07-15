@@ -1,4 +1,4 @@
-/* global expect, it, describe, spyOn, DebugUI, BadgeUI */
+/* global expect, it, describe, spyOn, DebugUI */
 /* eslint no-redeclare: 0 */
 
 /*
@@ -30,20 +30,6 @@ describe('UI', function() {
     expect(u.$msglog).not.toBeNull();
   });
 
-  it('is not debug mode when badge exists', function() {
-    var u;
-    spyOn(document, 'getElementById').and.callFake(function(id) {
-      if ('badge' === id) {
-        return {};
-      }
-      return null;
-    });
-    u = new BadgeUI();
-    expect(document.getElementById).toHaveBeenCalled();
-    expect(document.getElementById.calls.count()).toEqual(1);
-    expect(u.$badge).not.toBeNull();
-  });
-
   it('sets status message when in debug mode', function() {
     var u;
     u = new DebugUI();
@@ -64,16 +50,6 @@ describe('UI', function() {
     expect(u.$msglog.className).toEqual('active');
     u.setActive(false);
     expect(u.$msglog.className).toEqual('');
-  });
-
-  it('sets badge css correctly for non-debug mode', function() {
-    var u;
-    u = new BadgeUI();
-    u.$badge = {};
-    u.setActive(true);
-    expect(u.$badge.className).toEqual('active');
-    u.setActive(false);
-    expect(u.$badge.className).toEqual('');
   });
 
   it('logs to the textarea correctly when debug mode', function() {
