@@ -120,10 +120,11 @@ class Snowflake {
     var fail, next;
     next = function(sdp) {
       dbg('webrtc: Answer ready.');
-      return pair.pc.setLocalDescription(sdp);
+      return pair.pc.setLocalDescription(sdp).catch(fail);
     };
     fail = function() {
-      return dbg('webrtc: Failed to create Answer');
+      pair.active = false
+      return dbg('webrtc: Failed to create or set Answer');
     };
     return pair.pc.createAnswer().then(next).catch(fail);
   }
