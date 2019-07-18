@@ -72,6 +72,62 @@ describe('Parse', function() {
 
   });
 
+  describe('byte count', function() {
+
+    it('returns null for bad inputs', function() {
+      expect(Parse.byteCount("")).toBeNull();
+      expect(Parse.byteCount("x")).toBeNull();
+      expect(Parse.byteCount("1x")).toBeNull();
+      expect(Parse.byteCount("1.x")).toBeNull();
+      expect(Parse.byteCount("1.2x")).toBeNull();
+      expect(Parse.byteCount("toString")).toBeNull();
+      expect(Parse.byteCount("1toString")).toBeNull();
+      expect(Parse.byteCount("1.toString")).toBeNull();
+      expect(Parse.byteCount("1.2toString")).toBeNull();
+      expect(Parse.byteCount("k")).toBeNull();
+      expect(Parse.byteCount("m")).toBeNull();
+      expect(Parse.byteCount("g")).toBeNull();
+      expect(Parse.byteCount("K")).toBeNull();
+      expect(Parse.byteCount("M")).toBeNull();
+      expect(Parse.byteCount("G")).toBeNull();
+      expect(Parse.byteCount("-1")).toBeNull();
+      expect(Parse.byteCount("-1k")).toBeNull();
+      expect(Parse.byteCount("1.2.3")).toBeNull();
+      expect(Parse.byteCount("1.2.3k")).toBeNull();
+    });
+
+    it('handles numbers without a suffix', function() {
+      expect(Parse.byteCount("10")).toEqual(10);
+      expect(Parse.byteCount("10.")).toEqual(10);
+      expect(Parse.byteCount("1.5")).toEqual(1.5);
+    });
+
+    it('handles lowercase suffixes', function() {
+      expect(Parse.byteCount("10k")).toEqual(10*1024);
+      expect(Parse.byteCount("10m")).toEqual(10*1024*1024);
+      expect(Parse.byteCount("10g")).toEqual(10*1024*1024*1024);
+      expect(Parse.byteCount("10.k")).toEqual(10*1024);
+      expect(Parse.byteCount("10.m")).toEqual(10*1024*1024);
+      expect(Parse.byteCount("10.g")).toEqual(10*1024*1024*1024);
+      expect(Parse.byteCount("1.5k")).toEqual(1.5*1024);
+      expect(Parse.byteCount("1.5m")).toEqual(1.5*1024*1024);
+      expect(Parse.byteCount("1.5G")).toEqual(1.5*1024*1024*1024);
+    });
+
+    it('handles uppercase suffixes', function() {
+      expect(Parse.byteCount("10K")).toEqual(10*1024);
+      expect(Parse.byteCount("10M")).toEqual(10*1024*1024);
+      expect(Parse.byteCount("10G")).toEqual(10*1024*1024*1024);
+      expect(Parse.byteCount("10.K")).toEqual(10*1024);
+      expect(Parse.byteCount("10.M")).toEqual(10*1024*1024);
+      expect(Parse.byteCount("10.G")).toEqual(10*1024*1024*1024);
+      expect(Parse.byteCount("1.5K")).toEqual(1.5*1024);
+      expect(Parse.byteCount("1.5M")).toEqual(1.5*1024*1024);
+      expect(Parse.byteCount("1.5G")).toEqual(1.5*1024*1024*1024);
+    });
+
+  });
+
   describe('ipFromSDP', function() {
 
     var testCases = [
@@ -174,6 +230,21 @@ describe('Params', function() {
       expect(getBool('param=false')).toBe(false);
       expect(getBool('param=unexpected')).toBeNull();
       expect(getBool('pram=true')).toBe(false);
+    });
+
+  });
+
+  describe('byteCount', function() {
+
+    var DEFAULT = 77;
+    var getByteCount = function(query) {
+      return Params.getByteCount(Query.parse(query), 'param', DEFAULT);
+    };
+
+    it('supports default values', function() {
+      expect(getByteCount('param=x')).toBeNull();
+      expect(getByteCount('param=10')).toEqual(10);
+      expect(getByteCount('foo=10k')).toEqual(DEFAULT);
     });
 
   });
