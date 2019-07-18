@@ -13,6 +13,7 @@ if (typeof module !== "undefined" && module !== null ? module.exports : void 0) 
   };
   chrome = {};
   location = { search: '' };
+  ({ URLSearchParams } = require('url'));
   if ((typeof TESTING === "undefined" || TESTING === null) || !TESTING) {
     webrtc = require('wrtc');
     PeerConnection = webrtc.RTCPeerConnection;

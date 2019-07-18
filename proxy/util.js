@@ -52,45 +52,6 @@ Util.TBB_UAS = [
 
 class Query {
 
-  /*
-  Parse a URL query string or application/x-www-form-urlencoded body. The
-  return type is an object mapping string keys to string values. By design,
-  this function doesn't support multiple values for the same named parameter,
-  for example 'a=1&a=2&a=3'; the first definition always wins. Returns null on
-  error.
-
-  Always decodes from UTF-8, not any other encoding.
-  http://dev.w3.org/html5/spec/Overview.html#url-encoded-form-data
-  */
-  static parse(qs) {
-    var i, j, len, name, result, string, strings, value;
-    result = {};
-    strings = [];
-    if (qs) {
-      strings = qs.split('&');
-    }
-    if (0 === strings.length) {
-      return result;
-    }
-    for (i = 0, len = strings.length; i < len; i++) {
-      string = strings[i];
-      j = string.indexOf('=');
-      if (j === -1) {
-        name = string;
-        value = '';
-      } else {
-        name = string.substr(0, j);
-        value = string.substr(j + 1);
-      }
-      name = decodeURIComponent(name.replace(/\+/g, ' '));
-      value = decodeURIComponent(value.replace(/\+/g, ' '));
-      if (!(name in result)) {
-        result[name] = value;
-      }
-    }
-    return result;
-  }
-
   // params is a list of (key, value) 2-tuples.
   static buildString(params) {
     var i, len, param, parts;
@@ -212,11 +173,11 @@ class Parse {
 class Params {
 
   static getBool(query, param, defaultValue) {
-    var val;
-    val = query[param];
-    if (void 0 === val) {
+    if (!query.has(param)) {
       return defaultValue;
     }
+    var val;
+    val = query.get(param);
     if ('true' === val || '1' === val || '' === val) {
       return true;
     }
@@ -230,12 +191,10 @@ class Params {
   // '100' and '1.3m'. Returns |defaultValue| if param is not a key. Return null
   // on a parsing error.
   static getByteCount(query, param, defaultValue) {
-    var spec;
-    spec = query[param];
-    if (void 0 === spec) {
+    if (!query.has(param)) {
       return defaultValue;
     }
-    return Parse.byteCount(spec);
+    return Parse.byteCount(query.get(param));
   }
 
 }

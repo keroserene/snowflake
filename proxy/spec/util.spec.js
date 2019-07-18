@@ -1,4 +1,4 @@
-/* global expect, it, describe, Parse, Query, Params */
+/* global expect, it, describe, Parse, Params */
 
 /*
 jasmine tests for Snowflake utils
@@ -157,78 +157,12 @@ describe('Parse', function() {
 
 });
 
-describe('query string', function() {
-
-  it('should parse correctly', function() {
-    expect(Query.parse('')).toEqual({});
-    expect(Query.parse('a=b')).toEqual({
-      a: 'b'
-    });
-    expect(Query.parse('a=b=c')).toEqual({
-      a: 'b=c'
-    });
-    expect(Query.parse('a=b&c=d')).toEqual({
-      a: 'b',
-      c: 'd'
-    });
-    expect(Query.parse('client=&relay=1.2.3.4%3A9001')).toEqual({
-      client: '',
-      relay: '1.2.3.4:9001'
-    });
-    expect(Query.parse('a=b%26c=d')).toEqual({
-      a: 'b&c=d'
-    });
-    expect(Query.parse('a%3db=d')).toEqual({
-      'a=b': 'd'
-    });
-    expect(Query.parse('a=b+c%20d')).toEqual({
-      'a': 'b c d'
-    });
-    expect(Query.parse('a=b+c%2bd')).toEqual({
-      'a': 'b c+d'
-    });
-    expect(Query.parse('a+b=c')).toEqual({
-      'a b': 'c'
-    });
-    expect(Query.parse('a=b+c+d')).toEqual({
-      a: 'b c d'
-    });
-  });
-
-  it('uses the first appearance of duplicate key', function() {
-    expect(Query.parse('a=b&c=d&a=e')).toEqual({
-      a: 'b',
-      c: 'd'
-    });
-    expect(Query.parse('a')).toEqual({
-      a: ''
-    });
-    expect(Query.parse('=b')).toEqual({
-      '': 'b'
-    });
-    expect(Query.parse('&a=b')).toEqual({
-      '': '',
-      a: 'b'
-    });
-    expect(Query.parse('a=b&')).toEqual({
-      a: 'b',
-      '': ''
-    });
-    expect(Query.parse('a=b&&c=d')).toEqual({
-      a: 'b',
-      '': '',
-      c: 'd'
-    });
-  });
-
-});
-
 describe('Params', function() {
 
   describe('bool', function() {
 
     var getBool = function(query) {
-      return Params.getBool(Query.parse(query), 'param', false);
+      return Params.getBool(new URLSearchParams(query), 'param', false);
     };
 
     it('parses correctly', function() {

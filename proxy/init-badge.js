@@ -1,4 +1,4 @@
-/* global TESTING, Util, Query, Params, Config, DebugUI, BadgeUI, UI, Broker, Snowflake */
+/* global TESTING, Util, Params, Config, DebugUI, BadgeUI, UI, Broker, Snowflake */
 
 /*
 Entry point.
@@ -15,7 +15,7 @@ var snowflake, query, debug, silenceNotifications, log, dbg, init;
 
   snowflake = null;
 
-  query = Query.parse(location.search.substr(1));
+  query = new URLSearchParams(location.search);
 
   debug = Params.getBool(query, 'debug', false);
 
@@ -38,7 +38,7 @@ var snowflake, query, debug, silenceNotifications, log, dbg, init;
   init = function() {
     var broker, config, ui;
     config = new Config;
-    if ('off' !== query['ratelimit']) {
+    if ('off' !== query.get('ratelimit')) {
       config.rateLimitBytes = Params.getByteCount(query, 'ratelimit', config.rateLimitBytes);
     }
     ui = null;
