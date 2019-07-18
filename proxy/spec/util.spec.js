@@ -244,33 +244,4 @@ describe('Params', function() {
 
   });
 
-  describe('address', function() {
-
-    var DEFAULT = {
-      host: '1.1.1.1',
-      port: 2222
-    };
-
-    var getAddress = function(query) {
-      return Params.getAddress(query, 'addr', DEFAULT);
-    };
-
-    it('parses correctly', function() {
-      expect(getAddress({})).toEqual(DEFAULT);
-      expect(getAddress({
-        addr: '3.3.3.3:4444'
-      })).toEqual({
-        host: '3.3.3.3',
-        port: 4444
-      });
-      expect(getAddress({
-        x: '3.3.3.3:4444'
-      })).toEqual(DEFAULT);
-      expect(getAddress({
-        addr: '---'
-      })).toBeNull();
-    });
-
-  });
-
 });
