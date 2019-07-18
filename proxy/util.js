@@ -238,17 +238,6 @@ class Params {
     return Parse.byteCount(spec);
   }
 
-  // Get an object value and return it as a string. Returns default_val if param
-  // is not a key.
-  static getString(query, param, defaultValue) {
-    var val;
-    val = query[param];
-    if (void 0 === val) {
-      return defaultValue;
-    }
-    return val;
-  }
-
 }
 
 
