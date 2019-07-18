@@ -108,32 +108,26 @@ class Parse {
   // Parse a count of bytes. A suffix of 'k', 'm', or 'g' (or uppercase)
   // does what you would think. Returns null on error.
   static byteCount(spec) {
-    var UNITS, count, matches, units;
-    UNITS = {
-      k: 1024,
-      m: 1024 * 1024,
-      g: 1024 * 1024 * 1024,
-      K: 1024,
-      M: 1024 * 1024,
-      G: 1024 * 1024 * 1024
-    };
-    matches = spec.match(/^(\d+(?:\.\d*)?)(\w*)$/);
-    if (null === matches) {
+    let matches = spec.match(/^(\d+(?:\.\d*)?)(\w*)$/);
+    if (matches === null) {
       return null;
     }
-    count = Number(matches[1]);
+    let count = Number(matches[1]);
     if (isNaN(count)) {
       return null;
     }
-    if ('' === matches[2]) {
-      units = 1;
-    } else {
-      units = UNITS[matches[2]];
-      if (null === units) {
-        return null;
-      }
+    const UNITS = new Map([
+      ['', 1],
+      ['k', 1024],
+      ['m', 1024*1024],
+      ['g', 1024*1024*1024],
+    ]);
+    let unit = matches[2].toLowerCase();
+    if (!UNITS.has(unit)) {
+      return null;
     }
-    return count * Number(units);
+    let multiplier = UNITS.get(unit);
+    return count * multiplier;
   }
 
   // Parse a connection-address out of the "c=" Connection Data field of a
