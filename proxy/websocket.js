@@ -1,5 +1,3 @@
-/* global Query */
-
 /*
 Only websocket-specific stuff.
 */
@@ -36,7 +34,7 @@ class WS {
     }
     if (void 0 !== params) {
       parts.push('?');
-      parts.push(Query.buildString(params));
+      parts.push(new URLSearchParams(params).toString());
     }
     return parts.join('');
   }

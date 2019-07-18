@@ -1,5 +1,5 @@
 /* global log */
-/* exported Query, Params, DummyRateLimit */
+/* exported Params, DummyRateLimit */
 
 /*
 A JavaScript WebRTC snowflake proxy
@@ -48,22 +48,6 @@ Util.TBB_UAS = [
   'Mozilla/5.0 (Windows NT 6.1; rv:24.0) Gecko/20100101 Firefox/24.0',
   'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0'
 ];
-
-
-class Query {
-
-  // params is a list of (key, value) 2-tuples.
-  static buildString(params) {
-    var i, len, param, parts;
-    parts = [];
-    for (i = 0, len = params.length; i < len; i++) {
-      param = params[i];
-      parts.push(encodeURIComponent(param[0]) + '=' + encodeURIComponent(param[1]));
-    }
-    return parts.join('&');
-  }
-
-}
 
 
 class Parse {
