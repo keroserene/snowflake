@@ -3,18 +3,19 @@
 class Popup {
   constructor() {
     this.div = document.getElementById('active');
-    this.ps = this.div.querySelectorAll('p');
-    this.img = this.div.querySelector('img');
+    this.statustext = document.getElementById('statustext');
+    this.statusdesc = document.getElementById('statusdesc');
+    this.img = document.getElementById('statusimg');
   }
   setImgSrc(src) {
     this.img.src = `assets/status-${src}.png`;
   }
   setStatusText(txt) {
-    this.ps[0].innerText = txt;
+    this.statustext.innerText = txt;
   }
   setStatusDesc(desc, color) {
-    this.ps[1].innerText = desc;
-    this.ps[1].style.color = color || 'black';
+    this.statusdesc.innerText = desc;
+    this.statusdesc.style.color = color || 'black';
   }
   hideButton() {
     document.querySelector('.button').style.display = 'none';
