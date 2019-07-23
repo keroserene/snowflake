@@ -14,5 +14,5 @@
 		"default_title": "Snowflake",
 		"default_popup": "popup.html"
 	},
-        "permissions": ["storage"]
+	"permissions": ["storage"]
 }
