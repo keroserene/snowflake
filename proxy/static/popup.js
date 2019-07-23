@@ -16,8 +16,11 @@ class Popup {
     this.statusdesc = document.getElementById('statusdesc');
     this.img = document.getElementById('statusimg');
   }
-  setImgSrc(src) {
-    this.img.src = `assets/status-${src}.png`;
+  setEnabled(enabled) {
+    setClass(this.img, 'on', enabled);
+  }
+  setActive(active) {
+    setClass(this.img, 'running', active);
   }
   setStatusText(txt) {
     this.statustext.innerText = txt;

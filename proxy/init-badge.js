@@ -14,7 +14,8 @@ class BadgeUI extends UI {
   setStatus() {}
 
   missingFeature(missing) {
-    this.popup.setImgSrc('off');
+    this.popup.setEnabled(false);
+    this.popup.setActive(false);
     this.popup.setStatusText("Snowflake is off");
     this.popup.setStatusDesc(missing, true);
     this.popup.hideButton();
@@ -28,7 +29,8 @@ class BadgeUI extends UI {
     // FIXME: Share stats from webext
     const total = 0;
     this.popup.setStatusDesc(`Your snowflake has helped ${total} user${(total !== 1) ? 's' : ''} circumvent censorship in the last 24 hours.`);
-    this.popup.setImgSrc(this.active ? "running" : "on");
+    this.popup.setEnabled(true);
+    this.popup.setActive(this.active);
   }
 
   turnOff() {
@@ -36,7 +38,8 @@ class BadgeUI extends UI {
     this.popup.setToggleText('Turn On');
     this.popup.setStatusText("Snowflake is off");
     this.popup.setStatusDesc("");
-    this.popup.setImgSrc("off");
+    this.popup.setEnabled(false);
+    this.popup.setActive(false);
   }
 
   setActive(connected) {

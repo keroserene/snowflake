@@ -11,6 +11,19 @@ body {
   text-align: center;
 }
 
+#statusimg {
+  background-image: url("assets/status-off.png");
+  background-repeat: no-repeat;
+  background-position: center center;
+  min-height: 60px;
+}
+#statusimg.on {
+  background-image: url("assets/status-on.png");
+}
+#statusimg.on.running {
+  background-image: url("assets/status-running.png");
+}
+
 .b {
   border-top: 1px solid gainsboro;
   padding: 10px;

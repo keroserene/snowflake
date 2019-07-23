@@ -9,7 +9,8 @@ port.onMessage.addListener((m) => {
   const popup = new Popup();
 
   if (missingFeature) {
-    popup.setImgSrc('off');
+    popup.setEnabled(false);
+    popup.setActive(false);
     popup.setStatusText("Snowflake is off");
     popup.setStatusDesc("WebRTC feature is not detected.", true);
     popup.hideButton();
@@ -29,8 +30,8 @@ port.onMessage.addListener((m) => {
     popup.setStatusText("Snowflake is off");
     popup.setStatusDesc("");
   }
-
-  popup.setImgSrc(active ? "running" : enabled ? "on" : "off");
+  popup.setEnabled(enabled);
+  popup.setActive(active);
 });
 
 document.addEventListener('change', (event) => {
