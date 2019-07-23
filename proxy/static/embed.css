@@ -121,3 +121,27 @@ input:checked + .slider:before {
   -ms-transform: translateX(13px);
   transform: translateX(13px);
 }
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    /* https://design.firefox.com/photon/visuals/color.html#dark-theme */
+    color: white;
+    background-color: #38383d;
+  }
+  #statusimg {
+    background-image: url("assets/status-off-dark.png");
+  }
+  #statusimg.on {
+    background-image: url("assets/status-on-dark.png");
+  }
+  #statusimg.on.running {
+    background-image: url("assets/status-running.png");
+  }
+  input:checked + .slider {
+    background-color: #cc80ff;
+  }
+  input:focus + .slider {
+    box-shadow: 0 0 1px #cc80ff;
+  }
+}
