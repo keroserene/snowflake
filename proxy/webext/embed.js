@@ -11,7 +11,7 @@ port.onMessage.addListener((m) => {
   if (missingFeature) {
     popup.setImgSrc('off');
     popup.setStatusText("Snowflake is off");
-    popup.setStatusDesc("WebRTC feature is not detected.", 'firebrick');
+    popup.setStatusDesc("WebRTC feature is not detected.", true);
     popup.hideButton();
     return;
   }

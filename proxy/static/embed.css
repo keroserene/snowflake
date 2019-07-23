@@ -1,4 +1,5 @@
 body {
+  color: black;
   margin: 10px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   width: 300px;
@@ -17,9 +18,13 @@ body {
 }
 
 .b a {
-  color: black;
+  color: inherit;
   display: inline-block;
   text-decoration: none;
+}
+
+.error {
+  color: firebrick;
 }
 
 .learn:before {

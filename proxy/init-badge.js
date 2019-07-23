@@ -16,7 +16,7 @@ class BadgeUI extends UI {
   missingFeature(missing) {
     this.popup.setImgSrc('off');
     this.popup.setStatusText("Snowflake is off");
-    this.popup.setStatusDesc(missing, 'firebrick');
+    this.popup.setStatusDesc(missing, true);
     this.popup.hideButton();
   }
 

@@ -1,5 +1,14 @@
 /* exported Popup */
 
+// Add or remove a class from elem.classList, depending on cond.
+function setClass(elem, className, cond) {
+  if (cond) {
+    elem.classList.add(className);
+  } else {
+    elem.classList.remove(className);
+  }
+}
+
 class Popup {
   constructor() {
     this.div = document.getElementById('active');
@@ -13,9 +22,9 @@ class Popup {
   setStatusText(txt) {
     this.statustext.innerText = txt;
   }
-  setStatusDesc(desc, color) {
+  setStatusDesc(desc, error) {
     this.statusdesc.innerText = desc;
-    this.statusdesc.style.color = color || 'black';
+    setClass(this.statusdesc, 'error', error);
   }
   hideButton() {
     document.querySelector('.button').style.display = 'none';
