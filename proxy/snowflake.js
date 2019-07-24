@@ -74,10 +74,16 @@ class Snowflake {
     this.ui.setStatus(msg);
     recv = this.broker.getClientOffer(pair.id);
     recv.then((desc) => {
-      if (pair.running) {
+      if (pair.active) {
         if (!this.receiveOffer(pair, desc)) {
           return pair.active = false;
         }
+        //set a timeout for channel creation 
+        return setTimeout((() => {
+          log('proxypair datachannel timed out waiting for open');
+          pair.close();
+          return pair.active = false;
+        }), 20000); // 20 second timeout
       } else {
         return pair.active = false;
       }

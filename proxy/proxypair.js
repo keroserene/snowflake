@@ -85,6 +85,7 @@ class ProxyPair {
   prepareDataChannel(channel) {
     channel.onopen = () => {
       log('WebRTC DataChannel opened!');
+      this.running = true;
       snowflake.state = Snowflake.MODE.WEBRTC_READY;
       snowflake.ui.setActive(true);
       // This is the point when the WebRTC datachannel is done, so the next step
@@ -176,7 +177,6 @@ class ProxyPair {
       clearTimeout(this.timer);
       this.timer = 0;
     }
-    this.running = false;
     if (this.webrtcIsReady()) {
       this.client.close();
     }
@@ -186,6 +186,8 @@ class ProxyPair {
     }
     this.relay = null;
     this.onCleanup();
+    this.active = false;
+    this.running = false;
   }
 
   flush() {
@@ -245,7 +247,7 @@ ProxyPair.prototype.relay = null; // websocket
 
 ProxyPair.prototype.timer = 0;
 
-ProxyPair.prototype.running = true;
+ProxyPair.prototype.running = false; // Whether a datachannel is opened
 
 ProxyPair.prototype.active = false; // Whether serving a client.
 
