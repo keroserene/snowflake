@@ -1,10 +1,10 @@
 
 class Config {}
 
-Config.prototype.brokerUrl = 'snowflake-broker.bamsoftware.com';
+Config.prototype.brokerUrl = 'snowflake-broker.freehaven.net';
 
 Config.prototype.relayAddr = {
-  host: 'snowflake.bamsoftware.com',
+  host: 'snowflake.freehaven.net',
   port: '443'
 };
 
