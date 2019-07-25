@@ -238,7 +238,7 @@ describe('Params', function() {
 
     var DEFAULT = 77;
     var getByteCount = function(query) {
-      return Params.getByteCount(Query.parse(query), 'param', DEFAULT);
+      return Params.getByteCount(new URLSearchParams(query), 'param', DEFAULT);
     };
 
     it('supports default values', function() {
