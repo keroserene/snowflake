@@ -105,6 +105,8 @@ WebExtUI.prototype.port = null;
 
 WebExtUI.prototype.stats = null;
 
+WebExtUI.prototype.enabled = true;
+
 /*
 Entry point.
 */
