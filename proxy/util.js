@@ -1,4 +1,4 @@
-/* exported Params, DummyRateLimit */
+/* exported Util, Params, DummyRateLimit */
 
 /*
 A JavaScript WebRTC snowflake proxy
@@ -7,12 +7,6 @@ Contains helpers for parsing query strings and other utilities.
 */
 
 class Util {
-
-  static mightBeTBB() {
-    return Util.TBB_UAS.indexOf(window.navigator.userAgent) > -1 && (
-      window.navigator.mimeTypes && window.navigator.mimeTypes.length === 0
-    );
-  }
 
   static genSnowflakeID() {
     return Math.random().toString(36).substring(2);
@@ -27,16 +21,6 @@ class Util {
   }
 
 }
-
-// It would not be effective for Tor Browser users to run the proxy.
-// Do we seem to be running in Tor Browser? Check the user-agent string and for
-// no listing of supported MIME types.
-Util.TBB_UAS = [
-  'Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0',
-  'Mozilla/5.0 (Windows NT 6.1; rv:17.0) Gecko/20100101 Firefox/17.0',
-  'Mozilla/5.0 (Windows NT 6.1; rv:24.0) Gecko/20100101 Firefox/24.0',
-  'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0'
-];
 
 
 class Parse {

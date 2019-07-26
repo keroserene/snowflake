@@ -114,11 +114,6 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
       return;
     }
 
-    if (Util.mightBeTBB()) {
-      ui.missingFeature("Will not run within Tor Browser.");
-      return;
-    }
-
     config = new Config;
     if ('off' !== query.get('ratelimit')) {
       config.rateLimitBytes = Params.getByteCount(query, 'ratelimit', config.rateLimitBytes);
