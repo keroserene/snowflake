@@ -79,7 +79,7 @@ task('build', 'build the snowflake proxy', function() {
 
 task('webext', 'build the webextension', function() {
   exec('mkdir -p webext');
-  exec(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} webext/`);
+  exec(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} webext/`, { shell: '/bin/bash' });
   concatJS('webext', 'webext', 'snowflake.js');
   console.log('Webextension prepared.');
 });
