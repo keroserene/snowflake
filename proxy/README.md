@@ -29,6 +29,6 @@ To run locally, either:
 ### Parameters
 
 With no parameters,
-snowflake uses the default relay `snowflake.bamsoftware.com:443` and
+snowflake uses the default relay `snowflake.freehaven.net:443` and
 uses automatic signaling with the default broker at
-`https://snowflake-broker.bamsoftware.com/`.
+`https://snowflake-broker.freehaven.net/`.
