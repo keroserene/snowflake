@@ -30,10 +30,6 @@ var OUTFILE = 'snowflake.js';
 
 var STATIC = 'static';
 
-var copyStaticFiles = function() {
-  exec('cp ' + STATIC + '/* build/');
-};
-
 var concatJS = function(outDir, init) {
   var files;
   files = FILES.concat(`init-${init}.js`);
@@ -70,8 +66,8 @@ task('test', 'snowflake unit tests', function() {
 });
 
 task('build', 'build the snowflake proxy', function() {
-  exec('mkdir -p build');
-  copyStaticFiles();
+  exec('rm -r build');
+  exec('cp -r ' + STATIC + '/ build/');
   concatJS('build', 'badge');
   console.log('Snowflake prepared.');
 });
