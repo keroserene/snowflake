@@ -78,13 +78,13 @@ class WebExtUI extends UI {
     if (this.active) {
       return chrome.browserAction.setIcon({
         path: {
-          32: "icons/status-running.png"
+          32: "assets/status-running.png"
         }
       });
     } else {
       return chrome.browserAction.setIcon({
         path: {
-          32: "icons/status-on.png"
+          32: "assets/status-on.png"
         }
       });
     }
@@ -94,7 +94,7 @@ class WebExtUI extends UI {
     update();
     return chrome.browserAction.setIcon({
       path: {
-        32: "icons/status-" + (enabled ? "on" : "off") + ".png"
+        32: "assets/status-" + (enabled ? "on" : "off") + ".png"
       }
     });
   }
@@ -142,7 +142,7 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
         missingFeature: true
       });
     });
-    chrome.browserAction.setIcon({ path: { 32: "icons/status-off.png" } });
+    chrome.browserAction.setIcon({ path: { 32: "assets/status-off.png" } });
     return;
   }
 

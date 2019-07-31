@@ -7,7 +7,7 @@ class Popup {
     this.img = this.div.querySelector('img');
   }
   setImgSrc(src) {
-    this.img.src = `icons/status-${src}.png`;
+    this.img.src = `assets/status-${src}.png`;
   }
   setStatusText(txt) {
     this.ps[0].innerText = txt;

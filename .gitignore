@@ -18,6 +18,6 @@ proxy/webext/snowflake.js
 proxy/webext/popup.js
 proxy/webext/embed.html
 proxy/webext/embed.css
-proxy/webext/icons/
+proxy/webext/assets/
 ignore/
 npm-debug.log

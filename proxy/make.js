@@ -32,7 +32,7 @@ var SHARED_FILES = [
   'embed.html',
   'embed.css',
   'popup.js',
-  'icons'
+  'assets'
 ];
 
 var concatJS = function(outDir, init, outFile) {

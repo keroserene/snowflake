@@ -27,7 +27,7 @@ body {
   display: block;
   position: absolute;
   top: 12px;
-  background-image: url('icons/arrowhead-right-12.svg');
+  background-image: url('assets/arrowhead-right-12.svg');
   width: 12px;
   height: 12px;
   opacity : 0.6;
