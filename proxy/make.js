@@ -2,7 +2,7 @@
 
 /* global require, process */
 
-var { exec, spawn } = require('child_process');
+var { execSync, spawn } = require('child_process');
 
 // All files required.
 var FILES = [
@@ -38,11 +38,7 @@ var SHARED_FILES = [
 var concatJS = function(outDir, init, outFile) {
   var files;
   files = FILES.concat(`init-${init}.js`);
-  return exec(`cat ${files.join(' ')} > ${outDir}/${outFile}`, function(err) {
-    if (err) {
-      throw err;
-    }
-  });
+  execSync(`cat ${files.join(' ')} > ${outDir}/${outFile}`);
 };
 
 var tasks = new Map();
@@ -55,13 +51,13 @@ var task = function(key, msg, func) {
 
 task('test', 'snowflake unit tests', function() {
   var jasmineFiles, outFile, proc;
-  exec('mkdir -p test');
-  exec('jasmine init >&-');
+  execSync('mkdir -p test');
+  execSync('jasmine init >&-');
   // Simply concat all the files because we're not using node exports.
   jasmineFiles = FILES.concat('init-testing.js', FILES_SPEC);
   outFile = 'test/bundle.spec.js';
-  exec('echo "TESTING = true" > ' + outFile);
-  exec('cat ' + jasmineFiles.join(' ') + ' | cat >> ' + outFile);
+  execSync('echo "TESTING = true" > ' + outFile);
+  execSync('cat ' + jasmineFiles.join(' ') + ' | cat >> ' + outFile);
   proc = spawn('jasmine', ['test/bundle.spec.js'], {
     stdio: 'inherit'
   });
@@ -71,27 +67,27 @@ task('test', 'snowflake unit tests', function() {
 });
 
 task('build', 'build the snowflake proxy', function() {
-  exec('rm -r build');
-  exec('cp -r ' + STATIC + '/ build/');
+  execSync('rm -r build');
+  execSync('cp -r ' + STATIC + '/ build/');
   concatJS('build', 'badge', 'embed.js');
   console.log('Snowflake prepared.');
 });
 
 task('webext', 'build the webextension', function() {
-  exec('mkdir -p webext');
-  exec(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} webext/`, { shell: '/bin/bash' });
+  execSync('mkdir -p webext');
+  execSync(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} webext/`, { shell: '/bin/bash' });
   concatJS('webext', 'webext', 'snowflake.js');
   console.log('Webextension prepared.');
 });
 
 task('node', 'build the node binary', function() {
-  exec('mkdir -p build');
+  execSync('mkdir -p build');
   concatJS('build', 'node', 'snowflake.js');
   console.log('Node prepared.');
 });
 
 task('clean', 'remove all built files', function() {
-  exec('rm -r build test spec/support');
+  execSync('rm -r build test spec/support');
 });
 
 var cmd = process.argv[2];
