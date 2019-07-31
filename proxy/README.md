@@ -21,10 +21,7 @@ npm install
 npm test
 ```
 
-To run locally, either:
-- Navigate to `proxy/build/embed.html`
-- For a more fully featured "debug" version,
-  start a webserver and navigate to `snowflake.html`.
+To run locally, start an http server in `build/` and navigate to `/embed.html`.
 
 ### Preparing to deploy
 

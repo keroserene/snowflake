@@ -96,7 +96,7 @@ cd build/
 python -m http.server
 ```
 
-Then, open a browser tab to `http://127.0.0.1:8000/snowflake.html` to view
+Then, open a browser tab to `http://127.0.0.1:8000/embed.html` to view
 the debug-console of the snowflake.,
 So long as that tab is open, you are an ephemeral Tor bridge.
 
