@@ -10,7 +10,8 @@
   },
   "browser_action": {
     "default_icon": {
-      "32": "assets/status-on.png"
+      "48": "assets/toolbar-on-48.png",
+      "96": "assets/toolbar-on-96.png"
     },
     "default_title": "Snowflake",
     "default_popup": "embed.html"

@@ -78,13 +78,15 @@ class WebExtUI extends UI {
     if (this.active) {
       return chrome.browserAction.setIcon({
         path: {
-          32: "assets/status-running.png"
+          48: "assets/toolbar-running-48.png",
+          96: "assets/toolbar-running-96.png"
         }
       });
     } else {
       return chrome.browserAction.setIcon({
         path: {
-          32: "assets/status-on.png"
+          48: "assets/toolbar-on-48.png",
+          96: "assets/toolbar-on-96.png"
         }
       });
     }
@@ -94,7 +96,8 @@ class WebExtUI extends UI {
     update();
     return chrome.browserAction.setIcon({
       path: {
-        32: "assets/status-" + (enabled ? "on" : "off") + ".png"
+        48: "assets/toolbar-" + (enabled ? "on" : "off") + "-48.png",
+        96: "assets/toolbar-" + (enabled ? "on" : "off") + "-96.png"
       }
     });
   }
@@ -142,7 +145,12 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
         missingFeature: true
       });
     });
-    chrome.browserAction.setIcon({ path: { 32: "assets/status-off.png" } });
+    chrome.browserAction.setIcon({
+      path: {
+        48: "assets/toolbar-off-48.png",
+        96: "assets/toolbar-off-96.png"
+      }
+    });
     return;
   }
 
