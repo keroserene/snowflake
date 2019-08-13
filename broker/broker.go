@@ -67,6 +67,12 @@ type SnowflakeHandler struct {
 	handle func(*BrokerContext, http.ResponseWriter, *http.Request)
 }
 
+// Implements the http.Handler interface
+type MetricsHandler struct {
+	logFilename string
+	handle      func(string, http.ResponseWriter, *http.Request)
+}
+
 func (sh SnowflakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID")
@@ -75,6 +81,16 @@ func (sh SnowflakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sh.handle(sh.BrokerContext, w, r)
+}
+
+func (mh MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID")
+	// Return early if it's CORS preflight.
+	if "OPTIONS" == r.Method {
+		return
+	}
+	mh.handle(mh.logFilename, w, r)
 }
 
 // Proxies may poll for client offers concurrently.
@@ -251,6 +267,23 @@ func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("User-agent: *\nDisallow: /\n"))
 }
 
+func metricsHandler(metricsFilename string, w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	if metricsFilename == "" {
+		http.NotFound(w, r)
+		return
+	}
+	metricsFile, err := os.OpenFile(metricsFilename, os.O_RDONLY, 0644)
+	if err != nil {
+		log.Println("Error opening metrics file for reading")
+		http.NotFound(w, r)
+		return
+	}
+
+	io.Copy(w, metricsFile)
+}
+
 func main() {
 	var acmeEmail string
 	var acmeHostnamesCommas string
@@ -313,6 +346,7 @@ func main() {
 	http.Handle("/client", SnowflakeHandler{ctx, clientOffers})
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
+	http.Handle("/metrics", MetricsHandler{metricsFilename, metricsHandler})
 
 	server := http.Server{
 		Addr: addr,
