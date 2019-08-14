@@ -1,5 +1,12 @@
 /* global chrome, Popup */
 
+// Fill i18n in HTML
+window.onload = () => {
+  Popup.fill(document.body, (m) => {
+    return chrome.i18n.getMessage(m);
+  });
+};
+
 const port = chrome.runtime.connect({
   name: "popup"
 });
@@ -11,8 +18,8 @@ port.onMessage.addListener((m) => {
   if (missingFeature) {
     popup.setEnabled(false);
     popup.setActive(false);
-    popup.setStatusText("Snowflake is off");
-    popup.setStatusDesc("WebRTC feature is not detected.", true);
+    popup.setStatusText(chrome.i18n.getMessage('popupStatusOff'));
+    popup.setStatusDesc(chrome.i18n.getMessage('popupWebRTCOff'), true);
     popup.hideButton();
     return;
   }
@@ -21,13 +28,17 @@ port.onMessage.addListener((m) => {
 
   if (enabled) {
     popup.setChecked(true);
-    popup.setToggleText('Turn Off');
-    popup.setStatusText(`${clients} client${(clients !== 1) ? 's' : ''} connected.`);
-    popup.setStatusDesc(`Your snowflake has helped ${total} user${(total !== 1) ? 's' : ''} circumvent censorship in the last 24 hours.`);
+    popup.setToggleText(chrome.i18n.getMessage('popupTurnOff'));
+    if (clients > 0) {
+      popup.setStatusText(chrome.i18n.getMessage('popupStatusOn', String(clients)));
+    } else {
+      popup.setStatusText(chrome.i18n.getMessage('popupStatusReady'));
+    }
+    popup.setStatusDesc((total > 0) ? chrome.i18n.getMessage('popupDescOn', String(total)) : '');
   } else {
     popup.setChecked(false);
-    popup.setToggleText('Turn On');
-    popup.setStatusText("Snowflake is off");
+    popup.setToggleText(chrome.i18n.getMessage('popupTurnOn'));
+    popup.setStatusText(chrome.i18n.getMessage('popupStatusOff'));
     popup.setStatusDesc("");
   }
   popup.setEnabled(enabled);

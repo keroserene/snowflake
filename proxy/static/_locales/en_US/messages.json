@@ -1,0 +1,32 @@
+{
+  "appDesc": {
+    "message": "Snowflake is a WebRTC pluggable transport for Tor."
+  },
+  "popupTurnOn": {
+    "message": "Turn On"
+  },
+  "popupTurnOff": {
+    "message": "Turn Off"
+  },
+  "popupLearnMore": {
+    "message": "Learn more"
+  },
+  "popupStatusOff": {
+    "message": "Snowflake is off"
+  },
+  "popupStatusOn": {
+    "message": "Number of users currently connected: $1"
+  },
+  "popupStatusReady": {
+    "message": "Your Snowflake is ready to help users circumvent censorship!"
+  },
+  "popupWebRTCOff": {
+    "message": "WebRTC feature is not detected."
+  },
+  "popupDescOn": {
+    "message": "Number of users your Snowflake has helped circumvent censorship in the last 24 hours: $1"
+  },
+  "badgeCookiesOff": {
+    "message": "Cookies are not enabled."
+  }
+}

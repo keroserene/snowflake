@@ -32,7 +32,8 @@ var SHARED_FILES = [
   'embed.html',
   'embed.css',
   'popup.js',
-  'assets'
+  'assets',
+  '_locales',
 ];
 
 var concatJS = function(outDir, init, outFile) {
@@ -67,7 +68,7 @@ task('test', 'snowflake unit tests', function() {
 });
 
 task('build', 'build the snowflake proxy', function() {
-  execSync('rm -r build');
+  execSync('rm -rf build');
   execSync('cp -r ' + STATIC + '/ build/');
   concatJS('build', 'badge', 'embed.js');
   console.log('Snowflake prepared.');
@@ -87,7 +88,7 @@ task('node', 'build the node binary', function() {
 });
 
 task('clean', 'remove all built files', function() {
-  execSync('rm -r build test spec/support');
+  execSync('rm -rf build test spec/support');
 });
 
 var cmd = process.argv[2];

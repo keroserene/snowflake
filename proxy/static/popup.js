@@ -38,4 +38,16 @@ class Popup {
   setToggleText(txt) {
     document.getElementById('toggle').innerText = txt;
   }
+  static fill(n, func) {
+    switch(n.nodeType) {
+      case 3: {  // Node.TEXT_NODE
+        const m = /^__MSG_([^_]*)__$/.exec(n.nodeValue);
+        if (m) { n.nodeValue = func(m[1]); }
+        break;
+      }
+      case 1:  // Node.ELEMENT_NODE
+        n.childNodes.forEach(c => Popup.fill(c, func));
+        break;
+    }
+  }
 }

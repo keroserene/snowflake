@@ -19,5 +19,6 @@ proxy/webext/popup.js
 proxy/webext/embed.html
 proxy/webext/embed.css
 proxy/webext/assets/
+proxy/webext/_locales/
 ignore/
 npm-debug.log

@@ -4,6 +4,20 @@
 UI
 */
 
+class Messages {
+  constructor(json) {
+    this.json = json;
+  }
+  getMessage(m, ...rest) {
+    let message = this.json[m].message;
+    return message.replace(/\$(\d+)/g, (...args) => {
+      return rest[Number(args[1]) - 1];
+    });
+  }
+}
+
+let messages = null;
+
 class BadgeUI extends UI {
 
   constructor() {
@@ -16,7 +30,7 @@ class BadgeUI extends UI {
   missingFeature(missing) {
     this.popup.setEnabled(false);
     this.popup.setActive(false);
-    this.popup.setStatusText("Snowflake is off");
+    this.popup.setStatusText(messages.getMessage('popupStatusOff'));
     this.popup.setStatusDesc(missing, true);
     this.popup.hideButton();
   }
@@ -24,20 +38,23 @@ class BadgeUI extends UI {
   turnOn() {
     const clients = this.active ? 1 : 0;
     this.popup.setChecked(true);
-    this.popup.setToggleText('Turn Off');
-    this.popup.setStatusText(`${clients} client${(clients !== 1) ? 's' : ''} connected.`);
+    this.popup.setToggleText(messages.getMessage('popupTurnOff'));
+    if (clients > 0) {
+      this.popup.setStatusText(messages.getMessage('popupStatusOn', String(clients)));
+    } else {
+      this.popup.setStatusText(messages.getMessage('popupStatusReady'));
+    }
     // FIXME: Share stats from webext
-    const total = 0;
-    this.popup.setStatusDesc(`Your snowflake has helped ${total} user${(total !== 1) ? 's' : ''} circumvent censorship in the last 24 hours.`);
+    this.popup.setStatusDesc('');
     this.popup.setEnabled(true);
     this.popup.setActive(this.active);
   }
 
   turnOff() {
     this.popup.setChecked(false);
-    this.popup.setToggleText('Turn On');
-    this.popup.setStatusText("Snowflake is off");
-    this.popup.setStatusDesc("");
+    this.popup.setToggleText(messages.getMessage('popupTurnOn'));
+    this.popup.setStatusText(messages.getMessage('popupStatusOff'));
+    this.popup.setStatusDesc('');
     this.popup.setEnabled(false);
     this.popup.setActive(false);
   }
@@ -108,12 +125,12 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
     ui = new BadgeUI();
 
     if (!Util.hasWebRTC()) {
-      ui.missingFeature("WebRTC feature is not detected.");
+      ui.missingFeature(messages.getMessage('popupWebRTCOff'));
       return;
     }
 
     if (!Util.hasCookies()) {
-      ui.missingFeature("Cookies are not enabled.");
+      ui.missingFeature(messages.getMessage('badgeCookiesOff'));
       return;
     }
 
@@ -153,6 +170,20 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
     return null;
   };
 
-  window.onload = init;
+  window.onload = function() {
+    const lang = 'en_US';
+    fetch(`./_locales/${lang}/messages.json`)
+    .then((res) => {
+      if (!res.ok) { return; }
+      return res.json();
+    })
+    .then((json) => {
+      messages = new Messages(json);
+      Popup.fill(document.body, (m) => {
+        return messages.getMessage(m);
+      });
+      init();
+    });
+  }
 
 }());
