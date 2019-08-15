@@ -82,6 +82,26 @@ function setSnowflakeCookie(val, expires) {
   document.cookie = `${COOKIE_NAME}=${val}; path=/; expires=${expires};`;
 }
 
+const defaultLang = 'en_US';
+const availableLangs = new Set([
+  'en_US',
+]);
+
+// Resolve as in,
+// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Internationalization#Localized_string_selection
+function getLang() {
+  let lang = navigator.language || defaultLang;
+  lang = lang.replace(/-/g, '_');
+  if (availableLangs.has(lang)) {
+    return lang;
+  }
+  lang = lang.split('_')[0];
+  if (availableLangs.has(lang)) {
+    return lang;
+  }
+  return defaultLang;
+}
+
 var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotifications, query;
 
 (function() {
@@ -171,8 +191,7 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
   };
 
   window.onload = function() {
-    const lang = 'en_US';
-    fetch(`./_locales/${lang}/messages.json`)
+    fetch(`./_locales/${getLang()}/messages.json`)
     .then((res) => {
       if (!res.ok) { return; }
       return res.json();
