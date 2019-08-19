@@ -12,16 +12,16 @@ body {
 }
 
 #statusimg {
-  background-image: url("assets/status-off.png");
+  background-image: url("assets/status-off.svg");
   background-repeat: no-repeat;
   background-position: center center;
   min-height: 60px;
 }
 #statusimg.on {
-  background-image: url("assets/status-on.png");
+  background-image: url("assets/status-on.svg");
 }
 #statusimg.on.running {
-  background-image: url("assets/status-running.png");
+  background-image: url("assets/status-running.svg");
 }
 
 .b {
@@ -130,13 +130,13 @@ input:checked + .slider:before {
     background-color: #38383d;
   }
   #statusimg {
-    background-image: url("assets/status-off-dark.png");
+    background-image: url("assets/status-off-dark.svg");
   }
   #statusimg.on {
-    background-image: url("assets/status-on-dark.png");
+    background-image: url("assets/status-on-dark.svg");
   }
   #statusimg.on.running {
-    background-image: url("assets/status-running.png");
+    background-image: url("assets/status-running.svg");
   }
   input:checked + .slider {
     background-color: #cc80ff;
