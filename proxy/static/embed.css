@@ -144,4 +144,7 @@ input:checked + .slider:before {
   input:focus + .slider {
     box-shadow: 0 0 1px #cc80ff;
   }
+  .learn:before {
+    background-image: url('assets/arrowhead-right-dark-12.svg');
+  }
 }
