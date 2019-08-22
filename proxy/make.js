@@ -2,6 +2,7 @@
 
 /* global require, process */
 
+var { writeFileSync, readdirSync, statSync } = require('fs');
 var { execSync, spawn } = require('child_process');
 
 // All files required.
@@ -36,14 +37,30 @@ var SHARED_FILES = [
   '_locales',
 ];
 
-var concatJS = function(outDir, init, outFile) {
+var concatJS = function(outDir, init, outFile, pre) {
   var files = FILES.concat(`init-${init}.js`);
-  execSync(`cat ${files.join(' ')} > ${outDir}/${outFile}`);
+  var outPath = `${outDir}/${outFile}`;
+  writeFileSync(outPath, pre, 'utf8');
+  execSync(`cat ${files.join(' ')} >> ${outPath}`);
 };
 
 var copyTranslations = function(outDir) {
   execSync('git submodule update --init -- translation')
   execSync(`cp -rf translation/* ${outDir}/_locales/`);
+};
+
+var availableLangs = function() {
+  let out = "const availableLangs = new Set([\n";
+  let dirs = readdirSync('translation').filter((f) => {
+     const s = statSync(`translation/${f}`);
+     return s.isDirectory();
+  });
+  dirs.push('en_US');
+  dirs.sort();
+  dirs = dirs.map(d => `  '${d}',`);
+  out += dirs.join("\n");
+  out += "\n]);\n\n";
+  return out;
 };
 
 var tasks = new Map();
@@ -76,7 +93,7 @@ task('build', 'build the snowflake proxy', function() {
   execSync(`rm -rf ${outDir}`);
   execSync(`cp -r ${STATIC}/ ${outDir}/`);
   copyTranslations(outDir);
-  concatJS(outDir, 'badge', 'embed.js');
+  concatJS(outDir, 'badge', 'embed.js', availableLangs());
   console.log('Snowflake prepared.');
 });
 
@@ -85,13 +102,13 @@ task('webext', 'build the webextension', function() {
   execSync(`git clean -f -x -d ${outDir}/`);
   execSync(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} ${outDir}/`, { shell: '/bin/bash' });
   copyTranslations(outDir);
-  concatJS(outDir, 'webext', 'snowflake.js');
+  concatJS(outDir, 'webext', 'snowflake.js', '');
   console.log('Webextension prepared.');
 });
 
 task('node', 'build the node binary', function() {
   execSync('mkdir -p build');
-  concatJS('build', 'node', 'snowflake.js');
+  concatJS('build', 'node', 'snowflake.js', '');
   console.log('Node prepared.');
 });
 

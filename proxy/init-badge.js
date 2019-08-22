@@ -1,4 +1,4 @@
-/* global Util, Params, Config, UI, Broker, Snowflake, Popup, Parse */
+/* global Util, Params, Config, UI, Broker, Snowflake, Popup, Parse, availableLangs */
 
 /*
 UI
@@ -83,9 +83,6 @@ function setSnowflakeCookie(val, expires) {
 }
 
 const defaultLang = 'en_US';
-const availableLangs = new Set([
-  'en_US',
-]);
 
 // Resolve as in,
 // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Internationalization#Localized_string_selection
