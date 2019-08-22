@@ -37,9 +37,13 @@ var SHARED_FILES = [
 ];
 
 var concatJS = function(outDir, init, outFile) {
-  var files;
-  files = FILES.concat(`init-${init}.js`);
+  var files = FILES.concat(`init-${init}.js`);
   execSync(`cat ${files.join(' ')} > ${outDir}/${outFile}`);
+};
+
+var copyTranslations = function(outDir) {
+  execSync('git submodule update --init -- translation')
+  execSync(`cp -rf translation/* ${outDir}/_locales/`);
 };
 
 var tasks = new Map();
@@ -68,16 +72,20 @@ task('test', 'snowflake unit tests', function() {
 });
 
 task('build', 'build the snowflake proxy', function() {
-  execSync('rm -rf build');
-  execSync('cp -r ' + STATIC + '/ build/');
-  concatJS('build', 'badge', 'embed.js');
+  const outDir = 'build';
+  execSync(`rm -rf ${outDir}`);
+  execSync(`cp -r ${STATIC}/ ${outDir}/`);
+  copyTranslations(outDir);
+  concatJS(outDir, 'badge', 'embed.js');
   console.log('Snowflake prepared.');
 });
 
 task('webext', 'build the webextension', function() {
-  execSync('mkdir -p webext');
-  execSync(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} webext/`, { shell: '/bin/bash' });
-  concatJS('webext', 'webext', 'snowflake.js');
+  const outDir = 'webext';
+  execSync(`git clean -f -x -d ${outDir}/`);
+  execSync(`cp -r ${STATIC}/{${SHARED_FILES.join(',')}} ${outDir}/`, { shell: '/bin/bash' });
+  copyTranslations(outDir);
+  concatJS(outDir, 'webext', 'snowflake.js');
   console.log('Webextension prepared.');
 });
 
