@@ -255,10 +255,17 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 
 func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	s := fmt.Sprintf("current snowflakes available: %d\n", ctx.snowflakes.Len())
+
+	var browsers, standalones int
 	for _, snowflake := range ctx.idToSnowflake {
-		s += fmt.Sprintf("\nsnowflake %d: %s", snowflake.index, snowflake.id)
+		if len(snowflake.id) < 16 {
+			browsers++
+		} else {
+			standalones++
+		}
 	}
-	s += fmt.Sprintf("\n\nroundtrip avg: %d", ctx.metrics.clientRoundtripEstimate)
+	s += fmt.Sprintf("\tstandalone proxies: %d", standalones)
+	s += fmt.Sprintf("\n\tbrowser proxies: %d", browsers)
 	w.Write([]byte(s))
 }
 
