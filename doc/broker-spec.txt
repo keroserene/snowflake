@@ -1,0 +1,51 @@
+
+
+                            Snowflake broker protocol
+
+0. Scope and Preliminaries
+
+The Snowflake broker is used to hand out Snowflake proxies to clients using the Snowflake pluggable transport. There are some similarities to the function of the broker and how BridgeDB hands out Tor bridges.
+
+This document specifies how the Snowflake broker interacts with other parts of the Tor ecosystem, starting with the metrics CollecTor module and to be expanded upon later.
+
+1. Metrics Reporting (version 1.0)
+
+Metrics data from the Snowflake broker can be retrieved by sending an HTTP GET request to https://[Snowflake broker URL]/metrics and consists of the following items:
+
+    "snowflake-stats-end" YYYY-MM-DD HH:MM:SS (NSEC s) NL
+        [At start, exactly once.]
+
+        YYYY-MM-DD HH:MM:SS defines the end of the included measurement
+        interval of length NSEC seconds (86400 seconds by default).
+
+    "snowflake-ips" [CC=NUM,CC=NUM,...,CC=NUM] NL
+        [At most once.]
+
+        List of mappings from two-letter country codes to the number of
+        unique IP addresses of Snowflake proxies that have polled. Each
+        country code only appears once.
+
+    "snowflake-ips-total" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of Snowflake
+        proxies that have polled.
+
+    "snowflake-idle-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a proxy has polled but received
+        no client offer, rounded up to the nearest multiple of 8.
+
+    "client-denied-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a client has requested a proxy
+        from the broker but no proxies were available, rounded up to
+        the nearest multiple of 8.
+
+    "client-snowflake-match-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a client successfully received a
+        proxy from the broker, rounded up to the nearest multiple of 8.
