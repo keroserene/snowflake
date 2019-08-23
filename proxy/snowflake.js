@@ -78,11 +78,13 @@ class Snowflake {
         if (!this.receiveOffer(pair, desc)) {
           return pair.active = false;
         }
-        //set a timeout for channel creation 
+        //set a timeout for channel creation
         return setTimeout((() => {
-          log('proxypair datachannel timed out waiting for open');
-          pair.close();
-          return pair.active = false;
+          if (!pair.running) {
+            log('proxypair datachannel timed out waiting for open');
+            pair.close();
+            return pair.active = false;
+          }
         }), 20000); // 20 second timeout
       } else {
         return pair.active = false;
