@@ -31,6 +31,12 @@ header a {
   background-color: #FFFFFF;
 }
 
+@media only screen and (max-width: 600px) {
+  #content {
+    padding: 2.6rem 1.3rem;
+  }
+}
+
 section {
   margin: 1.3rem 0;
 }
