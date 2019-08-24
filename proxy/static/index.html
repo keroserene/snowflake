@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <div id="header">
+    <header id="header">
       <a href="https://www.torproject.org/">
         <img src="tor-logo@2x.png" alt="Tor" height="50" />
       </a>
-    </div>
-    <div id="content">
+    </header>
+    <section id="content">
       <h1>SNOWFLAKE</h1>
 
       <p class="diagram"><img src="https://trac.torproject.org/projects/tor/raw-attachment/wiki/doc/Snowflake/snowflake-schematic.png" alt="Diagram" /></p>
@@ -23,19 +23,19 @@
       information about how Snowflake works see our
       <a href="https://trac.torproject.org/projects/tor/wiki/doc/Snowflake/">documentation wiki</a>.</p>
 
-      <div class="clear">
+      <div class="sidebyside">
 
-        <div id="browser" class="browser"><div class="padding">
-          <h3>Browser</h3>
+        <section id="browser" class="browser">
+          <h2>Browser</h2>
 
           <p>If your internet access is censored, you should download
           <a href="https://www.torproject.org/download/">Tor Browser</a>.</p>
 
           <p class="screenshot"><img src="screenshot.png" alt="Tor Browser screenshot" /></p>
-        </div></div>
+        </section>
 
-        <div id="extension" class="extension"><div class="padding">
-          <h3>Extension</h3>
+        <section id="extension" class="extension">
+          <h2>Extension</h2>
 
           <p>If your internet access is <strong>not</strong> censored, you should
           consider installing the Snowflake extension to help users in censored
@@ -52,42 +52,45 @@
               <img src="chrome150.jpg" alt="Install in Chrome" height="100" /><br />
               <span>Install in Chrome</span>
             </a>
-            <span class="clear"></span>
           </p>
-        </div></div>
+        </section>
 
       </div>
 
-      <h3 id="bugs">REPORTING BUGS</h3>
-      
-      <p>If you encounter problems with Snowflake as a client or a proxy,
-      please consider filing a bug.  To do so, you will have to,</p>
-      
-      <ol>
-        <li>
-        Either <a href="https://trac.torproject.org/projects/tor/register">create an
-        account</a> or <a href="https://trac.torproject.org/projects/tor/login">log in</a>
-        using the shared <b>cypherpunks</b> account with password <b>writecode</b>.</li>
-        <li><a href="https://trac.torproject.org/projects/tor/newticket?component=Circumvention%2FSnowflake">File a ticket</a>
-        using our bug tracker.</li>
-      </ol>
+      <section id="bugs">
+        <h2>REPORTING BUGS</h2>
 
-      <p>Please try to be as descriptive as possible with your ticket and if
-      possible include log messages that will help us reproduce the bug.
-      Consider adding keywords <em>snowflake-webextension</em> or <em>snowflake-client</em>
-      to let us know how which part of the Snowflake system is experiencing
-      problems.</p>
+        <p>If you encounter problems with Snowflake as a client or a proxy,
+        please consider filing a bug.  To do so, you will have to,</p>
 
-      <h3 id="embed">EMBED</h3>
+        <ol>
+          <li>
+          Either <a href="https://trac.torproject.org/projects/tor/register">create an
+          account</a> or <a href="https://trac.torproject.org/projects/tor/login">log in</a>
+          using the shared <b>cypherpunks</b> account with password <b>writecode</b>.</li>
+          <li><a href="https://trac.torproject.org/projects/tor/newticket?component=Circumvention%2FSnowflake">File a ticket</a>
+          using our bug tracker.</li>
+        </ol>
 
-      <p>It is now possible to embed the Snowflake badge on any website:</p>
+        <p>Please try to be as descriptive as possible with your ticket and if
+        possible include log messages that will help us reproduce the bug.
+        Consider adding keywords <em>snowflake-webextension</em> or <em>snowflake-client</em>
+        to let us know how which part of the Snowflake system is experiencing
+        problems.</p>
+      </section>
 
-      <textarea readonly>&lt;iframe src="https://snowflake.torproject.org/embed.html" width="320" height="240" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</textarea>
+      <section id="embed">
+        <h2>EMBED</h2>
 
-      <p>Which looks like this:</p>
+        <p>It is now possible to embed the Snowflake badge on any website:</p>
 
-      <iframe src="embed.html" width="320" height="240" frameborder="0" scrolling="no"></iframe>
+        <textarea readonly>&lt;iframe src="https://snowflake.torproject.org/embed.html" width="320" height="240" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</textarea>
 
-    </div>
+        <p>Which looks like this:</p>
+
+        <iframe src="embed.html" width="320" height="240" frameborder="0" scrolling="no"></iframe>
+      </section>
+
+    </section>
   </body>
 </html>

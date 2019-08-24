@@ -13,13 +13,13 @@ body {
   color: #212529;
 }
 
-#header {
+header {
   margin: 0;
   line-height: 0;
   padding: 1.3rem 2.6rem;
 }
 
-#header a {
+header a {
   border-style: none;
   display: inline-block;
   line-height: 0;
@@ -31,6 +31,10 @@ body {
   background-color: #FFFFFF;
 }
 
+section {
+  margin: 1.3rem 0;
+}
+
 h1 {
   margin: 0;
   font-size: 2.6rem;
@@ -38,25 +42,21 @@ h1 {
   text-align: center;
 }
 
-h3 {
+h2 {
   margin: 0;
   font-size: 2rem;
   color: #7D4698;
 }
 
-.clear {
-  margin: 2.6rem 0;
-  overflow: auto;
+.sidebyside {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: flex-start;
 }
 
-@media only screen and (min-width: 600px) {
-  .browser, .extension {
-    float: left;
-    width: 50%;
-  }
-  .padding {
-    padding: 0 1.3rem;
-  }
+.sidebyside section {
+  flex: 1 1 15rem;
+  padding: 0 1.3rem;
 }
 
 .addon {
