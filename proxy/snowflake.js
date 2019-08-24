@@ -86,8 +86,6 @@ class Snowflake {
             return pair.active = false;
           }
         }), 20000); // 20 second timeout
-      } else {
-        return pair.active = false;
       }
     }, function() {
       return pair.active = false;

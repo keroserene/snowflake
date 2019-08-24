@@ -100,6 +100,7 @@ describe('ProxyPair', function() {
 
   it('connects to the relay once datachannel opens', function() {
     spyOn(pp, 'connectRelay');
+    pp.active = true;
     pp.client.onopen();
     expect(pp.connectRelay).toHaveBeenCalled();
   });
