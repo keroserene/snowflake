@@ -26,7 +26,8 @@ header a {
 }
 
 #content {
-  margin: 0 0 2.6rem 0;
+  max-width: 55rem;
+  margin: 0 auto 2.6rem auto;
   padding: 2.6rem 5.2rem;
   background-color: #FFFFFF;
 }
