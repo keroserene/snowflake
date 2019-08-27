@@ -86,7 +86,7 @@ class ProxyPair {
     channel.onopen = () => {
       log('WebRTC DataChannel opened!');
       if (!this.active) {
-          return
+        return;
       }
       this.running = true;
       snowflake.state = Snowflake.MODE.WEBRTC_READY;

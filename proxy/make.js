@@ -52,8 +52,8 @@ var copyTranslations = function(outDir) {
 var availableLangs = function() {
   let out = "const availableLangs = new Set([\n";
   let dirs = readdirSync('translation').filter((f) => {
-     const s = statSync(`translation/${f}`);
-     return s.isDirectory();
+    const s = statSync(`translation/${f}`);
+    return s.isDirectory();
   });
   dirs.push('en_US');
   dirs.sort();
