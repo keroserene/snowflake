@@ -128,7 +128,7 @@ type WebRTCDialer struct {
 func NewWebRTCDialer(
 	broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebRTCDialer {
 	var config webrtc.Configuration
-	if iceServers == nil {
+	if iceServers != nil {
 		config = webrtc.Configuration{
 			ICEServers: iceServers,
 		}
