@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"io"
 	"regexp"
+	"sync"
 )
 
 const ipv4Address = `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`
@@ -30,7 +31,12 @@ var addressRegexp = regexp.MustCompile(addressPattern)
 type LogScrubber struct {
 	Output io.Writer
 	buffer []byte
+
+	lock sync.Mutex
 }
+
+func (ls *LogScrubber) Lock()   { (*ls).lock.Lock() }
+func (ls *LogScrubber) Unlock() { (*ls).lock.Unlock() }
 
 func scrub(b []byte) []byte {
 	scrubbedBytes := b
@@ -45,6 +51,9 @@ func scrub(b []byte) []byte {
 }
 
 func (ls *LogScrubber) Write(b []byte) (n int, err error) {
+	ls.Lock()
+	defer ls.Unlock()
+
 	n = len(b)
 	ls.buffer = append(ls.buffer, b...)
 	for {
