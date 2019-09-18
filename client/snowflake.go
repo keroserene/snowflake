@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"git.torproject.org/pluggable-transports/goptlib.git"
+	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"github.com/pion/webrtc"
@@ -102,7 +102,7 @@ func main() {
 	// deadlock because the buffer is full.
 	// https://bugs.torproject.org/26360
 	// https://bugs.torproject.org/25600#comment:14
-	var logOutput io.Writer = ioutil.Discard
+	var logOutput = ioutil.Discard
 	if *logFilename != "" {
 		if *logToStateDir {
 			stateDir, err := pt.MakeStateDir()
@@ -184,7 +184,7 @@ func main() {
 	}
 	pt.CmethodsDone()
 
-	var numHandlers int = 0
+	var numHandlers int
 	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)

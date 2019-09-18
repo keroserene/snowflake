@@ -144,7 +144,7 @@ func NewWebRTCDialer(
 // Initialize a WebRTC Connection by signaling through the broker.
 func (w WebRTCDialer) Catch() (Snowflake, error) {
 	if nil == w.BrokerChannel {
-		return nil, errors.New("Cannot Dial WebRTC without a BrokerChannel.")
+		return nil, errors.New("cannot Dial WebRTC without a BrokerChannel")
 	}
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.

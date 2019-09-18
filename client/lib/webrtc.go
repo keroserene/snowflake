@@ -309,7 +309,7 @@ func (c *WebRTCPeer) exchangeSDP() error {
 	}
 	// Keep trying the same offer until a valid answer arrives.
 	var ok bool
-	var answer *webrtc.SessionDescription = nil
+	var answer *webrtc.SessionDescription
 	for nil == answer {
 		go c.sendOfferToBroker()
 		answer, ok = <-c.answerChannel // Blocks...

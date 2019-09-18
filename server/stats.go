@@ -27,9 +27,9 @@ func statsThread() {
 		select {
 		case v := <-statsChannel:
 			if v {
-				numClientIP += 1
+				numClientIP++
 			}
-			numConnections += 1
+			numConnections++
 		case <-deadline:
 			now := time.Now()
 			log.Printf("in the past %.f s, %d/%d connections had client_ip",

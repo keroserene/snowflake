@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	"git.torproject.org/pluggable-transports/goptlib.git"
+	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"git.torproject.org/pluggable-transports/websocket.git/websocket"
 	"golang.org/x/crypto/acme/autocert"
@@ -390,7 +390,7 @@ func main() {
 	}
 	pt.SmethodsDone()
 
-	var numHandlers int = 0
+	var numHandlers int
 	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
