@@ -121,7 +121,6 @@ func (ctx *BrokerContext) Broker() {
 		go func(request *ProxyPoll) {
 			select {
 			case offer := <-snowflake.offerChannel:
-				log.Println("Passing client offer to snowflake proxy.")
 				request.offerChannel <- offer
 			case <-time.After(time.Second * ProxyTimeout):
 				// This snowflake is no longer available to serve clients.
@@ -164,7 +163,6 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log.Println("Received snowflake: ", id)
 
 	// Log geoip stats
 	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -177,12 +175,10 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
 	offer := ctx.RequestOffer(id)
 	if nil == offer {
-		log.Println("Proxy " + id + " did not receive a Client offer.")
 		ctx.metrics.proxyIdleCount++
 		w.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}
-	log.Println("Passing client offer to snowflake.")
 	w.Write(offer)
 }
 
@@ -201,7 +197,6 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	}
 	// Immediately fail if there are no snowflakes available.
 	if ctx.snowflakes.Len() <= 0 {
-		log.Println("Client: No snowflake proxies available.")
 		ctx.metrics.clientDeniedCount++
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
@@ -215,7 +210,6 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	// Wait for the answer to be returned on the channel or timeout.
 	select {
 	case answer := <-snowflake.answerChannel:
-		log.Println("Client: Retrieving answer")
 		ctx.metrics.clientProxyMatchCount++
 		w.Write(answer)
 		// Initial tracking of elapsed time.
@@ -249,7 +243,6 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Received answer.")
 	snowflake.answerChannel <- body
 }
 

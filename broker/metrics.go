@@ -114,7 +114,6 @@ func (m *Metrics) UpdateCountryStats(addr string) {
 
 	if !ok {
 		country = "??"
-		log.Println("Unknown geoip")
 	}
 
 	//update map of unique ips and counts
