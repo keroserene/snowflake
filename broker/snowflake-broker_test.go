@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"container/heap"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"log"
 	"net"
@@ -12,6 +11,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func NullLogger() *log.Logger {
@@ -181,7 +182,7 @@ func TestBroker(t *testing.T) {
 			})
 
 			Convey("with error if the proxy writes too much data", func() {
-				data := bytes.NewReader(make([]byte, 100001, 100001))
+				data := bytes.NewReader(make([]byte, 100001))
 				r, err := http.NewRequest("POST", "snowflake.broker/answer", data)
 				r.Header.Set("X-Session-ID", "test")
 				So(err, ShouldBeNil)
@@ -385,7 +386,9 @@ func TestGeoip(t *testing.T) {
 
 		// Make sure things behave properly if geoip file fails to load
 		ctx := NewBrokerContext(NullLogger())
-		ctx.metrics.LoadGeoipDatabases("invalid_filename", "invalid_filename6")
+		if err := ctx.metrics.LoadGeoipDatabases("invalid_filename", "invalid_filename6"); err != nil {
+			log.Printf("loading geo ip databases returned error: %v", err)
+		}
 		ctx.metrics.UpdateCountryStats("127.0.0.1")
 		So(ctx.metrics.tablev4, ShouldEqual, nil)
 
@@ -504,6 +507,9 @@ func TestMetrics(t *testing.T) {
 
 			data = bytes.NewReader([]byte("test"))
 			r, err = http.NewRequest("POST", "snowflake.broker/proxy", data)
+			if err != nil {
+				log.Printf("unable to get NewRequest with error: %v", err)
+			}
 			r.Header.Set("X-Session-ID", "test")
 			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
 			go func(ctx *BrokerContext) {

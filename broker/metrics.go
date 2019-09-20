@@ -120,7 +120,6 @@ func (m *Metrics) UpdateCountryStats(addr string) {
 	m.countryStats.counts[country]++
 	m.countryStats.addrs[addr] = true
 
-	return
 }
 
 func (m *Metrics) LoadGeoipDatabases(geoipDB string, geoip6DB string) error {
@@ -132,19 +131,16 @@ func (m *Metrics) LoadGeoipDatabases(geoipDB string, geoip6DB string) error {
 	if err != nil {
 		m.tablev4 = nil
 		return err
-	} else {
-		m.tablev4 = tablev4
 	}
+	m.tablev4 = tablev4
 
 	tablev6 := new(GeoIPv6Table)
 	err = GeoIPLoadFile(tablev6, geoip6DB)
 	if err != nil {
 		m.tablev6 = nil
 		return err
-	} else {
-		m.tablev6 = tablev6
 	}
-
+	m.tablev6 = tablev6
 	return nil
 }
 

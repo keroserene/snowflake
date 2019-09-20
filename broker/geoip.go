@@ -93,7 +93,7 @@ func (table *GeoIPv6Table) Unlock() { (*table).lock.Unlock() }
 func geoipStringToIP(ipStr string) (net.IP, error) {
 	ip, err := strconv.ParseUint(ipStr, 10, 32)
 	if err != nil {
-		return net.IPv4(0, 0, 0, 0), fmt.Errorf("Error parsing IP %s", ipStr)
+		return net.IPv4(0, 0, 0, 0), fmt.Errorf("error parsing IP %s", ipStr)
 	}
 	var bytes [4]byte
 	bytes[0] = byte(ip & 0xFF)
@@ -115,7 +115,7 @@ func (table *GeoIPv4Table) parseEntry(candidate string) (*GeoIPEntry, error) {
 	parsedCandidate := strings.Split(candidate, ",")
 
 	if len(parsedCandidate) != 3 {
-		return nil, fmt.Errorf("Provided geoip file is incorrectly formatted. Could not parse line:\n%s", parsedCandidate)
+		return nil, fmt.Errorf("provided geoip file is incorrectly formatted. Could not parse line:\n%s", parsedCandidate)
 	}
 
 	low, err := geoipStringToIP(parsedCandidate[0])
@@ -190,7 +190,7 @@ func GeoIPLoadFile(table GeoIPTable, pathname string) error {
 	for scanner.Scan() {
 		entry, err := table.parseEntry(scanner.Text())
 		if err != nil {
-			return fmt.Errorf("Provided geoip file is incorrectly formatted. Line is: %+q", scanner.Text())
+			return fmt.Errorf("provided geoip file is incorrectly formatted. Line is: %+q", scanner.Text())
 		}
 
 		if entry != nil {

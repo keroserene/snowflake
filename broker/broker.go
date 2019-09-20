@@ -179,7 +179,10 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}
-	w.Write(offer)
+	log.Println("Passing client offer to snowflake.")
+	if _, err := w.Write(offer); err != nil {
+		log.Printf("proxyPolls unable to write offer with error: %v", err)
+	}
 }
 
 /*
@@ -211,14 +214,18 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	select {
 	case answer := <-snowflake.answerChannel:
 		ctx.metrics.clientProxyMatchCount++
-		w.Write(answer)
+		if _, err := w.Write(answer); err != nil {
+			log.Printf("unable to write answer with error: %v", err)
+		}
 		// Initial tracking of elapsed time.
 		ctx.metrics.clientRoundtripEstimate = time.Since(startTime) /
 			time.Millisecond
 	case <-time.After(time.Second * ClientTimeout):
 		log.Println("Client: Timed out.")
 		w.WriteHeader(http.StatusGatewayTimeout)
-		w.Write([]byte("timed out waiting for answer!"))
+		if _, err := w.Write([]byte("timed out waiting for answer!")); err != nil {
+			log.Printf("unable to write timeout error, failed with error: %v", err)
+		}
 	}
 }
 
@@ -259,12 +266,16 @@ func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	}
 	s += fmt.Sprintf("\tstandalone proxies: %d", standalones)
 	s += fmt.Sprintf("\n\tbrowser proxies: %d", browsers)
-	w.Write([]byte(s))
+	if _, err := w.Write([]byte(s)); err != nil {
+		log.Printf("writing proxy information returned error: %v ", err)
+	}
 }
 
 func robotsTxtHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte("User-agent: *\nDisallow: /\n"))
+	if _, err := w.Write([]byte("User-agent: *\nDisallow: /\n")); err != nil {
+		log.Printf("robotsTxtHandler unable to write, with this error: %v", err)
+	}
 }
 
 func metricsHandler(metricsFilename string, w http.ResponseWriter, r *http.Request) {
@@ -281,7 +292,9 @@ func metricsHandler(metricsFilename string, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	io.Copy(w, metricsFile)
+	if _, err := io.Copy(w, metricsFile); err != nil {
+		log.Printf("copying metricsFile returned error: %v", err)
+	}
 }
 
 func main() {
@@ -310,7 +323,7 @@ func main() {
 	flag.Parse()
 
 	var err error
-	var metricsFile io.Writer = os.Stdout
+	var metricsFile io.Writer
 	var logOutput io.Writer = os.Stderr
 	//We want to send the log output through our scrubber first
 	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
@@ -332,7 +345,7 @@ func main() {
 	ctx := NewBrokerContext(metricsLogger)
 
 	if !disableGeoip {
-		err := ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
+		err = ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -361,8 +374,10 @@ func main() {
 	go func() {
 		for {
 			signal := <-sigChan
-			log.Println("Received signal:", signal, ". Reloading geoip databases.")
-			ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
+			log.Printf("Received signal: %s. Reloading geoip databases.", signal)
+			if err = ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database); err != nil {
+				log.Fatalf("reload of Geo IP databases on signal %s returned error: %v", signal, err)
+			}
 		}
 	}()
 
