@@ -138,7 +138,8 @@ func (c *WebRTCPeer) Connect() error {
 	}
 	err = c.establishDataChannel()
 	if err != nil {
-		return errors.New("WebRTC: Could not establish DataChannel.")
+		// nolint: golint
+		return errors.New("WebRTC: Could not establish DataChannel")
 	}
 	err = c.exchangeSDP()
 	if err != nil {
@@ -151,7 +152,9 @@ func (c *WebRTCPeer) Connect() error {
 // Create and prepare callbacks on a new WebRTC PeerConnection.
 func (c *WebRTCPeer) preparePeerConnection() error {
 	if nil != c.pc {
-		c.pc.Close()
+		if err := c.pc.Close(); err != nil {
+			log.Printf("c.pc.Close returned error: %v", err)
+		}
 		c.pc = nil
 	}
 
@@ -267,7 +270,9 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		if err != nil {
 			// TODO: Maybe shouldn't actually close.
 			log.Println("Error writing to SOCKS pipe")
-			c.writePipe.CloseWithError(err)
+			if inerr := c.writePipe.CloseWithError(err); inerr != nil {
+				log.Printf("c.writePipe.CloseWithError returned error: %v", inerr)
+			}
 		}
 		if n != len(msg.Data) {
 			log.Println("Error: short write")

@@ -56,18 +56,18 @@ func Handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 
 // Exchanges bytes between two ReadWriters.
 // (In this case, between a SOCKS and WebRTC connection.)
-func copyLoop(a, b io.ReadWriter) {
+func copyLoop(WebRTC, SOCKS io.ReadWriter) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		if _, err := io.Copy(ORPort, WebRTC); err != nil {
-			log.Printf("copying WebRTC to ORPort resulted in error: %v", err)
+		if _, err := io.Copy(SOCKS, WebRTC); err != nil {
+			log.Printf("copying WebRTC to SOCKS resulted in error: %v", err)
 		}
 		wg.Done()
 	}()
 	go func() {
-		if _, err := io.Copy(WebRTC, ORPort); err != nil {
-			log.Printf("copying ORPort to WebRTC resulted in error: %v", err)
+		if _, err := io.Copy(WebRTC, SOCKS); err != nil {
+			log.Printf("copying SOCKS to WebRTC resulted in error: %v", err)
 		}
 		wg.Done()
 	}()
