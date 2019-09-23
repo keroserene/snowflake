@@ -112,14 +112,17 @@ func (c *webRTCConn) RemoteAddr() net.Addr {
 }
 
 func (c *webRTCConn) SetDeadline(t time.Time) error {
+	// nolint: golint
 	return fmt.Errorf("SetDeadline not implemented")
 }
 
 func (c *webRTCConn) SetReadDeadline(t time.Time) error {
+	// nolint: golint
 	return fmt.Errorf("SetReadDeadline not implemented")
 }
 
 func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
+	// nolint: golint
 	return fmt.Errorf("SetWriteDeadline not implemented")
 }
 
@@ -207,12 +210,16 @@ type timeoutConn struct {
 }
 
 func (tc timeoutConn) Read(buf []byte) (int, error) {
-	tc.c.SetDeadline(time.Now().Add(tc.t))
+	if err := tc.c.SetDeadline(time.Now().Add(tc.t)); err != nil {
+		log.Printf("calling SetDeadline in Read returned the following error: %v", err)
+	}
 	return tc.c.Read(buf)
 }
 
 func (tc timeoutConn) Write(buf []byte) (int, error) {
-	tc.c.SetDeadline(time.Now().Add(tc.t))
+	if err := tc.c.SetDeadline(time.Now().Add(tc.t)); err != nil {
+		log.Printf("calling SetDeadline in Write returned the following error: %v", err)
+	}
 	return tc.c.Write(buf)
 }
 
@@ -226,7 +233,9 @@ func CopyLoopTimeout(c1 net.Conn, c2 net.Conn, timeout time.Duration) {
 	var wg sync.WaitGroup
 	copyer := func(dst io.ReadWriteCloser, src io.ReadWriteCloser) {
 		defer wg.Done()
-		io.Copy(dst, src)
+		if _, err := io.Copy(dst, src); err != nil {
+			log.Printf("io.Copy inside CopyLoopTimeout generated an error: %v", err)
+		}
 		dst.Close()
 		src.Close()
 	}
@@ -301,9 +310,12 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config webrtc.C
 		})
 		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
 			log.Printf("OnMessage <--- %d bytes", len(msg.Data))
-			n, err := pw.Write(msg.Data)
+			var n int
+			n, err = pw.Write(msg.Data)
 			if err != nil {
-				pw.CloseWithError(err)
+				if inerr := pw.CloseWithError(err); inerr != nil {
+					log.Printf("close with error generated an error: %v", inerr)
+				}
 			}
 			if n != len(msg.Data) {
 				panic("short write")
@@ -315,7 +327,9 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config webrtc.C
 
 	err = pc.SetRemoteDescription(*sdp)
 	if err != nil {
-		pc.Close()
+		if inerr := pc.Close(); inerr != nil {
+			log.Printf("unable to call pc.Close after pc.SetRemoteDescription with error: %v", inerr)
+		}
 		return nil, fmt.Errorf("accept: SetRemoteDescription: %s", err)
 	}
 	log.Println("sdp offer successfully received.")
@@ -326,13 +340,17 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config webrtc.C
 	// not putting this in a separate go routine, because we need
 	// SetLocalDescription(answer) to be called before sendAnswer
 	if err != nil {
-		pc.Close()
+		if inerr := pc.Close(); inerr != nil {
+			log.Printf("ICE gathering has generated an error when calling pc.Close: %v", inerr)
+		}
 		return nil, err
 	}
 
 	err = pc.SetLocalDescription(answer)
 	if err != nil {
-		pc.Close()
+		if err = pc.Close(); err != nil {
+			log.Printf("pc.Close after setting local description returned : %v", err)
+		}
 		return nil, err
 	}
 
@@ -356,7 +374,9 @@ func runSession(sid string) {
 	err = sendAnswer(sid, pc)
 	if err != nil {
 		log.Printf("error sending answer to client through broker: %s", err)
-		pc.Close()
+		if inerr := pc.Close(); inerr != nil {
+			log.Printf("error calling pc.Close: %v", inerr)
+		}
 		retToken()
 		return
 	}
@@ -368,7 +388,9 @@ func runSession(sid string) {
 		log.Println("Connection successful.")
 	case <-time.After(dataChannelTimeout):
 		log.Println("Timed out waiting for client to open data channel.")
-		pc.Close()
+		if err := pc.Close(); err != nil {
+			log.Printf("error calling pc.Close: %v", err)
+		}
 		retToken()
 	}
 }
