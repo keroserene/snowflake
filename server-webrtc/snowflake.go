@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"git.torproject.org/pluggable-transports/goptlib.git"
+	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/keroserene/go-webrtc"
 )
 
@@ -25,15 +25,19 @@ var logFile *os.File
 // when it ends, -1 is written.
 var handlerChan = make(chan int)
 
-func copyLoop(a, b net.Conn) {
+func copyLoop(WebRTC, ORPort net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		io.Copy(b, a)
+		if _, err := io.Copy(ORPort, WebRTC); err != nil {
+			log.Printf("copy WebRTC to ORPort error in copyLoop: %v", err)
+		}
 		wg.Done()
 	}()
 	go func() {
-		io.Copy(a, b)
+		if _, err := io.Copy(WebRTC, ORPort); err != nil {
+			log.Printf("copy ORPort to WebRTC error in copyLoop: %v", err)
+		}
 		wg.Done()
 	}()
 	wg.Wait()
@@ -79,14 +83,17 @@ func (c *webRTCConn) RemoteAddr() net.Addr {
 }
 
 func (c *webRTCConn) SetDeadline(t time.Time) error {
+	// nolint:golint
 	return fmt.Errorf("SetDeadline not implemented")
 }
 
 func (c *webRTCConn) SetReadDeadline(t time.Time) error {
+	// nolint:golint
 	return fmt.Errorf("SetReadDeadline not implemented")
 }
 
 func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
+	// nolint:golint
 	return fmt.Errorf("SetWriteDeadline not implemented")
 }
 
@@ -139,9 +146,12 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 		}
 		dc.OnMessage = func(msg []byte) {
 			log.Printf("OnMessage <--- %d bytes", len(msg))
-			n, err := pw.Write(msg)
+			var n int
+			n, err = pw.Write(msg)
 			if err != nil {
-				pw.CloseWithError(err)
+				if inerr := pw.CloseWithError(err); inerr != nil {
+					log.Printf("close with error returned error: %v", inerr)
+				}
 			}
 			if n != len(msg) {
 				panic("short write")
@@ -153,7 +163,9 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 
 	err = pc.SetRemoteDescription(sdp)
 	if err != nil {
-		pc.Destroy()
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
 		return nil, fmt.Errorf("accept: SetRemoteDescription: %s", err)
 	}
 	log.Println("sdp offer successfully received.")
@@ -161,18 +173,24 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	log.Println("Generating answer...")
 	answer, err := pc.CreateAnswer()
 	if err != nil {
-		pc.Destroy()
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
 		return nil, err
 	}
 
 	if answer == nil {
-		pc.Destroy()
-		return nil, fmt.Errorf("Failed gathering ICE candidates.")
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
+		return nil, fmt.Errorf("failed gathering ICE candidates")
 	}
 
 	err = pc.SetLocalDescription(answer)
 	if err != nil {
-		pc.Destroy()
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
 		return nil, err
 	}
 
@@ -180,7 +198,6 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 }
 
 func main() {
-	var err error
 	var httpAddr string
 	var logFilename string
 
@@ -200,7 +217,7 @@ func main() {
 
 	log.Println("starting")
 	webrtc.SetLoggingVerbosity(1)
-
+	var err error
 	ptInfo, err = pt.ServerSetup(nil)
 	if err != nil {
 		log.Fatal(err)
@@ -222,12 +239,14 @@ func main() {
 			bindaddr.Addr.Port = 12345 // lies!!!
 			pt.Smethod(bindaddr.MethodName, bindaddr.Addr)
 		default:
-			pt.SmethodError(bindaddr.MethodName, "no such method")
+			if err := pt.SmethodError(bindaddr.MethodName, "no such method"); err != nil {
+				log.Printf("SmethodError returned error: %v", err)
+			}
 		}
 	}
 	pt.SmethodsDone()
 
-	var numHandlers int = 0
+	var numHandlers int
 	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -236,7 +255,9 @@ func main() {
 		// This environment variable means we should treat EOF on stdin
 		// just like SIGTERM: https://bugs.torproject.org/15435.
 		go func() {
-			io.Copy(ioutil.Discard, os.Stdin)
+			if _, err := io.Copy(ioutil.Discard, os.Stdin); err != nil {
+				log.Printf("error copying os.Stdin to ioutil.Discard: %v", err)
+			}
 			log.Printf("synthesizing SIGTERM because of stdin close")
 			sigChan <- syscall.SIGTERM
 		}()

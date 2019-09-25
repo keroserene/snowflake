@@ -23,11 +23,14 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case "GET":
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`HTTP signaling channel
+		_, err := w.Write([]byte(`HTTP signaling channel
 
 Send a POST request containing an SDP offer. The response will
 contain an SDP answer.
 `))
+		if err != nil {
+			log.Printf("GET request write failed with error: %v", err)
+		}
 		return
 	case "POST":
 		break
@@ -57,7 +60,11 @@ contain an SDP answer.
 	log.Println("answering HTTP POST")
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(pc.LocalDescription().Serialize()))
+	_, err = w.Write([]byte(pc.LocalDescription().Serialize()))
+	if err != nil {
+		log.Printf("answering HTTP POST write failed with error %v", err)
+	}
+
 }
 
 func receiveSignalsHTTP(addr string, config *webrtc.Configuration) error {

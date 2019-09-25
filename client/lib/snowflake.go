@@ -13,7 +13,7 @@ const (
 	SnowflakeTimeout = 30
 )
 
-// When a connection handler starts, +1 is written to this channel; when it
+// HandlerChan - When a connection handler starts, +1 is written to this channel; when it
 // ends, -1 is written.
 var HandlerChan = make(chan int)
 
@@ -27,7 +27,10 @@ func Handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 	// Obtain an available WebRTC remote. May block.
 	snowflake := snowflakes.Pop()
 	if nil == snowflake {
-		socks.Reject()
+		if err := socks.Reject(); err != nil {
+			log.Printf("socks.Reject returned error: %v", err)
+		}
+
 		return errors.New("handler: Received invalid Snowflake")
 	}
 	defer socks.Close()
@@ -57,11 +60,15 @@ func copyLoop(a, b io.ReadWriter) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		io.Copy(b, a)
+		if _, err := io.Copy(ORPort, WebRTC); err != nil {
+			log.Printf("copying WebRTC to ORPort resulted in error: %v", err)
+		}
 		wg.Done()
 	}()
 	go func() {
-		io.Copy(a, b)
+		if _, err := io.Copy(WebRTC, ORPort); err != nil {
+			log.Printf("copying ORPort to WebRTC resulted in error: %v", err)
+		}
 		wg.Done()
 	}()
 	wg.Wait()
