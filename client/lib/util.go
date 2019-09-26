@@ -54,7 +54,6 @@ func (b *BytesSyncLogger) Log() {
 		case amount = <-b.OutboundChan:
 			b.Outbound += amount
 			b.OutEvents++
-			last := time.Now()
 			if time.Since(last) > time.Second*LogTimeInterval {
 				last = time.Now()
 				output()
