@@ -1,4 +1,4 @@
-/* global Util, chrome, Config, UI, Broker, Snowflake */
+/* global Util, chrome, Config, UI, Broker, Snowflake, WS */
 /* eslint no-unused-vars: 0 */
 
 /*
@@ -31,33 +31,25 @@ class WebExtUI extends UI {
       this.setEnabled(false);
       return;
     }
-    (new Promise((resolve, reject) => {
-      const ws = WS.makeWebsocket(config.relayAddr);
-      ws.onopen = () => {
-        resolve();
-        ws.close();
-      };
-      ws.onerror = () => {
+    WS.probeWebsocket(config.relayAddr)
+    .then(
+      () => {
+        chrome.storage.local.get("snowflake-enabled", (result) => {
+          let enabled = this.enabled;
+          if (result['snowflake-enabled'] !== void 0) {
+            enabled = result['snowflake-enabled'];
+          } else {
+            log("Toggle state not yet saved");
+          }
+          this.setEnabled(enabled);
+        });
+      },
+      () => {
+        log('Could not connect to bridge.');
         this.missingFeature = 'popupBridgeUnreachable';
         this.setEnabled(false);
-        reject('Could not connect to bridge.');
-        ws.close();
-      };
-    }))
-    .then(() => {
-      chrome.storage.local.get("snowflake-enabled", (result) => {
-        let enabled = this.enabled;
-        if (result['snowflake-enabled'] !== void 0) {
-          enabled = result['snowflake-enabled'];
-        } else {
-          log("Toggle state not yet saved");
-        }
-        this.setEnabled(enabled);
-      });
-    })
-    .catch((e) => {
-      log(e);
-    });
+      }
+    );
   }
 
   postActive() {

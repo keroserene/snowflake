@@ -54,6 +54,20 @@ class WS {
     return ws;
   }
 
+  static probeWebsocket(addr) {
+    return new Promise((resolve, reject) => {
+      const ws = WS.makeWebsocket(addr);
+      ws.onopen = () => {
+        resolve();
+        ws.close();
+      };
+      ws.onerror = () => {
+        reject();
+        ws.close();
+      };
+    });
+  }
+
 }
 
 WS.WSS_ENABLED = true;
