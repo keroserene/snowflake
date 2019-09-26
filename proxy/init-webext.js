@@ -26,30 +26,40 @@ class WebExtUI extends UI {
   }
 
   initToggle() {
-    if (!Util.hasWebRTC()) {
-      this.missingFeature = 'popupWebRTCOff';
-      this.setEnabled(false);
-      return;
-    }
-    WS.probeWebsocket(config.relayAddr)
-    .then(
-      () => {
-        chrome.storage.local.get("snowflake-enabled", (result) => {
-          let enabled = this.enabled;
-          if (result['snowflake-enabled'] !== void 0) {
-            enabled = result['snowflake-enabled'];
-          } else {
-            log("Toggle state not yet saved");
-          }
-          this.setEnabled(enabled);
-        });
-      },
-      () => {
-        log('Could not connect to bridge.');
-        this.missingFeature = 'popupBridgeUnreachable';
-        this.setEnabled(false);
+    // First, check if we have our status stored
+    (new Promise((resolve) => {
+      chrome.storage.local.get(["snowflake-enabled"], resolve);
+    }))
+    .then((result) => {
+      let enabled = this.enabled;
+      if (result['snowflake-enabled'] !== void 0) {
+        enabled = result['snowflake-enabled'];
+      } else {
+        log("Toggle state not yet saved");
       }
-    );
+      // If it isn't enabled, stop
+      if (!enabled) {
+        this.setEnabled(enabled);
+        return;
+      }
+      // Otherwise, do feature checks
+      if (!Util.hasWebRTC()) {
+        this.missingFeature = 'popupWebRTCOff';
+        this.setEnabled(false);
+        return;
+      }
+      WS.probeWebsocket(config.relayAddr)
+      .then(
+        () => {
+          this.setEnabled(true);
+        },
+        () => {
+          log('Could not connect to bridge.');
+          this.missingFeature = 'popupBridgeUnreachable';
+          this.setEnabled(false);
+        }
+      );
+    });
   }
 
   postActive() {
@@ -73,11 +83,12 @@ class WebExtUI extends UI {
   }
 
   onMessage(m) {
-    this.setEnabled(m.enabled);
-    chrome.storage.local.set({
-      "snowflake-enabled": this.enabled
-    }, function() {
+    (new Promise((resolve) => {
+      chrome.storage.local.set({ "snowflake-enabled": m.enabled }, resolve);
+    }))
+    .then(() => {
       log("Stored toggle state");
+      this.initToggle();
     });
   }
 
