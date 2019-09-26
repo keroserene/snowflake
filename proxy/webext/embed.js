@@ -19,7 +19,7 @@ port.onMessage.addListener((m) => {
     popup.setEnabled(false);
     popup.setActive(false);
     popup.setStatusText(chrome.i18n.getMessage('popupStatusOff'));
-    popup.setStatusDesc(chrome.i18n.getMessage('popupWebRTCOff'), true);
+    popup.setStatusDesc(chrome.i18n.getMessage(missingFeature), true);
     popup.hideButton();
     return;
   }

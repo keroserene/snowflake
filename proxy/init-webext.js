@@ -18,46 +18,52 @@ class WebExtUI extends UI {
 
   initStats() {
     this.stats = [0];
-    return setInterval((() => {
+    setInterval((() => {
       this.stats.unshift(0);
       this.stats.splice(24);
-      return this.postActive();
+      this.postActive();
     }), 60 * 60 * 1000);
   }
 
   initToggle() {
+    if (!Util.hasWebRTC()) {
+      this.missingFeature = 'popupWebRTCOff';
+      this.setEnabled(false);
+      return;
+    }
     chrome.storage.local.get("snowflake-enabled", (result) => {
+      let enabled = this.enabled;
       if (result['snowflake-enabled'] !== void 0) {
-        this.enabled = result['snowflake-enabled'];
+        enabled = result['snowflake-enabled'];
       } else {
         log("Toggle state not yet saved");
       }
-      this.setEnabled(this.enabled);
+      this.setEnabled(enabled);
     });
   }
 
   postActive() {
-    var ref;
-    return (ref = this.port) != null ? ref.postMessage({
+    this.setIcon();
+    if (!this.port) { return; }
+    this.port.postMessage({
       active: this.active,
       total: this.stats.reduce((function(t, c) {
         return t + c;
       }), 0),
-      enabled: this.enabled
-    }) : void 0;
+      enabled: this.enabled,
+      missingFeature: this.missingFeature,
+    });
   }
 
   onConnect(port) {
     this.port = port;
     port.onDisconnect.addListener(this.onDisconnect);
     port.onMessage.addListener(this.onMessage);
-    return this.postActive();
+    this.postActive();
   }
 
   onMessage(m) {
-    this.enabled = m.enabled;
-    this.setEnabled(this.enabled);
-    this.postActive();
+    this.setEnabled(m.enabled);
     chrome.storage.local.set({
       "snowflake-enabled": this.enabled
     }, function() {
@@ -75,30 +81,34 @@ class WebExtUI extends UI {
       this.stats[0] += 1;
     }
     this.postActive();
-    if (this.active) {
-      return chrome.browserAction.setIcon({
-        path: {
-          48: "assets/toolbar-running-48.png",
-          96: "assets/toolbar-running-96.png"
-        }
-      });
-    } else {
-      return chrome.browserAction.setIcon({
-        path: {
-          48: "assets/toolbar-on-48.png",
-          96: "assets/toolbar-on-96.png"
-        }
-      });
-    }
   }
 
   setEnabled(enabled) {
+    this.enabled = enabled;
+    this.postActive();
     update();
-    return chrome.browserAction.setIcon({
-      path: {
-        48: "assets/toolbar-" + (enabled ? "on" : "off") + "-48.png",
-        96: "assets/toolbar-" + (enabled ? "on" : "off") + "-96.png"
-      }
+  }
+
+  setIcon() {
+    let path = null;
+    if (!this.enabled) {
+      path = {
+        48: "assets/toolbar-off-48.png",
+        96: "assets/toolbar-off-96.png"
+      };
+    } else if (this.active) {
+      path = {
+        48: "assets/toolbar-running-48.png",
+        96: "assets/toolbar-running-96.png"
+      };
+    } else {
+      path = {
+        48: "assets/toolbar-on-48.png",
+        96: "assets/toolbar-on-96.png"
+      };
+    }
+    chrome.browserAction.setIcon({
+      path: path,
     });
   }
 
@@ -139,28 +149,13 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
     }
   };
 
-  if (!Util.hasWebRTC()) {
-    chrome.runtime.onConnect.addListener(function(port) {
-      return port.postMessage({
-        missingFeature: true
-      });
-    });
-    chrome.browserAction.setIcon({
-      path: {
-        48: "assets/toolbar-off-48.png",
-        96: "assets/toolbar-off-96.png"
-      }
-    });
-    return;
-  }
-
   init = function() {
     config = new Config;
     ui = new WebExtUI();
     broker = new Broker(config.brokerUrl);
     snowflake = new Snowflake(config, ui, broker);
     log('== snowflake proxy ==');
-    return ui.initToggle();
+    ui.initToggle();
   };
 
   update = function() {
