@@ -1,4 +1,4 @@
-/* global Util, Params, Config, UI, Broker, Snowflake, Popup, Parse, availableLangs */
+/* global Util, Params, Config, UI, Broker, Snowflake, Popup, Parse, availableLangs, WS */
 
 /*
 UI
@@ -125,26 +125,38 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
 
   update = function() {
     const cookies = Parse.cookie(document.cookie);
-    if (cookies[COOKIE_NAME] === '1') {
-      ui.turnOn();
-      dbg('Contacting Broker at ' + broker.url);
-      log('Starting snowflake');
-      snowflake.setRelayAddr(config.relayAddr);
-      snowflake.beginWebRTC();
-    } else {
+    if (cookies[COOKIE_NAME] !== '1') {
       ui.turnOff();
       snowflake.disable();
       log('Currently not active.');
+      return;
     }
+
+    if (!Util.hasWebRTC()) {
+      ui.missingFeature(messages.getMessage('popupWebRTCOff'));
+      snowflake.disable();
+      return;
+    }
+
+    WS.probeWebsocket(config.relayAddr)
+    .then(
+      () => {
+        ui.turnOn();
+        dbg('Contacting Broker at ' + broker.url);
+        log('Starting snowflake');
+        snowflake.setRelayAddr(config.relayAddr);
+        snowflake.beginWebRTC();
+      },
+      () => {
+        ui.missingFeature(messages.getMessage('popupBridgeUnreachable'));
+        snowflake.disable();
+        log('Could not connect to bridge.');
+      }
+    );
   };
 
   init = function() {
     ui = new BadgeUI();
-
-    if (!Util.hasWebRTC()) {
-      ui.missingFeature(messages.getMessage('popupWebRTCOff'));
-      return;
-    }
 
     if (!Util.hasCookies()) {
       ui.missingFeature(messages.getMessage('badgeCookiesOff'));
