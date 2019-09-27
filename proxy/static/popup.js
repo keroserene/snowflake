@@ -35,9 +35,6 @@ class Popup {
   setChecked(checked) {
     document.getElementById('enabled').checked = checked;
   }
-  setToggleText(txt) {
-    document.getElementById('toggle').innerText = txt;
-  }
   static fill(n, func) {
     switch(n.nodeType) {
       case 3: {  // Node.TEXT_NODE

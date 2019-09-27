@@ -38,7 +38,6 @@ class BadgeUI extends UI {
   turnOn() {
     const clients = this.active ? 1 : 0;
     this.popup.setChecked(true);
-    this.popup.setToggleText(messages.getMessage('popupTurnOff'));
     if (clients > 0) {
       this.popup.setStatusText(messages.getMessage('popupStatusOn', String(clients)));
     } else {
@@ -52,7 +51,6 @@ class BadgeUI extends UI {
 
   turnOff() {
     this.popup.setChecked(false);
-    this.popup.setToggleText(messages.getMessage('popupTurnOn'));
     this.popup.setStatusText(messages.getMessage('popupStatusOff'));
     this.popup.setStatusDesc('');
     this.popup.setEnabled(false);

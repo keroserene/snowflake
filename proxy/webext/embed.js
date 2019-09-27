@@ -28,7 +28,6 @@ port.onMessage.addListener((m) => {
 
   if (enabled) {
     popup.setChecked(true);
-    popup.setToggleText(chrome.i18n.getMessage('popupTurnOff'));
     if (clients > 0) {
       popup.setStatusText(chrome.i18n.getMessage('popupStatusOn', String(clients)));
     } else {
@@ -37,7 +36,6 @@ port.onMessage.addListener((m) => {
     popup.setStatusDesc((total > 0) ? chrome.i18n.getMessage('popupDescOn', String(total)) : '');
   } else {
     popup.setChecked(false);
-    popup.setToggleText(chrome.i18n.getMessage('popupTurnOn'));
     popup.setStatusText(chrome.i18n.getMessage('popupStatusOff'));
     popup.setStatusDesc("");
   }

@@ -2,11 +2,8 @@
   "appDesc": {
     "message": "Snowflake is a WebRTC pluggable transport for Tor."
   },
-  "popupTurnOn": {
-    "message": "Turn On"
-  },
-  "popupTurnOff": {
-    "message": "Turn Off"
+  "popupEnabled": {
+    "message": "Enabled"
   },
   "popupLearnMore": {
     "message": "Learn more"
