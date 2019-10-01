@@ -4,7 +4,6 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -75,7 +74,7 @@ func (conn *webSocketConn) Read(b []byte) (n int, err error) {
 			return
 		}
 		if m.Opcode != 2 {
-			err = errors.New(fmt.Sprintf("got non-binary opcode %d", m.Opcode))
+			err = fmt.Errorf("got non-binary opcode %d", m.Opcode)
 			return
 		}
 		conn.messageBuf = m.Payload
@@ -113,20 +112,22 @@ func proxy(local *net.TCPConn, conn *webSocketConn) {
 	wg.Add(2)
 
 	go func() {
-		_, err := io.Copy(conn, local)
-		if err != nil {
-			log.Printf("error copying ORPort to WebSocket")
+		if _, err := io.Copy(conn, local); err != nil {
+			log.Printf("error copying ORPort to WebSocket %v", err)
 		}
-		local.CloseRead()
+		if err := local.CloseRead(); err != nil {
+			log.Printf("error closing read after copying ORPort to WebSocket %v", err)
+		}
 		conn.Close()
 		wg.Done()
 	}()
 	go func() {
-		_, err := io.Copy(local, conn)
-		if err != nil {
+		if _, err := io.Copy(local, conn); err != nil {
 			log.Printf("error copying WebSocket to ORPort")
 		}
-		local.CloseWrite()
+		if err := local.CloseWrite(); err != nil {
+			log.Printf("error closing write after copying WebSocket to ORPort %v", err)
+		}
 		conn.Close()
 		wg.Done()
 	}()
@@ -150,7 +151,9 @@ func clientAddr(clientIPParam string) string {
 
 func webSocketHandler(ws *websocket.WebSocket) {
 	// Undo timeouts on HTTP request handling.
-	ws.Conn.SetDeadline(time.Time{})
+	if err := ws.Conn.SetDeadline(time.Time{}); err != nil {
+		log.Printf("unable to set deadlines with error: %v", err)
+	}
 	conn := newWebSocketConn(ws)
 	defer conn.Close()
 
@@ -307,7 +310,8 @@ func main() {
 		log.Printf("ACME hostnames: %q", acmeHostnames)
 
 		var cache autocert.Cache
-		cacheDir, err := getCertificateCacheDir()
+		var cacheDir string
+		cacheDir, err = getCertificateCacheDir()
 		if err == nil {
 			log.Printf("caching ACME certificates in directory %q", cacheDir)
 			cache = autocert.DirCache(cacheDir)
@@ -332,7 +336,9 @@ func main() {
 	servers := make([]*http.Server, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if bindaddr.MethodName != ptMethodName {
-			pt.SmethodError(bindaddr.MethodName, "no such method")
+			if err = pt.SmethodError(bindaddr.MethodName, "no such method"); err != nil {
+				log.Printf("pt.SmethodError returned error: %v", err)
+			}
 			continue
 		}
 
@@ -340,10 +346,13 @@ func main() {
 			addr := *bindaddr.Addr
 			addr.Port = 80
 			log.Printf("Starting HTTP-01 ACME listener")
-			lnHTTP01, err := net.ListenTCP("tcp", &addr)
+			var lnHTTP01 *net.TCPListener
+			lnHTTP01, err = net.ListenTCP("tcp", &addr)
 			if err != nil {
 				log.Printf("error opening HTTP-01 ACME listener: %s", err)
-				pt.SmethodError(bindaddr.MethodName, "HTTP-01 ACME listener: "+err.Error())
+				if inerr := pt.SmethodError(bindaddr.MethodName, "HTTP-01 ACME listener: "+err.Error()); inerr != nil {
+					log.Printf("pt.SmethodError returned error: %v", inerr)
+				}
 				continue
 			}
 			server := &http.Server{
@@ -371,7 +380,9 @@ func main() {
 		}
 		if err != nil {
 			log.Printf("error opening listener: %s", err)
-			pt.SmethodError(bindaddr.MethodName, err.Error())
+			if inerr := pt.SmethodError(bindaddr.MethodName, err.Error()); inerr != nil {
+				log.Printf("pt.SmethodError returned error: %v", inerr)
+			}
 			continue
 		}
 		pt.SmethodArgs(bindaddr.MethodName, bindaddr.Addr, args)
@@ -388,7 +399,9 @@ func main() {
 		// This environment variable means we should treat EOF on stdin
 		// just like SIGTERM: https://bugs.torproject.org/15435.
 		go func() {
-			io.Copy(ioutil.Discard, os.Stdin)
+			if _, err := io.Copy(ioutil.Discard, os.Stdin); err != nil {
+				log.Printf("error copying os.Stdin to ioutil.Discard: %v", err)
+			}
 			log.Printf("synthesizing SIGTERM because of stdin close")
 			sigChan <- syscall.SIGTERM
 		}()
