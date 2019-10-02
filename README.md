@@ -4,15 +4,6 @@
 
 Pluggable Transport using WebRTC, inspired by Flashproxy.
 
-### Status
-
-- [x] Transport: Successfully connects using WebRTC.
-- [x] Rendezvous: HTTP signaling (with optional domain fronting) to the Broker
-  arranges peer-to-peer connections with multitude of volunteer "snowflakes".
-- [x] Client multiplexes remote snowflakes.
-- [x] Can browse using Tor over Snowflake.
-- [ ] Reproducible build with TBB.
-
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
