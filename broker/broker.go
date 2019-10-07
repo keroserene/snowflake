@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"golang.org/x/crypto/acme/autocert"
 )
@@ -151,15 +152,16 @@ func (ctx *BrokerContext) AddSnowflake(id string) *Snowflake {
 For snowflake proxies to request a client from the Broker.
 */
 func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
-	id := r.Header.Get("X-Session-ID")
 	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
-	if nil != err {
+	if err != nil {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if string(body) != id {
-		log.Println("Mismatched IDs!")
+
+	sid, err := messages.DecodePollRequest(body)
+	if err != nil {
+		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -173,14 +175,26 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
-	offer := ctx.RequestOffer(id)
+	offer := ctx.RequestOffer(sid)
+	var b []byte
 	if nil == offer {
 		ctx.metrics.proxyIdleCount++
-		w.WriteHeader(http.StatusGatewayTimeout)
+
+		b, err = messages.EncodePollResponse("", false)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Write(b)
 		return
 	}
-	log.Println("Passing client offer to snowflake.")
-	if _, err := w.Write(offer); err != nil {
+	b, err = messages.EncodePollResponse(string(offer), true)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write(b); err != nil {
 		log.Printf("proxyPolls unable to write offer with error: %v", err)
 	}
 }
@@ -235,14 +249,7 @@ an offer from proxyHandler to respond with an answer in an HTTP POST,
 which the broker will pass back to the original client.
 */
 func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
-	id := r.Header.Get("X-Session-ID")
-	snowflake, ok := ctx.idToSnowflake[id]
-	if !ok || nil == snowflake {
-		// The snowflake took too long to respond with an answer, so its client
-		// disappeared / the snowflake is no longer recognized by the Broker.
-		w.WriteHeader(http.StatusGone)
-		return
-	}
+
 	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
 	if nil != err || nil == body || len(body) <= 0 {
 		log.Println("Invalid data.")
@@ -250,7 +257,32 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	snowflake.answerChannel <- body
+	answer, id, err := messages.DecodeAnswerRequest(body)
+	if err != nil || answer == "" {
+		log.Println("Invalid data.")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var success = true
+	snowflake, ok := ctx.idToSnowflake[id]
+	if !ok || nil == snowflake {
+		// The snowflake took too long to respond with an answer, so its client
+		// disappeared / the snowflake is no longer recognized by the Broker.
+		success = false
+	}
+	b, err := messages.EncodeAnswerResponse(success)
+	if err != nil {
+		log.Printf("Error encoding answer: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write(b)
+
+	if success {
+		snowflake.answerChannel <- []byte(answer)
+	}
+
 }
 
 func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {

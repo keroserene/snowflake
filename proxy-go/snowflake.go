@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"github.com/pion/webrtc"
 	"golang.org/x/net/websocket"
@@ -168,7 +169,12 @@ func pollOffer(sid string) *webrtc.SessionDescription {
 			timeOfNextPoll = now
 		}
 
-		req, _ := http.NewRequest("POST", broker.String(), bytes.NewBuffer([]byte(sid)))
+		b, err := messages.EncodePollRequest(sid)
+		if err != nil {
+			log.Printf("Error encoding poll message: %s", err.Error())
+			return nil
+		}
+		req, _ := http.NewRequest("POST", broker.String(), bytes.NewBuffer(b))
 		req.Header.Set("X-Session-ID", sid)
 		resp, err := client.Do(req)
 		if err != nil {
@@ -182,7 +188,16 @@ func pollOffer(sid string) *webrtc.SessionDescription {
 				if err != nil {
 					log.Printf("error reading broker response: %s", err)
 				} else {
-					return deserializeSessionDescription(string(body))
+
+					offer, err := messages.DecodePollResponse(body)
+					if err != nil {
+						log.Printf("error reading broker response: %s", err.Error())
+						log.Printf("body: %s", body)
+						return nil
+					}
+					if offer != "" {
+						return deserializeSessionDescription(offer)
+					}
 				}
 			}
 		}
@@ -191,9 +206,12 @@ func pollOffer(sid string) *webrtc.SessionDescription {
 
 func sendAnswer(sid string, pc *webrtc.PeerConnection) error {
 	broker := brokerURL.ResolveReference(&url.URL{Path: "answer"})
-	body := bytes.NewBuffer([]byte(serializeSessionDescription(pc.LocalDescription())))
-	req, _ := http.NewRequest("POST", broker.String(), body)
-	req.Header.Set("X-Session-ID", sid)
+	answer := string([]byte(serializeSessionDescription(pc.LocalDescription())))
+	b, err := messages.EncodeAnswerRequest(answer, sid)
+	if err != nil {
+		return err
+	}
+	req, _ := http.NewRequest("POST", broker.String(), bytes.NewBuffer(b))
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -201,6 +219,19 @@ func sendAnswer(sid string, pc *webrtc.PeerConnection) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("broker returned %d", resp.StatusCode)
 	}
+
+	body, err := limitedRead(resp.Body, readLimit)
+	if err != nil {
+		return fmt.Errorf("error reading broker response: %s", err)
+	}
+	success, err := messages.DecodeAnswerResponse(body)
+	if err != nil {
+		return err
+	}
+	if !success {
+		return fmt.Errorf("broker returned client timeout")
+	}
+
 	return nil
 }
 
