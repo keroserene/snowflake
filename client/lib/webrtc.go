@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dchest/uniuri"
-	"github.com/pion/logging"
 	"github.com/pion/webrtc"
 )
 
@@ -156,13 +155,7 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 		c.pc = nil
 	}
 
-	logFactory := logging.NewDefaultLoggerFactory()
-	logFactory.DefaultLogLevel = logging.LogLevelError
-	logFactory.Writer = log.Writer()
-
-	s := webrtc.SettingEngine{
-		LoggerFactory: logFactory,
-	}
+	s := webrtc.SettingEngine{}
 	s.SetTrickle(true)
 	api := webrtc.NewAPI(webrtc.WithSettingEngine(s))
 	pc, err := api.NewPeerConnection(*c.config)
