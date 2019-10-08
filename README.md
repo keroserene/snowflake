@@ -32,8 +32,8 @@ This should start the client plugin, bootstrapping to 100% using WebRTC.
 #### Dependencies
 
 Client:
-- [go-webrtc](https://github.com/keroserene/go-webrtc)
-- Go 1.5+
+- [pion/webrtc](https://github.com/pion/webrtc)
+- Go 1.10+
 
 Proxy:
 - JavaScript
