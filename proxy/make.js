@@ -94,6 +94,8 @@ task('build', 'build the snowflake proxy', function() {
   execSync(`cp -r ${STATIC}/ ${outDir}/`);
   copyTranslations(outDir);
   concatJS(outDir, 'badge', 'embed.js', availableLangs());
+  writeFileSync(`${outDir}/index.js`, availableLangs(), 'utf8');
+  execSync(`cat ${STATIC}/index.js >> ${outDir}/index.js`);
   console.log('Snowflake prepared.');
 });
 
