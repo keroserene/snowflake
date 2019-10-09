@@ -4,98 +4,114 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Snowflake</title>
-    <link rel="icon" href="https://snowflake.torproject.org/assets/favicon.ico" />
-    <link rel="stylesheet" href="https://snowflake.torproject.org/index.css" />
+    <link rel="icon" href="./assets/favicon.ico" />
+    <link rel="stylesheet" href="./bootstrap.css" />
+    <link rel="stylesheet" href="./index.css" />
   </head>
-  <body>
+  <body class="no-gutters">
     <header id="header">
-      <a href="https://www.torproject.org/">
-        <img src="https://snowflake.torproject.org/tor-logo@2x.png" alt="Tor" height="50" />
-      </a>
+
+      <nav class="navbar no-background navbar-dark bg-dark p-4">
+
+        <a class="navbar-brand" href="https://www.torproject.org/">
+          <img src="./tor-logo@2x.png" alt="Tor" height="50" />
+        </a>
+
+        <div class="btn-group dropdown pull-right">
+
+          <button id="language-switcher" type="button" class="btn btn-dark bg-dark dropdown-toggle btn-block my-3 my-sm-0" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            en_US
+          </button>
+          <div id="supported-languages" class="dropdown-menu">
+          </div>
+        </div>
+      </nav>
     </header>
-    <section id="content">
-      <h1>SNOWFLAKE</h1>
+    <div class="container-fluid">
+      <section id="content">
+        <h1>SNOWFLAKE</h1>
 
-      <p class="diagram"><img src="https://trac.torproject.org/projects/tor/raw-attachment/wiki/doc/Snowflake/snowflake-schematic.png" alt="Diagram" /></p>
+        <p class="diagram"><img src="https://trac.torproject.org/projects/tor/raw-attachment/wiki/doc/Snowflake/snowflake-schematic.png" alt="Diagram" /></p>
 
-      <p data-msgid="__MSG_websiteIntro__">Snowflake is a system to defeat internet censorship. People who are
-      censored can use Snowflake to access the internet. Their connection goes
-      through Snowflake proxies, which are run by volunteers. For more detailed
-      information about how Snowflake works see our
-      <a href="https://trac.torproject.org/projects/tor/wiki/doc/Snowflake/" data-msgid="__MSG_docWiki__">documentation wiki</a>.</p>
+        <p data-msgid="__MSG_websiteIntro__">Snowflake is a system to defeat internet censorship. People who are
+        censored can use Snowflake to access the internet. Their connection goes
+        through Snowflake proxies, which are run by volunteers. For more detailed
+        information about how Snowflake works see our
+        <a href="https://trac.torproject.org/projects/tor/wiki/doc/Snowflake/" data-msgid="__MSG_docWiki__">documentation wiki</a>.</p>
 
-      <div class="sidebyside">
+        <div class="sidebyside">
 
-        <section id="browser" class="browser">
-          <h2 data-msgid="__MSG_browser__">Browser</h2>
+          <section id="browser" class="browser">
+            <h2 data-msgid="__MSG_browser__">Browser</h2>
 
-          <p data-msgid="__MSG_censoredUsers__">If your internet access is censored, you should download 
-          <a href="https://www.torproject.org/download/">Tor Browser</a>.</p>
+            <p data-msgid="__MSG_censoredUsers__">If your internet access is censored, you should download 
+            <a href="https://www.torproject.org/download/">Tor Browser</a>.</p>
 
-          <p class="screenshot"><img src="https://snowflake.torproject.org/screenshot.png" alt="Tor Browser screenshot" /></p>
-        </section>
+            <p class="screenshot"><img src="./screenshot.png" alt="Tor Browser screenshot" /></p>
+          </section>
 
-        <section id="extension" class="extension">
-          <h2 data-msgid="__MSG_extension__">Extension</h2>
+          <section id="extension" class="extension">
+            <h2 data-msgid="__MSG_extension__">Extension</h2>
 
-          <p data-msgid="__MSG_installExtension__">If your internet access is <strong>not</strong> censored, you should
-          consider installing the Snowflake extension to help users in censored
-          networks. There is no need to worry about which websites people are
-          accessing through your proxy. Their visible browsing IP address will
-          match their Tor exit node, not yours.</p>
+            <p data-msgid="__MSG_installExtension__">If your internet access is <strong>not</strong> censored, you should
+            consider installing the Snowflake extension to help users in censored
+            networks. There is no need to worry about which websites people are
+            accessing through your proxy. Their visible browsing IP address will
+            match their Tor exit node, not yours.</p>
 
-          <p class="addon">
+            <p class="addon">
             <a href="https://addons.mozilla.org/en-US/firefox/addon/torproject-snowflake/">
-              <img src="https://snowflake.torproject.org/firefox150.jpg" alt="Install in Firefox" height="100" /><br />
+              <img src="./firefox150.jpg" alt="Install in Firefox" height="100" /><br />
               <span data-msgid="MSG_installFirefox__">Install in Firefox</span>
             </a>
             <a href="https://chrome.google.com/webstore/detail/snowflake/mafpmfcccpbjnhfhjnllmmalhifmlcie">
-              <img src="https://snowflake.torproject.org/chrome150.jpg" alt="Install in Chrome" height="100" /><br />
+              <img src="./chrome150.jpg" alt="Install in Chrome" height="100" /><br />
               <span data-msgid="__MSG_installChrome__">Install in Chrome</span>
             </a>
+            </p>
+          </section>
+
+        </div>
+
+        <section id="bugs">
+          <h2 data-msgid="__MSG_reportingBugs__">Reporting Bugs</h2>
+
+          <p data-msgid="__MSG_fileBug__">If you encounter problems with Snowflake as a client or a proxy,
+          please consider filing a bug.  To do so, you will have to,</p>
+
+          <ol>
+            <li data-msgid="__MSG_sharedAccount__">
+              Either <a href="https://trac.torproject.org/projects/tor/register">create an
+                account</a> or <a href="https://trac.torproject.org/projects/tor/login">log in</a>
+              using the shared <b>cypherpunks</b> account with password <b>writecode</b>.</li>
+            <li data-msgid="__MSG_bugTracker__">
+              <a href="https://trac.torproject.org/projects/tor/newticket?component=Circumvention%2FSnowflake">File a ticket</a>
+              using our bug tracker.</li>
+          </ol>
+
+          <p data-msgid="__MSG_descriptive__">
+          Please try to be as descriptive as possible with your ticket and if
+          possible include log messages that will help us reproduce the bug.
+          Consider adding keywords <em>snowflake-webextension</em> or <em>snowflake-client</em>
+          to let us know how which part of the Snowflake system is experiencing
+          problems.
           </p>
         </section>
 
-      </div>
+        <section id="embed">
+          <h2 data-msgid="__MSG_embed__">Embed</h2>
 
-      <section id="bugs">
-        <h2 data-msgid="__MSG_reportingBugs__">Reporting Bugs</h2>
+          <p data-msgid="__MSG_possible__">It is now possible to embed the Snowflake badge on any website:</p>
 
-        <p data-msgid="__MSG_fileBug__">If you encounter problems with Snowflake as a client or a proxy,
-        please consider filing a bug.  To do so, you will have to,</p>
+          <textarea readonly>&lt;iframe src="https://snowflake.torproject.org/embed.html" width="320" height="240" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</textarea>
 
-        <ol>
-          <li data-msgid="__MSG_sharedAccount__">
-          Either <a href="https://trac.torproject.org/projects/tor/register">create an
-          account</a> or <a href="https://trac.torproject.org/projects/tor/login">log in</a>
-          using the shared <b>cypherpunks</b> account with password <b>writecode</b>.</li>
-          <li data-msgid="__MSG_bugTracker__">
-	  <a href="https://trac.torproject.org/projects/tor/newticket?component=Circumvention%2FSnowflake">File a ticket</a>
-          using our bug tracker.</li>
-        </ol>
+          <p data-msgid="__MSG_looksLike__">Which looks like this:</p>
 
-        <p data-msgid="__MSG_descriptive__">
-        Please try to be as descriptive as possible with your ticket and if
-        possible include log messages that will help us reproduce the bug.
-        Consider adding keywords <em>snowflake-webextension</em> or <em>snowflake-client</em>
-        to let us know how which part of the Snowflake system is experiencing
-        problems.
-        </p>
+          <iframe src="https://snowflake.torproject.org/embed.html" width="320" height="240" frameborder="0" scrolling="no"></iframe>
+        </section>
+
       </section>
-
-      <section id="embed">
-        <h2 data-msgid="__MSG_embed__">Embed</h2>
-
-        <p data-msgid="__MSG_possible__">It is now possible to embed the Snowflake badge on any website:</p>
-
-        <textarea readonly>&lt;iframe src="https://snowflake.torproject.org/embed.html" width="320" height="240" frameborder="0" scrolling="no"&gt;&lt;/iframe&gt;</textarea>
-
-        <p data-msgid="__MSG_looksLike__">Which looks like this:</p>
-
-        <iframe src="https://snowflake.torproject.org/embed.html" width="320" height="240" frameborder="0" scrolling="no"></iframe>
-      </section>
-
-    </section>
+    </div>
     <script src="index.js"></script>
   </body>
 </html>

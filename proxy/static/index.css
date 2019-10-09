@@ -9,24 +9,17 @@ body {
   font-size: 1.3rem;
   font-weight: 400;
   line-height: 1.5;
-  background-color: #59316B;
   color: #212529;
 }
 
 header {
   margin: 0;
-  line-height: 0;
-  padding: 1.3rem 2.6rem;
-}
-
-header a {
-  border-style: none;
-  display: inline-block;
-  line-height: 0;
+  background-color: #59316B;
+  padding: 0 5.2rem;
 }
 
 #content {
-  max-width: 55rem;
+  max-width: 90rem;
   margin: 0 auto 2.6rem auto;
   padding: 2.6rem 5.2rem;
   background-color: #FFFFFF;
@@ -77,6 +70,7 @@ h2 {
 }
 
 .diagram, .screenshot {
+  padding: 2.6rem 5.2rem;
   text-align: center;
 }
 
@@ -87,4 +81,14 @@ h2 {
 textarea {
   max-width: 100%;
   width: 600px;
+}
+
+.dropdown:hover .dropdown-menu {
+  display: block;
+  height: 350px;
+  overflow: auto;
+}
+
+.pull-right {
+  float: right !important;
 }
