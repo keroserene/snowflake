@@ -10,6 +10,7 @@
     "test": "node make.js test",
     "build": "node make.js build",
     "webext": "node make.js webext",
+    "pack-webext": "node make.js pack-webext",
     "clean": "node make.js clean",
     "prepublish": "node make.js node",
     "start": "node build/snowflake.js",

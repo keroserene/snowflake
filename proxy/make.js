@@ -112,6 +112,30 @@ task('node', 'build the node binary', function() {
   console.log('Node prepared.');
 });
 
+task('pack-webext', 'pack the webextension for deployment', function() {
+  try {
+    execSync(`rm -f source.zip`);
+    execSync(`rm -f webext/webext.zip`);
+  } catch (error) {
+    console.log('Error removing zip files');
+  }
+  execSync(`git submodule update --remote`);
+  var version = process.argv[3];
+  console.log(version);
+  var manifest = require('./webext/manifest.json')
+  manifest.version = version;
+  writeFileSync('./webext/manifest.json', JSON.stringify(manifest, null, 2), 'utf8');
+  execSync(`git commit -am "bump version to ${version}"`);
+  try {
+    execSync(`git tag webext-${version}`);
+  } catch (error) {
+    console.log('Error creating git tag');
+  }
+  execSync(`git archive -o source.zip HEAD .`);
+  execSync(`npm run webext`);
+  execSync(`cd webext && zip -Xr webext.zip ./*`);
+});
+
 task('clean', 'remove all built files', function() {
   execSync('rm -rf build test spec/support');
 });
