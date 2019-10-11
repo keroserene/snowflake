@@ -50,14 +50,16 @@ npm run build
 Do a "dry run" rsync with `-n` to check that only expected files are being changed. If you don't understand why a file would be updated, you can add the `-i` option to see the reason.
 
 ```
-rsync -n --chmod ug=rw,D+x --perms --delete -crv build/ staticiforme:/srv/snowflake.torproject.org/htdocs/
+rsync -n --chown=:snowflake --chmod ug=rw,D+x --perms --delete -crv build/ staticiforme:/srv/snowflake.torproject.org/htdocs/
 ```
 
 If it looks good, then repeat the rsync without `-n`.
 
 ```
-rsync --chmod ug=rw,D+x --perms --delete -crv build/ staticiforme:/srv/snowflake.torproject.org/htdocs/
+rsync --chown=:snowflake --chmod ug=rw,D+x --perms --delete -crv build/ staticiforme:/srv/snowflake.torproject.org/htdocs/
 ```
+
+You can ignore errors of the form `rsync: failed to set permissions on "<dirname>/": Operation not permitted (1)`.
 
 Then run the command to copy the new files to the live web servers:
 
