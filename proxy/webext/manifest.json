@@ -1,11 +1,13 @@
 {
   "manifest_version": 2,
   "name": "Snowflake",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "__MSG_appDesc__",
   "default_locale": "en_US",
   "background": {
-    "scripts": ["snowflake.js"],
+    "scripts": [
+      "snowflake.js"
+    ],
     "persistent": true
   },
   "browser_action": {
@@ -16,5 +18,7 @@
     "default_title": "Snowflake",
     "default_popup": "embed.html"
   },
-  "permissions": ["storage"]
+  "permissions": [
+    "storage"
+  ]
 }
