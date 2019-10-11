@@ -13,17 +13,9 @@ const (
 	SnowflakeTimeout = 30
 )
 
-// HandlerChan - When a connection handler starts, +1 is written to this channel; when it
-// ends, -1 is written.
-var HandlerChan = make(chan int)
-
 // Given an accepted SOCKS connection, establish a WebRTC connection to the
 // remote peer and exchange traffic.
 func Handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
-	HandlerChan <- 1
-	defer func() {
-		HandlerChan <- -1
-	}()
 	// Obtain an available WebRTC remote. May block.
 	snowflake := snowflakes.Pop()
 	if nil == snowflake {

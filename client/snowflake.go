@@ -184,8 +184,6 @@ func main() {
 	}
 	pt.CmethodsDone()
 
-	var numHandlers int
-	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
 
@@ -202,22 +200,12 @@ func main() {
 	}
 
 	// keep track of handlers and wait for a signal
-	sig = nil
-	for sig == nil {
-		select {
-		case n := <-sf.HandlerChan:
-			numHandlers += n
-		case sig = <-sigChan:
-		}
-	}
+	<-sigChan
 
 	// signal received, shut down
 	for _, ln := range listeners {
 		ln.Close()
 	}
 	snowflakes.End()
-	for numHandlers > 0 {
-		numHandlers += <-sf.HandlerChan
-	}
 	log.Println("snowflake is done.")
 }

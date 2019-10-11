@@ -37,10 +37,6 @@ const listenAndServeErrorTimeout = 100 * time.Millisecond
 
 var ptInfo pt.ServerInfo
 
-// When a connection handler starts, +1 is written to this channel; when it
-// ends, -1 is written.
-var handlerChan = make(chan int)
-
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage: %s [OPTIONS]
 
@@ -156,11 +152,6 @@ func webSocketHandler(ws *websocket.WebSocket) {
 	}
 	conn := newWebSocketConn(ws)
 	defer conn.Close()
-
-	handlerChan <- 1
-	defer func() {
-		handlerChan <- -1
-	}()
 
 	// Pass the address of client as the remote address of incoming connection
 	clientIPParam := ws.Request().URL.Query().Get("client_ip")
@@ -390,8 +381,6 @@ func main() {
 	}
 	pt.SmethodsDone()
 
-	var numHandlers int
-	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
 
@@ -407,22 +396,12 @@ func main() {
 		}()
 	}
 
-	// keep track of handlers and wait for a signal
-	sig = nil
-	for sig == nil {
-		select {
-		case n := <-handlerChan:
-			numHandlers += n
-		case sig = <-sigChan:
-		}
-	}
+	// wait for a signal
+	sig := <-sigChan
 
 	// signal received, shut down
 	log.Printf("caught signal %q, exiting", sig)
 	for _, server := range servers {
 		server.Close()
-	}
-	for numHandlers > 0 {
-		numHandlers += <-handlerChan
 	}
 }
