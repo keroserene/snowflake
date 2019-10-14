@@ -184,6 +184,10 @@ class ProxyPair {
       this.client.close();
     }
     this.client = null;
+    if (this.peerConnOpen()) {
+      this.pc.close();
+    }
+    this.pc = null;
     if (this.relayIsReady()) {
       this.relay.close();
     }
@@ -236,6 +240,10 @@ class ProxyPair {
 
   isClosed(ws) {
     return void 0 === ws || WebSocket.CLOSED === ws.readyState;
+  }
+
+  peerConnOpen() {
+    return (null !== this.pc) && ('closed' !== this.pc.connectionState);
   }
 
 }
