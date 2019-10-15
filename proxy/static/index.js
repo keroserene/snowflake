@@ -29,11 +29,11 @@ var getLang = function() {
     lang = override_lang;
   }
 
-  if (availableLangs.has(lang)) {
+  if (Object.prototype.hasOwnProperty.call(availableLangs, lang)) {
     return lang;
   }
   lang = lang.split('_')[0];
-  if (availableLangs.has(lang)) {
+  if (Object.prototype.hasOwnProperty.call(availableLangs, lang)) {
     return lang;
   }
   return defaultLang;
@@ -64,7 +64,8 @@ fetch(`./_locales/${getLang()}/messages.json`)
 })
 .then((json) => {
   var language = document.getElementById('language-switcher');
-  language.innerText = `${getLang()}`
+  var lang = `${getLang()}`
+  language.innerText = availableLangs[lang].name + ' (' + lang + ')';
   var messages = new Messages(json);
   fill(document.body, (m) => {
     return messages.getMessage(m);
@@ -72,11 +73,11 @@ fetch(`./_locales/${getLang()}/messages.json`)
 });
 
 // Populate language switcher list
-availableLangs.forEach(function (lang) {
+for (var lang in availableLangs) {
   var languageList = document.getElementById('supported-languages');
   var link = document.createElement('a');
   link.setAttribute('href', '?lang='+lang);
   link.setAttribute('class', "dropdown-item");
-  link.innerText = lang;
+  link.innerText = availableLangs[lang].name + ' (' + lang + ')';
   languageList.lastChild.after(link);
-});
+}

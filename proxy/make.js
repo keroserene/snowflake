@@ -4,6 +4,7 @@
 
 var { writeFileSync, readdirSync, statSync } = require('fs');
 var { execSync, spawn } = require('child_process');
+var cldr = require('cldr');
 
 // All files required.
 var FILES = [
@@ -49,6 +50,20 @@ var copyTranslations = function(outDir) {
   execSync(`cp -rf translation/* ${outDir}/_locales/`);
 };
 
+var getDisplayName = function(locale) {
+  var code = locale.split("_")[0];
+  try {
+    var name = cldr.extractLanguageDisplayNames(code)[code];
+  }
+  catch(e) {
+    return '';
+  }
+  if (name === undefined) {
+    return '';
+  }
+  return name;
+}
+
 var availableLangs = function() {
   let out = "const availableLangs = new Set([\n";
   let dirs = readdirSync('translation').filter((f) => {
@@ -63,6 +78,19 @@ var availableLangs = function() {
   return out;
 };
 
+var translatedLangs = function() {
+  let out = "const availableLangs = {\n";
+  let dirs = readdirSync('translation').filter((f) => {
+    const s = statSync(`translation/${f}`);
+    return s.isDirectory();
+  });
+  dirs.push('en_US');
+  dirs.sort();
+  dirs = dirs.map(d => `'${d}': {"name": '${getDisplayName(d)}'},`);
+  out += dirs.join("\n");
+  out += "\n};\n\n";
+  return out;
+};
 var tasks = new Map();
 
 var task = function(key, msg, func) {
@@ -94,7 +122,7 @@ task('build', 'build the snowflake proxy', function() {
   execSync(`cp -r ${STATIC}/ ${outDir}/`);
   copyTranslations(outDir);
   concatJS(outDir, 'badge', 'embed.js', availableLangs());
-  writeFileSync(`${outDir}/index.js`, availableLangs(), 'utf8');
+  writeFileSync(`${outDir}/index.js`, translatedLangs(), 'utf8');
   execSync(`cat ${STATIC}/index.js >> ${outDir}/index.js`);
   console.log('Snowflake prepared.');
 });
