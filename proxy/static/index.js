@@ -71,7 +71,7 @@ fetch(`./_locales/${getLang()}/messages.json`)
   });
 });
 
-// Populate language swticher list
+// Populate language switcher list
 availableLangs.forEach(function (lang) {
   var languageList = document.getElementById('supported-languages');
   var link = document.createElement('a');
