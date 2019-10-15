@@ -117,6 +117,7 @@ task('pack-webext', 'pack the webextension for deployment', function() {
     execSync(`rm -f source.zip`);
     execSync(`rm -f webext/webext.zip`);
   } catch (error) {
+    //Usually this happens because the zip files were removed previously
     console.log('Error removing zip files');
   }
   execSync(`git submodule update --remote`);
@@ -130,6 +131,11 @@ task('pack-webext', 'pack the webextension for deployment', function() {
     execSync(`git tag webext-${version}`);
   } catch (error) {
     console.log('Error creating git tag');
+    // Revert changes
+    execSync(`git reset HEAD~`);
+    execSync(`git checkout ./webext/manifest.json`);
+    execSync(`git submodule update`);
+    return;
   }
   execSync(`git archive -o source.zip HEAD .`);
   execSync(`npm run webext`);
