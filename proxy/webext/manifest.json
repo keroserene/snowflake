@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Snowflake",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "__MSG_appDesc__",
   "default_locale": "en_US",
   "background": {
