@@ -20,7 +20,7 @@ Config.prototype.minRateLimit = 10 * 1024;
 
 Config.prototype.rateLimitHistory = 5.0;
 
-Config.prototype.defaultBrokerPollInterval = 20.0 * 1000;
+Config.prototype.defaultBrokerPollInterval = 300.0 * 1000;
 
 Config.prototype.maxNumClients = 1;
 
