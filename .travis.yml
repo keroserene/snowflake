@@ -26,8 +26,8 @@ install:
     - go get -u github.com/keroserene/go-webrtc
     - go get -u github.com/pion/webrtc
     - go get -u github.com/dchest/uniuri
+    - go get -u github.com/gorilla/websocket
     - go get -u git.torproject.org/pluggable-transports/goptlib.git
-    - go get -u git.torproject.org/pluggable-transports/websocket.git/websocket
     - go get -u google.golang.org/appengine
     - go get -u golang.org/x/crypto/acme/autocert
     - go get -u golang.org/x/net/http2
