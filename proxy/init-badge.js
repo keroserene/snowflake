@@ -193,7 +193,7 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
     if (
       !silenceNotifications &&
       snowflake !== null &&
-      Snowflake.MODE.WEBRTC_READY === snowflake.state
+      ui.active
     ) {
       return Snowflake.MESSAGE.CONFIRMATION;
     }

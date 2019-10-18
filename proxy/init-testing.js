@@ -46,7 +46,7 @@ DebugUI.prototype.$status = null;
 Entry point.
 */
 
-var snowflake, query, debug, silenceNotifications, log, dbg, init;
+var snowflake, query, debug, ui, silenceNotifications, log, dbg, init;
 
 (function() {
 
@@ -108,7 +108,7 @@ var snowflake, query, debug, silenceNotifications, log, dbg, init;
     if (
       !silenceNotifications &&
       snowflake !== null &&
-      Snowflake.MODE.WEBRTC_READY === snowflake.state
+      ui.active
     ) {
       return Snowflake.MESSAGE.CONFIRMATION;
     }

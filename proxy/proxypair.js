@@ -1,4 +1,4 @@
-/* global snowflake, log, dbg, Util, PeerConnection, Snowflake, Parse, WS */
+/* global snowflake, log, dbg, Util, PeerConnection, Parse, WS */
 
 /*
 Represents a single:
@@ -89,7 +89,6 @@ class ProxyPair {
         return;
       }
       this.running = true;
-      snowflake.state = Snowflake.MODE.WEBRTC_READY;
       snowflake.ui.setActive(true);
       // This is the point when the WebRTC datachannel is done, so the next step
       // is to establish websocket to the server.
@@ -99,7 +98,6 @@ class ProxyPair {
       log('WebRTC DataChannel closed.');
       snowflake.ui.setStatus('disconnected by webrtc.');
       snowflake.ui.setActive(false);
-      snowflake.state = Snowflake.MODE.INIT;
       this.flush();
       return this.close();
     };
@@ -139,7 +137,6 @@ class ProxyPair {
       log(relay.label + ' closed.');
       snowflake.ui.setStatus('disconnected.');
       snowflake.ui.setActive(false);
-      snowflake.state = Snowflake.MODE.INIT;
       this.flush();
       return this.close();
     };

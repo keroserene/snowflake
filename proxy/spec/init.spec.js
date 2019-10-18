@@ -6,29 +6,28 @@ var snowflake = {
   ui: new UI,
   broker: {
     sendAnswer: function() {}
-  },
-  state: Snowflake.MODE.INIT
+  }
 };
 
 describe('Init', function() {
 
   it('gives a dialog when closing, only while active', function() {
     silenceNotifications = false;
-    snowflake.state = Snowflake.MODE.WEBRTC_READY;
+    ui.setActive(true);
     var msg = window.onbeforeunload();
-    expect(snowflake.state).toBe(Snowflake.MODE.WEBRTC_READY);
+    expect(ui.active).toBe(true);
     expect(msg).toBe(Snowflake.MESSAGE.CONFIRMATION);
-    snowflake.state = Snowflake.MODE.INIT;
+    ui.setActive(false);
     msg = window.onbeforeunload();
-    expect(snowflake.state).toBe(Snowflake.MODE.INIT);
+    expect(ui.active).toBe(false);
     expect(msg).toBe(null);
   });
 
   it('does not give a dialog when silent flag is on', function() {
     silenceNotifications = true;
-    snowflake.state = Snowflake.MODE.WEBRTC_READY;
+    ui.setActive(true);
     var msg = window.onbeforeunload();
-    expect(snowflake.state).toBe(Snowflake.MODE.WEBRTC_READY);
+    expect(ui.active).toBe(true);
     expect(msg).toBe(null);
   });
 

@@ -22,7 +22,6 @@ class Snowflake {
     this.config = config;
     this.ui = ui;
     this.broker = broker;
-    this.state = Snowflake.MODE.INIT;
     this.proxyPairs = [];
     if (void 0 === this.config.rateLimitBytes) {
       this.rateLimit = new DummyRateLimit();
@@ -44,7 +43,6 @@ class Snowflake {
   // Initialize WebRTC PeerConnection, which requires beginning the signalling
   // process. |pollBroker| automatically arranges signalling.
   beginWebRTC() {
-    this.state = Snowflake.MODE.WEBRTC_CONNECTING;
     log('ProxyPair Slots: ' + this.proxyPairs.length);
     log('Snowflake IDs: ' + (this.proxyPairs.map(function(p) {
       return p.id;
@@ -172,13 +170,6 @@ Snowflake.prototype.rateLimit = null;
 Snowflake.prototype.pollInterval = null;
 
 Snowflake.prototype.retries = 0;
-
-// Janky state machine
-Snowflake.MODE = {
-  INIT: 0,
-  WEBRTC_CONNECTING: 1,
-  WEBRTC_READY: 2
-};
 
 Snowflake.MESSAGE = {
   CONFIRMATION: 'You\'re currently serving a Tor user via Snowflake.'
