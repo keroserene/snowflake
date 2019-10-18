@@ -78,7 +78,7 @@ class Snowflake {
         }
         //set a timeout for channel creation
         return setTimeout((() => {
-          if (!pair.running) {
+          if (!pair.webrtcIsReady()) {
             log('proxypair datachannel timed out waiting for open');
             pair.close();
             return pair.active = false;
