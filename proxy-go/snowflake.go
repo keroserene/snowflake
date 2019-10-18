@@ -210,16 +210,10 @@ type timeoutConn struct {
 }
 
 func (tc timeoutConn) Read(buf []byte) (int, error) {
-	if err := tc.c.SetDeadline(time.Now().Add(tc.t)); err != nil {
-		log.Printf("calling SetDeadline in Read returned the following error: %v", err)
-	}
 	return tc.c.Read(buf)
 }
 
 func (tc timeoutConn) Write(buf []byte) (int, error) {
-	if err := tc.c.SetDeadline(time.Now().Add(tc.t)); err != nil {
-		log.Printf("calling SetDeadline in Write returned the following error: %v", err)
-	}
 	return tc.c.Write(buf)
 }
 
