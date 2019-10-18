@@ -16,9 +16,8 @@ class Snowflake {
 
   // Prepare the Snowflake with a Broker (to find clients) and optional UI.
   constructor(config, ui, broker) {
-    // Receive an SDP offer from some client assigned by the Broker,
-    // |pair| - an available ProxyPair.
     this.receiveOffer = this.receiveOffer.bind(this);
+
     this.config = config;
     this.ui = ui;
     this.broker = broker;
@@ -85,6 +84,8 @@ class Snowflake {
     return this.retries++;
   }
 
+  // Receive an SDP offer from some client assigned by the Broker,
+  // |pair| - an available ProxyPair.
   receiveOffer(pair, desc) {
     var e, offer, sdp;
     try {
@@ -156,12 +157,8 @@ class Snowflake {
 }
 
 Snowflake.prototype.relayAddr = null;
-
 Snowflake.prototype.rateLimit = null;
-
 Snowflake.prototype.pollInterval = null;
-
-Snowflake.prototype.retries = 0;
 
 Snowflake.MESSAGE = {
   CONFIRMATION: 'You\'re currently serving a Tor user via Snowflake.'

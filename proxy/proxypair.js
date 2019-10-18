@@ -17,17 +17,13 @@ class ProxyPair {
   - @rateLimit specifies a rate limit on traffic
   */
   constructor(relayAddr, rateLimit, pcConfig) {
-    // Given a WebRTC DataChannel, prepare callbacks.
     this.prepareDataChannel = this.prepareDataChannel.bind(this);
-    // Assumes WebRTC datachannel is connected.
     this.connectRelay = this.connectRelay.bind(this);
-    // WebRTC --> websocket
     this.onClientToRelayMessage = this.onClientToRelayMessage.bind(this);
-    // websocket --> WebRTC
     this.onRelayToClientMessage = this.onRelayToClientMessage.bind(this);
     this.onError = this.onError.bind(this);
-    // Send as much data in both directions as the rate limit currently allows.
     this.flush = this.flush.bind(this);
+
     this.relayAddr = relayAddr;
     this.rateLimit = rateLimit;
     this.pcConfig = pcConfig;
@@ -82,6 +78,7 @@ class ProxyPair {
     return true;
   }
 
+  // Given a WebRTC DataChannel, prepare callbacks.
   prepareDataChannel(channel) {
     channel.onopen = () => {
       log('WebRTC DataChannel opened!');
@@ -104,6 +101,7 @@ class ProxyPair {
     return channel.onmessage = this.onClientToRelayMessage;
   }
 
+  // Assumes WebRTC datachannel is connected.
   connectRelay() {
     var params, peer_ip, ref;
     dbg('Connecting to relay...');
@@ -148,12 +146,14 @@ class ProxyPair {
     }), 5000);
   }
 
+  // WebRTC --> websocket
   onClientToRelayMessage(msg) {
     dbg('WebRTC --> websocket data: ' + msg.data.byteLength + ' bytes');
     this.c2rSchedule.push(msg.data);
     return this.flush();
   }
 
+  // websocket --> WebRTC
   onRelayToClientMessage(event) {
     dbg('websocket --> WebRTC data: ' + event.data.byteLength + ' bytes');
     this.r2cSchedule.push(event.data);
@@ -185,6 +185,7 @@ class ProxyPair {
     this.onCleanup();
   }
 
+  // Send as much data in both directions as the rate limit currently allows.
   flush() {
     var busy, checkChunks;
     if (this.flush_timeout_id) {
@@ -239,15 +240,10 @@ class ProxyPair {
 ProxyPair.prototype.MAX_BUFFER = 10 * 1024 * 1024;
 
 ProxyPair.prototype.pc = null;
-
 ProxyPair.prototype.client = null; // WebRTC Data channel
-
 ProxyPair.prototype.relay = null; // websocket
 
 ProxyPair.prototype.timer = 0;
-
 ProxyPair.prototype.flush_timeout_id = null;
 
 ProxyPair.prototype.onCleanup = null;
-
-ProxyPair.prototype.id = null;

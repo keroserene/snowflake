@@ -15,15 +15,9 @@ class Broker {
   // On construction, this Broker object does not do anything until
   // |getClientOffer| is called.
   constructor(url) {
-    // Promises some client SDP Offer.
-    // Registers this Snowflake with the broker using an HTTP POST request, and
-    // waits for a response containing some client offer that the Broker chooses
-    // for this proxy..
-    // TODO: Actually support multiple clients.
     this.getClientOffer = this.getClientOffer.bind(this);
-    // urlSuffix for the broker is different depending on what action
-    // is desired.
     this._postRequest = this._postRequest.bind(this);
+
     this.url = url;
     this.clients = 0;
     if (0 === this.url.indexOf('localhost', 0)) {
@@ -38,6 +32,11 @@ class Broker {
     }
   }
 
+  // Promises some client SDP Offer.
+  // Registers this Snowflake with the broker using an HTTP POST request, and
+  // waits for a response containing some client offer that the Broker chooses
+  // for this proxy..
+  // TODO: Actually support multiple clients.
   getClientOffer(id) {
     return new Promise((fulfill, reject) => {
       var xhr;
@@ -87,6 +86,8 @@ class Broker {
     return this._postRequest(id, xhr, 'answer', JSON.stringify(answer));
   }
 
+  // urlSuffix for the broker is different depending on what action
+  // is desired.
   _postRequest(id, xhr, urlSuffix, payload) {
     var err;
     try {
