@@ -33,7 +33,7 @@ HTTP 200 OK
 HTTP 200 OK
 
 {
-    Status: "no proxies"
+    Status: "no match"
 }
 
 3) If the request is malformed:
