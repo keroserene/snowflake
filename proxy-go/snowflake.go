@@ -204,38 +204,19 @@ func sendAnswer(sid string, pc *webrtc.PeerConnection) error {
 	return nil
 }
 
-type timeoutConn struct {
-	c net.Conn
-	t time.Duration
-}
-
-func (tc timeoutConn) Read(buf []byte) (int, error) {
-	return tc.c.Read(buf)
-}
-
-func (tc timeoutConn) Write(buf []byte) (int, error) {
-	return tc.c.Write(buf)
-}
-
-func (tc timeoutConn) Close() error {
-	return tc.c.Close()
-}
-
-func CopyLoopTimeout(c1 net.Conn, c2 net.Conn, timeout time.Duration) {
-	tc1 := timeoutConn{c: c1, t: timeout}
-	tc2 := timeoutConn{c: c2, t: timeout}
+func CopyLoop(c1 net.Conn, c2 net.Conn) {
 	var wg sync.WaitGroup
 	copyer := func(dst io.ReadWriteCloser, src io.ReadWriteCloser) {
 		defer wg.Done()
 		if _, err := io.Copy(dst, src); err != nil {
-			log.Printf("io.Copy inside CopyLoopTimeout generated an error: %v", err)
+			log.Printf("io.Copy inside CopyLoop generated an error: %v", err)
 		}
 		dst.Close()
 		src.Close()
 	}
 	wg.Add(2)
-	go copyer(tc1, tc2)
-	go copyer(tc2, tc1)
+	go copyer(c1, c2)
+	go copyer(c2, c1)
 	wg.Wait()
 }
 
@@ -271,7 +252,7 @@ func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 	log.Printf("connected to relay")
 	defer wsConn.Close()
 	wsConn.PayloadType = websocket.BinaryFrame
-	CopyLoopTimeout(conn, wsConn, time.Minute)
+	CopyLoop(conn, wsConn)
 	log.Printf("datachannelHandler ends")
 }
 
