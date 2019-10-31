@@ -24,8 +24,6 @@ Config.prototype.defaultBrokerPollInterval = 300.0 * 1000;
 
 Config.prototype.maxNumClients = 1;
 
-Config.prototype.connectionsPerClient = 1;
-
 // TODO: Different ICE servers.
 Config.prototype.pcConfig = {
   iceServers: [

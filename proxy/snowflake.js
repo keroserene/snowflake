@@ -119,7 +119,7 @@ class Snowflake {
   }
 
   makeProxyPair() {
-    if (this.proxyPairs.length >= this.config.connectionsPerClient) {
+    if (this.proxyPairs.length >= this.config.maxNumClients) {
       return null;
     }
     var pair;
