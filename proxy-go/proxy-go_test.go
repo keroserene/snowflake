@@ -4,6 +4,9 @@ import (
 	"net"
 	"strings"
 	"testing"
+
+	"github.com/pion/webrtc"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestRemoteIPFromSDP(t *testing.T) {
@@ -106,4 +109,83 @@ a=sctpmap:5000 webrtc-datachannel 1024
 			t.Errorf("expected %q, got %q from %q", test.expected, ip, crlfSDP)
 		}
 	}
+}
+
+func TestSessionDescriptions(t *testing.T) {
+	Convey("Session description deserialization", t, func() {
+		for _, test := range []struct {
+			msg string
+			ret *webrtc.SessionDescription
+		}{
+			{
+				"test",
+				nil,
+			},
+			{
+				`{"type":"answer"}`,
+				nil,
+			},
+			{
+				`{"sdp":"test"}`,
+				nil,
+			},
+			{
+				`{"type":"test", "sdp":"test"}`,
+				nil,
+			},
+			{
+				`{"type":"answer", "sdp":"test"}`,
+				&webrtc.SessionDescription{
+					Type: webrtc.SDPTypeAnswer,
+					SDP:  "test",
+				},
+			},
+			{
+				`{"type":"pranswer", "sdp":"test"}`,
+				&webrtc.SessionDescription{
+					Type: webrtc.SDPTypePranswer,
+					SDP:  "test",
+				},
+			},
+			{
+				`{"type":"rollback", "sdp":"test"}`,
+				&webrtc.SessionDescription{
+					Type: webrtc.SDPTypeRollback,
+					SDP:  "test",
+				},
+			},
+			{
+				`{"type":"offer", "sdp":"test"}`,
+				&webrtc.SessionDescription{
+					Type: webrtc.SDPTypeOffer,
+					SDP:  "test",
+				},
+			},
+		} {
+			desc := deserializeSessionDescription(test.msg)
+			So(desc, ShouldResemble, test.ret)
+		}
+	})
+	Convey("Session description serialization", t, func() {
+		for _, test := range []struct {
+			desc *webrtc.SessionDescription
+			ret  string
+		}{
+			{
+				&webrtc.SessionDescription{
+					Type: webrtc.SDPTypeOffer,
+					SDP:  "test",
+				},
+				`{"type":"offer","sdp":"test"}`,
+			},
+		} {
+			msg := serializeSessionDescription(test.desc)
+			So(msg, ShouldResemble, test.ret)
+		}
+	})
+}
+
+func TestUtilityFuncs(t *testing.T) {
+	Convey("LimitedRead", t, func() {
+	})
 }

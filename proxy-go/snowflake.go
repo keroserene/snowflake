@@ -493,10 +493,6 @@ func deserializeSessionDescription(msg string) *webrtc.SessionDescription {
 		stype = webrtc.SDPTypeRollback
 	}
 
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
 	return &webrtc.SessionDescription{
 		Type: stype,
 		SDP:  parsed["sdp"].(string),
