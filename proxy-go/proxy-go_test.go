@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"net"
 	"strings"
 	"testing"
@@ -187,5 +188,67 @@ func TestSessionDescriptions(t *testing.T) {
 
 func TestUtilityFuncs(t *testing.T) {
 	Convey("LimitedRead", t, func() {
+		c, s := net.Pipe()
+		Convey("Successful read", func() {
+			go func() {
+				bytes := make([]byte, 50)
+				c.Write(bytes)
+				c.Close()
+			}()
+			bytes, err := limitedRead(s, 60)
+			So(len(bytes), ShouldEqual, 50)
+			So(err, ShouldBeNil)
+		})
+		Convey("Large read", func() {
+			go func() {
+				bytes := make([]byte, 50)
+				c.Write(bytes)
+				c.Close()
+			}()
+			bytes, err := limitedRead(s, 49)
+			So(len(bytes), ShouldEqual, 49)
+			So(err, ShouldEqual, io.ErrUnexpectedEOF)
+		})
+		Convey("Failed read", func() {
+			s.Close()
+			bytes, err := limitedRead(s, 49)
+			So(len(bytes), ShouldEqual, 0)
+			So(err, ShouldEqual, io.ErrClosedPipe)
+		})
+	})
+	Convey("Tokens", t, func() {
+		tokens = make(chan bool, 2)
+		for i := uint(0); i < 2; i++ {
+			tokens <- true
+		}
+		So(len(tokens), ShouldEqual, 2)
+		getToken()
+		So(len(tokens), ShouldEqual, 1)
+		retToken()
+		So(len(tokens), ShouldEqual, 2)
+	})
+	Convey("SessionID Generation", t, func() {
+		sid1 := genSessionID()
+		sid2 := genSessionID()
+		So(sid1, ShouldNotEqual, sid2)
+	})
+	Convey("CopyLoop", t, func() {
+		c1, s1 := net.Pipe()
+		c2, s2 := net.Pipe()
+		go CopyLoop(s1, s2)
+		go func() {
+			bytes := []byte("Hello!")
+			c1.Write(bytes)
+		}()
+		bytes := make([]byte, 6)
+		n, err := c2.Read(bytes)
+		So(n, ShouldEqual, 6)
+		So(err, ShouldEqual, nil)
+		So(bytes, ShouldResemble, []byte("Hello!"))
+		s1.Close()
+
+		//Check that copy loop has closed other connection
+		_, err = s2.Write(bytes)
+		So(err, ShouldNotBeNil)
 	})
 }
