@@ -77,12 +77,10 @@ func (conn *webSocketConn) Read(b []byte) (n int, err error) {
 	}
 
 	n, err = conn.r.Read(b)
-	if err != nil {
-		if err == io.EOF {
-			// Message finished
-			conn.r = nil
-			err = nil
-		}
+	if err == io.EOF {
+		// Message finished
+		conn.r = nil
+		err = nil
 	}
 	return
 }
@@ -102,6 +100,8 @@ func (conn *webSocketConn) Write(b []byte) (n int, err error) {
 
 // Implements io.Closer.
 func (conn *webSocketConn) Close() error {
+	// Ignore any error in trying to write a Close frame.
+	_ = conn.Ws.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
 	return conn.Ws.Close()
 }
 
