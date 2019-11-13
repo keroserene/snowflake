@@ -13,7 +13,7 @@ addons:
             - gcc-5
 
 go:
-    - 1.10.x
+    - 1.13.x
 
 env:
     - TRAVIS_NODE_VERSION="8" CC="gcc-5" CXX="g++-5"
