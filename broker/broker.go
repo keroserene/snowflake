@@ -161,7 +161,6 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 
 	sid, err := messages.DecodePollRequest(body)
 	if err != nil {
-		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -259,7 +258,6 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 
 	answer, id, err := messages.DecodeAnswerRequest(body)
 	if err != nil || answer == "" {
-		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
