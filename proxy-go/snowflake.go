@@ -175,7 +175,7 @@ func (b *Broker) pollOffer(sid string) *webrtc.SessionDescription {
 			timeOfNextPoll = now
 		}
 
-		body, err := messages.EncodePollRequest(sid)
+		body, err := messages.EncodePollRequest(sid, "standalone")
 		if err != nil {
 			log.Printf("Error encoding poll message: %s", err.Error())
 			return nil

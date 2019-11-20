@@ -11,45 +11,60 @@ import (
 func TestDecodeProxyPollRequest(t *testing.T) {
 	Convey("Context", t, func() {
 		for _, test := range []struct {
-			sid  string
-			data string
-			err  error
+			sid   string
+			ptype string
+			data  string
+			err   error
 		}{
 			{
 				//Version 1.0 proxy message
 				"ymbcCMto7KHNGYlp",
+				"",
 				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`,
 				nil,
 			},
 			{
+				//Version 1.1 proxy message
+				"ymbcCMto7KHNGYlp",
+				"standalone",
+				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.1","Type":"standalone"}`,
+				nil,
+			},
+			{
 				//Version 0.X proxy message:
+				"",
 				"",
 				"ymbcCMto7KHNGYlp",
 				&json.SyntaxError{},
 			},
 			{
 				"",
+				"",
 				`{"Sid":"ymbcCMto7KHNGYlp"}`,
 				fmt.Errorf(""),
 			},
 			{
+				"",
 				"",
 				"{}",
 				fmt.Errorf(""),
 			},
 			{
 				"",
+				"",
 				`{"Version":"1.0"}`,
 				fmt.Errorf(""),
 			},
 			{
 				"",
+				"",
 				`{"Version":"2.0"}`,
 				fmt.Errorf(""),
 			},
 		} {
-			sid, err := DecodePollRequest([]byte(test.data))
+			sid, ptype, err := DecodePollRequest([]byte(test.data))
 			So(sid, ShouldResemble, test.sid)
+			So(ptype, ShouldResemble, test.ptype)
 			So(err, ShouldHaveSameTypeAs, test.err)
 		}
 
@@ -58,10 +73,11 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 
 func TestEncodeProxyPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
-		b, err := EncodePollRequest("ymbcCMto7KHNGYlp")
+		b, err := EncodePollRequest("ymbcCMto7KHNGYlp", "standalone")
 		So(err, ShouldEqual, nil)
-		sid, err := DecodePollRequest(b)
+		sid, ptype, err := DecodePollRequest(b)
 		So(sid, ShouldEqual, "ymbcCMto7KHNGYlp")
+		So(ptype, ShouldEqual, "standalone")
 		So(err, ShouldEqual, nil)
 	})
 }

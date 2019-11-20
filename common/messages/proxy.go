@@ -6,16 +6,18 @@ package messages
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
-const version = "1.0"
+const version = "1.1"
 
-/* Version 1.0 specification:
+/* Version 1.1 specification:
 
 == ProxyPollRequest ==
 {
-  Sid: [generated session id of proxy]
-  Version: 1.0
+  Sid: [generated session id of proxy],
+  Version: 1.1,
+  Type: [badge|webext|standalone]
 }
 
 == ProxyPollResponse ==
@@ -41,11 +43,11 @@ HTTP 400 BadRequest
 
 == ProxyAnswerRequest ==
 {
-  Sid: [generated session id of proxy]
-  Version: 1.0
+  Sid: [generated session id of proxy],
+  Version: 1.1,
   Answer:
   {
-    type: answer
+    type: answer,
     sdp: [WebRTC SDP]
   }
 }
@@ -73,34 +75,38 @@ HTTP 400 BadRequest
 type ProxyPollRequest struct {
 	Sid     string
 	Version string
+	Type    string
 }
 
-func EncodePollRequest(sid string) ([]byte, error) {
+func EncodePollRequest(sid string, ptype string) ([]byte, error) {
 	return json.Marshal(ProxyPollRequest{
 		Sid:     sid,
 		Version: version,
+		Type:    ptype,
 	})
 }
 
 // Decodes a poll message from a snowflake proxy and returns the
 // sid of the proxy on success and an error if it failed
-func DecodePollRequest(data []byte) (string, error) {
+func DecodePollRequest(data []byte) (string, string, error) {
 	var message ProxyPollRequest
 
 	err := json.Unmarshal(data, &message)
 	if err != nil {
-		return "", err
-	}
-	if message.Version != "1.0" {
-		return "", fmt.Errorf("using unknown version")
+		return "", "", err
 	}
 
-	// Version 1.0 requires an Sid
+	majorVersion := strings.Split(message.Version, ".")[0]
+	if majorVersion != "1" {
+		return "", "", fmt.Errorf("using unknown version")
+	}
+
+	// Version 1.x requires an Sid
 	if message.Sid == "" {
-		return "", fmt.Errorf("no supplied session id")
+		return "", "", fmt.Errorf("no supplied session id")
 	}
 
-	return message.Sid, nil
+	return message.Sid, message.Type, nil
 }
 
 type ProxyPollResponse struct {
@@ -153,7 +159,7 @@ type ProxyAnswerRequest struct {
 
 func EncodeAnswerRequest(answer string, sid string) ([]byte, error) {
 	return json.Marshal(ProxyAnswerRequest{
-		Version: "1.0",
+		Version: "1.1",
 		Sid:     sid,
 		Answer:  answer,
 	})
@@ -167,7 +173,9 @@ func DecodeAnswerRequest(data []byte) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	if message.Version != "1.0" {
+
+	majorVersion := strings.Split(message.Version, ".")[0]
+	if majorVersion != "1" {
 		return "", "", fmt.Errorf("using unknown version")
 	}
 
