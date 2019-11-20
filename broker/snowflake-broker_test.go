@@ -387,7 +387,7 @@ func TestGeoip(t *testing.T) {
 		if err := ctx.metrics.LoadGeoipDatabases("invalid_filename", "invalid_filename6"); err != nil {
 			log.Printf("loading geo ip databases returned error: %v", err)
 		}
-		ctx.metrics.UpdateCountryStats("127.0.0.1")
+		ctx.metrics.UpdateCountryStats("127.0.0.1", "")
 		So(ctx.metrics.tablev4, ShouldEqual, nil)
 
 	})
@@ -408,7 +408,6 @@ func TestMetrics(t *testing.T) {
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte("{\"Sid\":\"ymbcCMto7KHNGYlp\",\"Version\":\"1.0\"}"))
 			r, err := http.NewRequest("POST", "snowflake.broker/proxy", data)
-			r.Header.Set("X-Session-ID", "test")
 			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
 			So(err, ShouldBeNil)
 			go func(ctx *BrokerContext) {
@@ -419,8 +418,47 @@ func TestMetrics(t *testing.T) {
 			p.offerChannel <- nil
 			<-done
 
+			w = httptest.NewRecorder()
+			data = bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0","Type":"standalone"}`))
+			r, err = http.NewRequest("POST", "snowflake.broker/proxy", data)
+			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
+			So(err, ShouldBeNil)
+			go func(ctx *BrokerContext) {
+				proxyPolls(ctx, w, r)
+				done <- true
+			}(ctx)
+			p = <-ctx.proxyPolls //manually unblock poll
+			p.offerChannel <- nil
+			<-done
+
+			w = httptest.NewRecorder()
+			data = bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0","Type":"badge"}`))
+			r, err = http.NewRequest("POST", "snowflake.broker/proxy", data)
+			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
+			So(err, ShouldBeNil)
+			go func(ctx *BrokerContext) {
+				proxyPolls(ctx, w, r)
+				done <- true
+			}(ctx)
+			p = <-ctx.proxyPolls //manually unblock poll
+			p.offerChannel <- nil
+			<-done
+
+			w = httptest.NewRecorder()
+			data = bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0","Type":"webext"}`))
+			r, err = http.NewRequest("POST", "snowflake.broker/proxy", data)
+			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
+			So(err, ShouldBeNil)
+			go func(ctx *BrokerContext) {
+				proxyPolls(ctx, w, r)
+				done <- true
+			}(ctx)
+			p = <-ctx.proxyPolls //manually unblock poll
+			p.offerChannel <- nil
+			<-done
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=1\nsnowflake-ips-total 1\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=4\nsnowflake-ips-total 4\nsnowflake-ips-standalone 1\nsnowflake-ips-badge 1\nsnowflake-ips-webext 1\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
+
 		})
 
 		//Test addition of client failures
@@ -433,13 +471,13 @@ func TestMetrics(t *testing.T) {
 			clientOffers(ctx, w, r)
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-idle-count 0\nclient-denied-count 8\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 8\nclient-snowflake-match-count 0\n")
 
 			// Test reset
 			buf.Reset()
 			ctx.metrics.zeroMetrics()
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
 		})
 		//Test addition of client matches
 		Convey("for client-proxy match", func() {
@@ -460,7 +498,7 @@ func TestMetrics(t *testing.T) {
 			<-done
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-snowflake-match-count 8\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-snowflake-match-count 8\n")
 		})
 		//Test rounding boundary
 		Convey("binning boundary", func() {
@@ -479,12 +517,12 @@ func TestMetrics(t *testing.T) {
 			clientOffers(ctx, w, r)
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-idle-count 0\nclient-denied-count 8\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 8\nclient-snowflake-match-count 0\n")
 
 			clientOffers(ctx, w, r)
 			buf.Reset()
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-idle-count 0\nclient-denied-count 16\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 16\nclient-snowflake-match-count 0\n")
 		})
 
 		//Test unique ip
@@ -492,7 +530,6 @@ func TestMetrics(t *testing.T) {
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`))
 			r, err := http.NewRequest("POST", "snowflake.broker/proxy", data)
-			r.Header.Set("X-Session-ID", "test")
 			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
 			So(err, ShouldBeNil)
 			go func(ctx *BrokerContext) {
@@ -508,7 +545,6 @@ func TestMetrics(t *testing.T) {
 			if err != nil {
 				log.Printf("unable to get NewRequest with error: %v", err)
 			}
-			r.Header.Set("X-Session-ID", "test")
 			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
 			go func(ctx *BrokerContext) {
 				proxyPolls(ctx, w, r)
@@ -519,7 +555,7 @@ func TestMetrics(t *testing.T) {
 			<-done
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=1\nsnowflake-ips-total 1\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=1\nsnowflake-ips-total 1\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
 		})
 	})
 }

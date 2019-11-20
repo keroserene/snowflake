@@ -173,7 +173,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error processing proxy IP: ", err.Error())
 	} else {
-		ctx.metrics.UpdateCountryStats(remoteIP)
+		ctx.metrics.UpdateCountryStats(remoteIP, ptype)
 	}
 
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
