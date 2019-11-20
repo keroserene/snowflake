@@ -8,7 +8,7 @@ var config = new Config;
 
 var ui = new UI();
 
-var broker = new Broker(config.brokerUrl);
+var broker = new Broker(config);
 
 var snowflake = new Snowflake(config, ui, broker);
 

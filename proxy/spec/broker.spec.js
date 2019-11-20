@@ -22,7 +22,9 @@ describe('Broker', function() {
 
   it('can be created', function() {
     var b;
-    b = new Broker('fake');
+    var config = new Config;
+    config.brokerUrl = 'fake';
+    b = new Broker(config);
     expect(b.url).toEqual('https://fake/');
     expect(b.id).not.toBeNull();
   });
@@ -31,7 +33,9 @@ describe('Broker', function() {
 
     it('polls and promises a client offer', function(done) {
       var b, poll;
-      b = new Broker('fake');
+      var config = new Config;
+      config.brokerUrl = 'fake';
+      b = new Broker(config);
       // fake successful request and response from broker.
       spyOn(b, '_postRequest').and.callFake(function() {
         b._xhr.readyState = b._xhr.DONE;
@@ -53,7 +57,9 @@ describe('Broker', function() {
 
     it('rejects if the broker timed-out', function(done) {
       var b, poll;
-      b = new Broker('fake');
+      var config = new Config;
+      config.brokerUrl = 'fake';
+      b = new Broker(config);
       // fake timed-out request from broker
       spyOn(b, '_postRequest').and.callFake(function() {
         b._xhr.readyState = b._xhr.DONE;
@@ -75,7 +81,9 @@ describe('Broker', function() {
 
     it('rejects on any other status', function(done) {
       var b, poll;
-      b = new Broker('fake');
+      var config = new Config;
+      config.brokerUrl = 'fake';
+      b = new Broker(config);
       // fake timed-out request from broker
       spyOn(b, '_postRequest').and.callFake(function() {
         b._xhr.readyState = b._xhr.DONE;
@@ -99,14 +107,18 @@ describe('Broker', function() {
   });
 
   it('responds to the broker with answer', function() {
-    var b = new Broker('fake');
+    var config = new Config;
+    config.brokerUrl = 'fake';
+    var b = new Broker(config);
     spyOn(b, '_postRequest');
     b.sendAnswer('fake id', 123);
     expect(b._postRequest).toHaveBeenCalledWith(jasmine.any(Object), 'answer', '{"Version":"1.0","Sid":"fake id","Answer":"123"}');
   });
 
   it('POST XMLHttpRequests to the broker', function() {
-    var b = new Broker('fake');
+    var config = new Config;
+    config.brokerUrl = 'fake';
+    var b = new Broker(config);
     b._xhr = new XMLHttpRequest();
     spyOn(b._xhr, 'open');
     spyOn(b._xhr, 'setRequestHeader');

@@ -14,11 +14,12 @@ class Broker {
   // ID so the Broker can keep track of each proxy's signalling channels.
   // On construction, this Broker object does not do anything until
   // |getClientOffer| is called.
-  constructor(url) {
+  constructor(config) {
     this.getClientOffer = this.getClientOffer.bind(this);
     this._postRequest = this._postRequest.bind(this);
 
-    this.url = url;
+    this.config = config
+    this.url = config.brokerUrl;
     this.clients = 0;
     if (0 === this.url.indexOf('localhost', 0)) {
       // Ensure url has the right protocol + trailing slash.
@@ -63,7 +64,7 @@ class Broker {
         }
       };
       this._xhr = xhr; // Used by spec to fake async Broker interaction
-      var data = {"Version": "1.0", "Sid": id}
+      var data = {"Version": "1.1", "Sid": id, "Type": this.config.proxyType}
       return this._postRequest(xhr, 'proxy', JSON.stringify(data));
     });
   }

@@ -170,10 +170,11 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
     }
 
     config = new Config;
+    config.proxyType = "badge";
     if ('off' !== query.get('ratelimit')) {
       config.rateLimitBytes = Params.getByteCount(query, 'ratelimit', config.rateLimitBytes);
     }
-    broker = new Broker(config.brokerUrl);
+    broker = new Broker(config);
     snowflake = new Snowflake(config, ui, broker);
     log('== snowflake proxy ==');
     update();

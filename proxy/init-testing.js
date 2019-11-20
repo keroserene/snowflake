@@ -89,7 +89,7 @@ var snowflake, query, debug, ui, silenceNotifications, log, dbg, init;
     } else {
       ui = new UI();
     }
-    broker = new Broker(config.brokerUrl);
+    broker = new Broker(config);
     snowflake = new Snowflake(config, ui, broker);
     log('== snowflake proxy ==');
     if (Util.snowflakeIsDisabled(config.cookieName)) {
