@@ -15,12 +15,12 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
+	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
 	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/http2"
@@ -50,97 +50,6 @@ additional HTTP listener on port 80 to work with ACME.
 	flag.PrintDefaults()
 }
 
-// An abstraction that makes an underlying WebSocket connection look like an
-// io.ReadWriteCloser.
-type webSocketConn struct {
-	Ws *websocket.Conn
-	r  io.Reader
-}
-
-// Implements io.Reader.
-func (conn *webSocketConn) Read(b []byte) (n int, err error) {
-	var opCode int
-	if conn.r == nil {
-		// New message
-		var r io.Reader
-		for {
-			if opCode, r, err = conn.Ws.NextReader(); err != nil {
-				return
-			}
-			if opCode != websocket.BinaryMessage && opCode != websocket.TextMessage {
-				continue
-			}
-
-			conn.r = r
-			break
-		}
-	}
-
-	n, err = conn.r.Read(b)
-	if err == io.EOF {
-		// Message finished
-		conn.r = nil
-		err = nil
-	}
-	return
-}
-
-// Implements io.Writer.
-func (conn *webSocketConn) Write(b []byte) (n int, err error) {
-	var w io.WriteCloser
-	if w, err = conn.Ws.NextWriter(websocket.BinaryMessage); err != nil {
-		return
-	}
-	if n, err = w.Write(b); err != nil {
-		return
-	}
-	err = w.Close()
-	return
-}
-
-// Implements io.Closer.
-func (conn *webSocketConn) Close() error {
-	// Ignore any error in trying to write a Close frame.
-	_ = conn.Ws.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
-	return conn.Ws.Close()
-}
-
-// Create a new webSocketConn.
-func newWebSocketConn(ws *websocket.Conn) webSocketConn {
-	var conn webSocketConn
-	conn.Ws = ws
-	return conn
-}
-
-// Copy from WebSocket to socket and vice versa.
-func proxy(local *net.TCPConn, conn *webSocketConn) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		if _, err := io.Copy(conn, local); err != nil {
-			log.Printf("error copying ORPort to WebSocket %v", err)
-		}
-		if err := local.CloseRead(); err != nil {
-			log.Printf("error closing read after copying ORPort to WebSocket %v", err)
-		}
-		conn.Close()
-		wg.Done()
-	}()
-	go func() {
-		if _, err := io.Copy(local, conn); err != nil {
-			log.Printf("error copying WebSocket to ORPort")
-		}
-		if err := local.CloseWrite(); err != nil {
-			log.Printf("error closing write after copying WebSocket to ORPort %v", err)
-		}
-		conn.Close()
-		wg.Done()
-	}()
-
-	wg.Wait()
-}
-
 // Return an address string suitable to pass into pt.DialOr.
 func clientAddr(clientIPParam string) string {
 	if clientIPParam == "" {
@@ -166,8 +75,8 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn := newWebSocketConn(ws)
-	defer conn.Close()
+	wsConn := websocketconn.NewWebSocketConn(ws)
+	defer wsConn.Close()
 
 	// Pass the address of client as the remote address of incoming connection
 	clientIPParam := r.URL.Query().Get("client_ip")
@@ -184,7 +93,7 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer or.Close()
 
-	proxy(or, &conn)
+	websocketconn.CopyLoop(or, &wsConn)
 }
 
 func initServer(addr *net.TCPAddr,
