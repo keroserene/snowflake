@@ -7,11 +7,25 @@ See https://snowflake.torproject.org/ for more info:
 <iframe src="https://snowflake.torproject.org/embed.html" width="88" height="16" frameborder="0" scrolling="no"></iframe>
 ```
 
-### Building
+### Building the badge / snowflake.torproject.org
 
 ```
+npm install
 npm run build
 ```
+
+which outputs to the `build/` directory.
+
+### Building the webextension
+
+```
+npm install
+npm run webext
+```
+
+and then load the `webext/` directory as an unpacked extension.
+ * https://developer.mozilla.org/en-US/docs/Tools/about:debugging#Loading_a_temporary_extension
+ * https://developer.chrome.com/extensions/getstarted#manifest
 
 ### Testing
 
@@ -44,6 +58,7 @@ IdentityFile ~/.ssh/tor
 ### Deploying
 
 ```
+npm install
 npm run build
 ```
 
@@ -73,3 +88,50 @@ With no parameters,
 snowflake uses the default relay `snowflake.freehaven.net:443` and
 uses automatic signaling with the default broker at
 `https://snowflake-broker.freehaven.net/`.
+
+### Reuse as a library
+
+The badge and the webextension make use of the same underlying library and
+only differ in their UI.  That same library can be produced for use with other
+interfaces, such as [Cupcake][1], by running,
+
+```
+npm install
+npm run library
+```
+
+which outputs a `./snowflake-library.js`.
+
+You'd then want to create a subclass of `UI` to perform various actions as
+the state of the snowflake changes,
+
+```
+class MyUI extends UI {
+    ...
+}
+```
+
+See `WebExtUI` in `init-webext.js` and `BadgeUI` in `init-badge.js` for
+examples.
+
+Finally, initialize the snowflake with,
+
+```
+var log = function(msg) {
+  return console.log('Snowflake: ' + msg);
+};
+var dbg = log;
+
+var config = new Config();
+var ui = new MyUI();  // NOTE: Using the class defined above
+var broker = new Broker(config.brokerUrl);
+
+var snowflake = new Snowflake(config, ui, broker);
+
+snowflake.setRelayAddr(config.relayAddr);
+snowflake.beginWebRTC();
+```
+
+This minimal setup is pretty much what's currently in `init-node.js`.
+
+[1]: https://chrome.google.com/webstore/detail/cupcake/dajjbehmbnbppjkcnpdkaniapgdppdnc

@@ -13,6 +13,7 @@ snowflake.log
 proxy/test
 proxy/build
 proxy/node_modules
+proxy/snowflake-library.js
 proxy/spec/support
 proxy/webext/snowflake.js
 proxy/webext/popup.js

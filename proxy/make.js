@@ -39,7 +39,10 @@ var SHARED_FILES = [
 ];
 
 var concatJS = function(outDir, init, outFile, pre) {
-  var files = FILES.concat(`init-${init}.js`);
+  var files = FILES;
+  if (init) {
+    files = files.concat(`init-${init}.js`);
+  }
   var outPath = `${outDir}/${outFile}`;
   writeFileSync(outPath, pre, 'utf8');
   execSync(`cat ${files.join(' ')} >> ${outPath}`);
@@ -174,6 +177,11 @@ task('pack-webext', 'pack the webextension for deployment', function() {
 
 task('clean', 'remove all built files', function() {
   execSync('rm -rf build test spec/support');
+});
+
+task('library', 'build the library', function() {
+  concatJS('.', '', 'snowflake-library.js', '');
+  console.log('Library prepared.');
 });
 
 var cmd = process.argv[2];
