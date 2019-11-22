@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -50,6 +51,35 @@ additional HTTP listener on port 80 to work with ACME.
 	flag.PrintDefaults()
 }
 
+// Copy from WebSocket to socket and vice versa.
+func proxy(local *net.TCPConn, conn *websocketconn.WebSocketConn) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		if _, err := io.Copy(conn, local); err != nil {
+			log.Printf("error copying ORPort to WebSocket %v", err)
+		}
+		if err := local.CloseRead(); err != nil {
+			log.Printf("error closing read after copying ORPort to WebSocket %v", err)
+		}
+		conn.Close()
+		wg.Done()
+	}()
+	go func() {
+		if _, err := io.Copy(local, conn); err != nil {
+			log.Printf("error copying WebSocket to ORPort")
+		}
+		if err := local.CloseWrite(); err != nil {
+			log.Printf("error closing write after copying WebSocket to ORPort %v", err)
+		}
+		conn.Close()
+		wg.Done()
+	}()
+
+	wg.Wait()
+}
+
 // Return an address string suitable to pass into pt.DialOr.
 func clientAddr(clientIPParam string) string {
 	if clientIPParam == "" {
@@ -75,8 +105,8 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wsConn := websocketconn.NewWebSocketConn(ws)
-	defer wsConn.Close()
+	conn := websocketconn.NewWebSocketConn(ws)
+	defer conn.Close()
 
 	// Pass the address of client as the remote address of incoming connection
 	clientIPParam := r.URL.Query().Get("client_ip")
@@ -93,7 +123,7 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer or.Close()
 
-	websocketconn.CopyLoop(or, &wsConn)
+	proxy(or, &conn)
 }
 
 func initServer(addr *net.TCPAddr,

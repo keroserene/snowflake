@@ -2,8 +2,6 @@ package websocketconn
 
 import (
 	"io"
-	"log"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -69,21 +67,4 @@ func NewWebSocketConn(ws *websocket.Conn) WebSocketConn {
 	var conn WebSocketConn
 	conn.Ws = ws
 	return conn
-}
-
-// Copy from WebSocket to socket and vice versa.
-func CopyLoop(c1 io.ReadWriteCloser, c2 io.ReadWriteCloser) {
-	var wg sync.WaitGroup
-	copyer := func(dst io.ReadWriteCloser, src io.ReadWriteCloser) {
-		defer wg.Done()
-		if _, err := io.Copy(dst, src); err != nil {
-			log.Printf("io.Copy inside CopyLoop generated an error: %v", err)
-		}
-		dst.Close()
-		src.Close()
-	}
-	wg.Add(2)
-	go copyer(c1, c2)
-	go copyer(c2, c1)
-	wg.Wait()
 }

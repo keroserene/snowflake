@@ -240,6 +240,22 @@ func (b *Broker) sendAnswer(sid string, pc *webrtc.PeerConnection) error {
 	return nil
 }
 
+func CopyLoop(c1 io.ReadWriteCloser, c2 io.ReadWriteCloser) {
+	var wg sync.WaitGroup
+	copyer := func(dst io.ReadWriteCloser, src io.ReadWriteCloser) {
+		defer wg.Done()
+		if _, err := io.Copy(dst, src); err != nil {
+			log.Printf("io.Copy inside CopyLoop generated an error: %v", err)
+		}
+		dst.Close()
+		src.Close()
+	}
+	wg.Add(2)
+	go copyer(c1, c2)
+	go copyer(c2, c1)
+	wg.Wait()
+}
+
 // We pass conn.RemoteAddr() as an additional parameter, rather than calling
 // conn.RemoteAddr() inside this function, as a workaround for a hang that
 // otherwise occurs inside of conn.pc.RemoteDescription() (called by
@@ -272,7 +288,7 @@ func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 	wsConn := websocketconn.NewWebSocketConn(ws)
 	log.Printf("connected to relay")
 	defer wsConn.Close()
-	websocketconn.CopyLoop(conn, &wsConn)
+	CopyLoop(conn, &wsConn)
 	log.Printf("datachannelHandler ends")
 }
 
