@@ -191,58 +191,108 @@ func TestBroker(t *testing.T) {
 			})
 
 		})
+
 	})
 
 	Convey("End-To-End", t, func() {
-		done := make(chan bool)
-		polled := make(chan bool)
 		ctx := NewBrokerContext(NullLogger())
 
-		// Proxy polls with its ID first...
-		dataP := bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`))
-		wP := httptest.NewRecorder()
-		rP, err := http.NewRequest("POST", "snowflake.broker/proxy", dataP)
-		So(err, ShouldBeNil)
-		go func() {
-			proxyPolls(ctx, wP, rP)
-			polled <- true
-		}()
+		Convey("Check for client/proxy data race", func() {
+			proxy_done := make(chan bool)
+			client_done := make(chan bool)
 
-		// Manually do the Broker goroutine action here for full control.
-		p := <-ctx.proxyPolls
-		So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
-		s := ctx.AddSnowflake(p.id, "")
-		go func() {
-			offer := <-s.offerChannel
-			p.offerChannel <- offer
-		}()
-		So(ctx.idToSnowflake["ymbcCMto7KHNGYlp"], ShouldNotBeNil)
+			go ctx.Broker()
 
-		// Client request blocks until proxy answer arrives.
-		dataC := bytes.NewReader([]byte("fake offer"))
-		wC := httptest.NewRecorder()
-		rC, err := http.NewRequest("POST", "snowflake.broker/client", dataC)
-		So(err, ShouldBeNil)
-		go func() {
-			clientOffers(ctx, wC, rC)
-			done <- true
-		}()
+			// Make proxy poll
+			wp := httptest.NewRecorder()
+			datap := bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`))
+			rp, err := http.NewRequest("POST", "snowflake.broker/proxy", datap)
+			So(err, ShouldBeNil)
 
-		<-polled
-		So(wP.Code, ShouldEqual, http.StatusOK)
-		So(wP.Body.String(), ShouldResemble, `{"Status":"client match","Offer":"fake offer"}`)
-		So(ctx.idToSnowflake["ymbcCMto7KHNGYlp"], ShouldNotBeNil)
-		// Follow up with the answer request afterwards
-		wA := httptest.NewRecorder()
-		dataA := bytes.NewReader([]byte(`{"Version":"1.0","Sid":"ymbcCMto7KHNGYlp","Answer":"test"}`))
-		rA, err := http.NewRequest("POST", "snowflake.broker/answer", dataA)
-		So(err, ShouldBeNil)
-		proxyAnswers(ctx, wA, rA)
-		So(wA.Code, ShouldEqual, http.StatusOK)
+			go func(ctx *BrokerContext) {
+				proxyPolls(ctx, wp, rp)
+				proxy_done <- true
+			}(ctx)
 
-		<-done
-		So(wC.Code, ShouldEqual, http.StatusOK)
-		So(wC.Body.String(), ShouldEqual, "test")
+			// Client offer
+			wc := httptest.NewRecorder()
+			datac := bytes.NewReader([]byte("test"))
+			rc, err := http.NewRequest("POST", "snowflake.broker/client", datac)
+			So(err, ShouldBeNil)
+
+			go func() {
+				clientOffers(ctx, wc, rc)
+				client_done <- true
+			}()
+
+			<-proxy_done
+			So(wp.Code, ShouldEqual, http.StatusOK)
+
+			// Proxy answers
+			wp = httptest.NewRecorder()
+			datap = bytes.NewReader([]byte(`{"Version":"1.0","Sid":"ymbcCMto7KHNGYlp","Answer":"test"}`))
+			rp, err = http.NewRequest("POST", "snowflake.broker/answer", datap)
+			So(err, ShouldBeNil)
+			go func(ctx *BrokerContext) {
+				proxyAnswers(ctx, wp, rp)
+				proxy_done <- true
+			}(ctx)
+
+			<-proxy_done
+			<-client_done
+
+		})
+
+		Convey("Ensure correct snowflake brokering", func() {
+			done := make(chan bool)
+			polled := make(chan bool)
+
+			// Proxy polls with its ID first...
+			dataP := bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`))
+			wP := httptest.NewRecorder()
+			rP, err := http.NewRequest("POST", "snowflake.broker/proxy", dataP)
+			So(err, ShouldBeNil)
+			go func() {
+				proxyPolls(ctx, wP, rP)
+				polled <- true
+			}()
+
+			// Manually do the Broker goroutine action here for full control.
+			p := <-ctx.proxyPolls
+			So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
+			s := ctx.AddSnowflake(p.id, "")
+			go func() {
+				offer := <-s.offerChannel
+				p.offerChannel <- offer
+			}()
+			So(ctx.idToSnowflake["ymbcCMto7KHNGYlp"], ShouldNotBeNil)
+
+			// Client request blocks until proxy answer arrives.
+			dataC := bytes.NewReader([]byte("fake offer"))
+			wC := httptest.NewRecorder()
+			rC, err := http.NewRequest("POST", "snowflake.broker/client", dataC)
+			So(err, ShouldBeNil)
+			go func() {
+				clientOffers(ctx, wC, rC)
+				done <- true
+			}()
+
+			<-polled
+			So(wP.Code, ShouldEqual, http.StatusOK)
+			So(wP.Body.String(), ShouldResemble, `{"Status":"client match","Offer":"fake offer"}`)
+			So(ctx.idToSnowflake["ymbcCMto7KHNGYlp"], ShouldNotBeNil)
+			// Follow up with the answer request afterwards
+			wA := httptest.NewRecorder()
+			dataA := bytes.NewReader([]byte(`{"Version":"1.0","Sid":"ymbcCMto7KHNGYlp","Answer":"test"}`))
+			rA, err := http.NewRequest("POST", "snowflake.broker/answer", dataA)
+			So(err, ShouldBeNil)
+			proxyAnswers(ctx, wA, rA)
+			So(wA.Code, ShouldEqual, http.StatusOK)
+
+			<-done
+			So(wC.Code, ShouldEqual, http.StatusOK)
+			So(wC.Body.String(), ShouldEqual, "test")
+		})
 	})
 }
 
