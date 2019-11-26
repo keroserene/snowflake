@@ -77,6 +77,7 @@ func parseIceServers(s string) []webrtc.ICEServer {
 	urls := strings.Split(s, ",")
 	log.Printf("Using ICE Servers:")
 	for _, url := range urls {
+		url = strings.TrimSpace(url)
 		log.Printf("url: %s", url)
 		servers = append(servers, webrtc.ICEServer{
 			URLs: []string{url},
