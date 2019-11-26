@@ -78,11 +78,11 @@ type ProxyPollRequest struct {
 	Type    string
 }
 
-func EncodePollRequest(sid string, ptype string) ([]byte, error) {
+func EncodePollRequest(sid string, proxyType string) ([]byte, error) {
 	return json.Marshal(ProxyPollRequest{
 		Sid:     sid,
 		Version: version,
-		Type:    ptype,
+		Type:    proxyType,
 	})
 }
 

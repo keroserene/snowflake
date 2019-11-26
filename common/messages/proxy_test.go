@@ -11,10 +11,10 @@ import (
 func TestDecodeProxyPollRequest(t *testing.T) {
 	Convey("Context", t, func() {
 		for _, test := range []struct {
-			sid   string
-			ptype string
-			data  string
-			err   error
+			sid       string
+			proxyType string
+			data      string
+			err       error
 		}{
 			{
 				//Version 1.0 proxy message
@@ -62,9 +62,9 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				fmt.Errorf(""),
 			},
 		} {
-			sid, ptype, err := DecodePollRequest([]byte(test.data))
+			sid, proxyType, err := DecodePollRequest([]byte(test.data))
 			So(sid, ShouldResemble, test.sid)
-			So(ptype, ShouldResemble, test.ptype)
+			So(proxyType, ShouldResemble, test.proxyType)
 			So(err, ShouldHaveSameTypeAs, test.err)
 		}
 
@@ -75,9 +75,9 @@ func TestEncodeProxyPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
 		b, err := EncodePollRequest("ymbcCMto7KHNGYlp", "standalone")
 		So(err, ShouldEqual, nil)
-		sid, ptype, err := DecodePollRequest(b)
+		sid, proxyType, err := DecodePollRequest(b)
 		So(sid, ShouldEqual, "ymbcCMto7KHNGYlp")
-		So(ptype, ShouldEqual, "standalone")
+		So(proxyType, ShouldEqual, "standalone")
 		So(err, ShouldEqual, nil)
 	})
 }

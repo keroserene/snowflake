@@ -110,20 +110,20 @@ func (s CountryStats) Display() string {
 	return output
 }
 
-func (m *Metrics) UpdateCountryStats(addr string, ptype string) {
+func (m *Metrics) UpdateCountryStats(addr string, proxyType string) {
 
 	var country string
 	var ok bool
 
-	if ptype == "standalone" {
+	if proxyType == "standalone" {
 		if m.countryStats.standalone[addr] {
 			return
 		}
-	} else if ptype == "badge" {
+	} else if proxyType == "badge" {
 		if m.countryStats.badge[addr] {
 			return
 		}
-	} else if ptype == "webext" {
+	} else if proxyType == "webext" {
 		if m.countryStats.webext[addr] {
 			return
 		}
@@ -153,11 +153,11 @@ func (m *Metrics) UpdateCountryStats(addr string, ptype string) {
 
 	//update map of unique ips and counts
 	m.countryStats.counts[country]++
-	if ptype == "standalone" {
+	if proxyType == "standalone" {
 		m.countryStats.standalone[addr] = true
-	} else if ptype == "badge" {
+	} else if proxyType == "badge" {
 		m.countryStats.badge[addr] = true
-	} else if ptype == "webext" {
+	} else if proxyType == "webext" {
 		m.countryStats.webext[addr] = true
 	} else {
 		m.countryStats.unknown[addr] = true

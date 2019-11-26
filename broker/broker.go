@@ -97,16 +97,16 @@ func (mh MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Proxies may poll for client offers concurrently.
 type ProxyPoll struct {
 	id           string
-	ptype        string
+	proxyType    string
 	offerChannel chan []byte
 }
 
 // Registers a Snowflake and waits for some Client to send an offer,
 // as part of the polling logic of the proxy handler.
-func (ctx *BrokerContext) RequestOffer(id string, ptype string) []byte {
+func (ctx *BrokerContext) RequestOffer(id string, proxyType string) []byte {
 	request := new(ProxyPoll)
 	request.id = id
-	request.ptype = ptype
+	request.proxyType = proxyType
 	request.offerChannel = make(chan []byte)
 	ctx.proxyPolls <- request
 	// Block until an offer is available, or timeout which sends a nil offer.
@@ -119,7 +119,7 @@ func (ctx *BrokerContext) RequestOffer(id string, ptype string) []byte {
 // client offer or nil on timeout / none are available.
 func (ctx *BrokerContext) Broker() {
 	for request := range ctx.proxyPolls {
-		snowflake := ctx.AddSnowflake(request.id, request.ptype)
+		snowflake := ctx.AddSnowflake(request.id, request.proxyType)
 		// Wait for a client to avail an offer to the snowflake.
 		go func(request *ProxyPoll) {
 			select {
@@ -139,11 +139,11 @@ func (ctx *BrokerContext) Broker() {
 // Create and add a Snowflake to the heap.
 // Required to keep track of proxies between providing them
 // with an offer and awaiting their second POST with an answer.
-func (ctx *BrokerContext) AddSnowflake(id string, ptype string) *Snowflake {
+func (ctx *BrokerContext) AddSnowflake(id string, proxyType string) *Snowflake {
 	snowflake := new(Snowflake)
 	snowflake.id = id
 	snowflake.clients = 0
-	snowflake.ptype = ptype
+	snowflake.proxyType = proxyType
 	snowflake.offerChannel = make(chan []byte)
 	snowflake.answerChannel = make(chan []byte)
 	heap.Push(ctx.snowflakes, snowflake)
@@ -162,7 +162,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sid, ptype, err := messages.DecodePollRequest(body)
+	sid, proxyType, err := messages.DecodePollRequest(body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -173,11 +173,11 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error processing proxy IP: ", err.Error())
 	} else {
-		ctx.metrics.UpdateCountryStats(remoteIP, ptype)
+		ctx.metrics.UpdateCountryStats(remoteIP, proxyType)
 	}
 
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
-	offer := ctx.RequestOffer(sid, ptype)
+	offer := ctx.RequestOffer(sid, proxyType)
 	var b []byte
 	if nil == offer {
 		ctx.metrics.proxyIdleCount++
@@ -291,11 +291,11 @@ func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 
 	var webexts, browsers, standalones, unknowns int
 	for _, snowflake := range ctx.idToSnowflake {
-		if snowflake.ptype == "badge" {
+		if snowflake.proxyType == "badge" {
 			browsers++
-		} else if snowflake.ptype == "webext" {
+		} else if snowflake.proxyType == "webext" {
 			webexts++
-		} else if snowflake.ptype == "standalone" {
+		} else if snowflake.proxyType == "standalone" {
 			standalones++
 		} else {
 			unknowns++
