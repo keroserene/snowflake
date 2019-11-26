@@ -17,7 +17,7 @@ const version = "1.1"
 {
   Sid: [generated session id of proxy],
   Version: 1.1,
-  Type: [badge|webext|standalone]
+  Type: ["badge"|"webext"|"standalone"]
 }
 
 == ProxyPollResponse ==
@@ -87,7 +87,7 @@ func EncodePollRequest(sid string, proxyType string) ([]byte, error) {
 }
 
 // Decodes a poll message from a snowflake proxy and returns the
-// sid of the proxy on success and an error if it failed
+// sid and proxy type of the proxy on success and an error if it failed
 func DecodePollRequest(data []byte) (string, string, error) {
 	var message ProxyPollRequest
 

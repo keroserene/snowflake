@@ -31,6 +31,24 @@ Metrics data from the Snowflake broker can be retrieved by sending an HTTP GET r
         A count of the total number of unique IP addresses of Snowflake
         proxies that have polled.
 
+    "snowflake-ips-standalone" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of snowflake
+        proxies of type "standalone" that have polled.
+
+    "snowflake-ips-badge" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of snowflake
+        proxies of type "badge" that have polled.
+
+    "snowflake-ips-webext" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of snowflake
+        proxies of type "webext" that have polled.
+
     "snowflake-idle-count" NUM NL
         [At most once.]
 
