@@ -82,6 +82,57 @@ func TestEncodeProxyPollRequests(t *testing.T) {
 	})
 }
 
+func TestDecodeProxyPollResponse(t *testing.T) {
+	Convey("Context", t, func() {
+		for _, test := range []struct {
+			offer string
+			data  string
+			err   error
+		}{
+			{
+				"fake offer",
+				`{"Status":"client match","Offer":"fake offer"}`,
+				nil,
+			},
+			{
+				"",
+				`{"Status":"no match"}`,
+				nil,
+			},
+			{
+				"",
+				`{"Status":"client match"}`,
+				fmt.Errorf("no supplied offer"),
+			},
+			{
+				"",
+				`{"Test":"test"}`,
+				fmt.Errorf(""),
+			},
+		} {
+			offer, err := DecodePollResponse([]byte(test.data))
+			So(offer, ShouldResemble, test.offer)
+			So(err, ShouldHaveSameTypeAs, test.err)
+		}
+
+	})
+}
+
+func TestEncodeProxyPollResponse(t *testing.T) {
+	Convey("Context", t, func() {
+		b, err := EncodePollResponse("fake offer", true)
+		So(err, ShouldEqual, nil)
+		offer, err := DecodePollResponse(b)
+		So(offer, ShouldEqual, "fake offer")
+		So(err, ShouldEqual, nil)
+
+		b, err = EncodePollResponse("", false)
+		So(err, ShouldEqual, nil)
+		offer, err = DecodePollResponse(b)
+		So(offer, ShouldEqual, "")
+		So(err, ShouldEqual, nil)
+	})
+}
 func TestDecodeProxyAnswerRequest(t *testing.T) {
 	Convey("Context", t, func() {
 		for _, test := range []struct {
@@ -172,6 +223,12 @@ func TestEncodeProxyAnswerResponse(t *testing.T) {
 		So(err, ShouldEqual, nil)
 		success, err := DecodeAnswerResponse(b)
 		So(success, ShouldEqual, true)
+		So(err, ShouldEqual, nil)
+
+		b, err = EncodeAnswerResponse(false)
+		So(err, ShouldEqual, nil)
+		success, err = DecodeAnswerResponse(b)
+		So(success, ShouldEqual, false)
 		So(err, ShouldEqual, nil)
 	})
 }
