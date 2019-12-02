@@ -39,6 +39,9 @@ type Metrics struct {
 	proxyIdleCount          uint
 	clientDeniedCount       uint
 	clientProxyMatchCount   uint
+
+	//synchronization for access to snowflake metrics
+	lock sync.Mutex
 }
 
 func (s CountryStats) Display() string {
@@ -161,6 +164,7 @@ func (m *Metrics) logMetrics() {
 }
 
 func (m *Metrics) printMetrics() {
+	m.lock.Lock()
 	m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), fmt.Sprintf("(%d s)", int(metricsResolution.Seconds())))
 	m.logger.Println("snowflake-ips", m.countryStats.Display())
 	m.logger.Println("snowflake-ips-total", len(m.countryStats.standalone)+
@@ -171,6 +175,7 @@ func (m *Metrics) printMetrics() {
 	m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
 	m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
 	m.logger.Println("client-snowflake-match-count", binCount(m.clientProxyMatchCount))
+	m.lock.Unlock()
 }
 
 // Restores all metrics to original values

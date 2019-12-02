@@ -38,7 +38,7 @@ type BrokerContext struct {
 	// Map keeping track of snowflakeIDs required to match SDP answers from
 	// the second http POST.
 	idToSnowflake map[string]*Snowflake
-	// Synchronization for the
+	// Synchronization for the snowflake map and heap
 	snowflakeLock sync.Mutex
 	proxyPolls    chan *ProxyPoll
 	metrics       *Metrics
@@ -181,14 +181,18 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error processing proxy IP: ", err.Error())
 	} else {
+		ctx.metrics.lock.Lock()
 		ctx.metrics.UpdateCountryStats(remoteIP, proxyType)
+		ctx.metrics.lock.Unlock()
 	}
 
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
 	offer := ctx.RequestOffer(sid, proxyType)
 	var b []byte
 	if nil == offer {
+		ctx.metrics.lock.Lock()
 		ctx.metrics.proxyIdleCount++
+		ctx.metrics.lock.Unlock()
 
 		b, err = messages.EncodePollResponse("", false)
 		if err != nil {
@@ -227,7 +231,9 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	numSnowflakes := ctx.snowflakes.Len()
 	ctx.snowflakeLock.Unlock()
 	if numSnowflakes <= 0 {
+		ctx.metrics.lock.Lock()
 		ctx.metrics.clientDeniedCount++
+		ctx.metrics.lock.Unlock()
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -241,7 +247,9 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	// Wait for the answer to be returned on the channel or timeout.
 	select {
 	case answer := <-snowflake.answerChannel:
+		ctx.metrics.lock.Lock()
 		ctx.metrics.clientProxyMatchCount++
+		ctx.metrics.lock.Unlock()
 		if _, err := w.Write(answer); err != nil {
 			log.Printf("unable to write answer with error: %v", err)
 		}
