@@ -1,5 +1,9 @@
 
-class Config {}
+class Config {
+  constructor(proxyType) {
+    this.proxyType = proxyType || '';
+  }
+}
 
 Config.prototype.brokerUrl = 'snowflake-broker.freehaven.net';
 

@@ -122,7 +122,7 @@ var log = function(msg) {
 };
 var dbg = log;
 
-var config = new Config();
+var config = new Config("myui");  // NOTE: Set a unique proxy type for metrics
 var ui = new MyUI();  // NOTE: Using the class defined above
 var broker = new Broker(config.brokerUrl);
 
@@ -134,4 +134,10 @@ snowflake.beginWebRTC();
 
 This minimal setup is pretty much what's currently in `init-node.js`.
 
+When configuring the snowflake, set a unique `proxyType` (first argument
+to `Config`) that will be used when recording metrics at the broker.  Also,
+it would be helpful to get in touch with the [Anti-Censorship Team][2] at the
+Tor Project to let them know about your tool.
+
 [1]: https://chrome.google.com/webstore/detail/cupcake/dajjbehmbnbppjkcnpdkaniapgdppdnc
+[2]: https://trac.torproject.org/projects/tor/wiki/org/teams/AntiCensorshipTeam

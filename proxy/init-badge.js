@@ -169,8 +169,7 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
       return;
     }
 
-    config = new Config;
-    config.proxyType = "badge";
+    config = new Config("badge");
     if ('off' !== query.get('ratelimit')) {
       config.rateLimitBytes = Params.getByteCount(query, 'ratelimit', config.rateLimitBytes);
     }

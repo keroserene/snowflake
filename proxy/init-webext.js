@@ -171,8 +171,7 @@ var debug, snowflake, config, broker, ui, log, dbg, init, update, silenceNotific
   };
 
   init = function() {
-    config = new Config;
-    config.proxyType = "webext";
+    config = new Config("webext");
     ui = new WebExtUI();
     broker = new Broker(config);
     snowflake = new Snowflake(config, ui, broker);

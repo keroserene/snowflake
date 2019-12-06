@@ -79,7 +79,7 @@ var snowflake, query, debug, ui, silenceNotifications, log, dbg, init;
 
   init = function() {
     var broker, config, ui;
-    config = new Config;
+    config = new Config("testing");
     if ('off' !== query['ratelimit']) {
       config.rateLimitBytes = Params.getByteCount(query, 'ratelimit', config.rateLimitBytes);
     }

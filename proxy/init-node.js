@@ -4,7 +4,7 @@
 Entry point.
 */
 
-var config = new Config;
+var config = new Config("node");
 
 var ui = new UI();
 
