@@ -192,4 +192,10 @@ if (tasks.has(cmd)) {
   t.func();
 } else {
   console.error('Command not supported.');
+
+  console.log('Commands:');
+
+  tasks.forEach(function(value, key) {
+    console.log(key + ' - ' + value.msg);
+  })
 }
