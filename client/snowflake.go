@@ -194,7 +194,7 @@ func main() {
 		}()
 	}
 
-	// keep track of handlers and wait for a signal
+	// wait for a signal
 	<-sigChan
 
 	// signal received, shut down
