@@ -50,13 +50,13 @@ func CreateBrokerTransport() http.RoundTripper {
 // to clients, and |front| is the option fronting domain.
 func NewBrokerChannel(broker string, front string, transport http.RoundTripper) *BrokerChannel {
 	targetURL, err := url.Parse(broker)
-	if nil != err {
+	if err != nil {
 		return nil
 	}
 	log.Println("Rendezvous using Broker at:", broker)
 	bc := new(BrokerChannel)
 	bc.url = targetURL
-	if "" != front { // Optional front domain.
+	if front != "" { // Optional front domain.
 		log.Println("Domain fronting using:", front)
 		bc.Host = bc.url.Host
 		bc.url.Host = front
@@ -109,7 +109,6 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		}
 		answer := deserializeSessionDescription(string(body))
 		return answer, nil
-
 	case http.StatusServiceUnavailable:
 		return nil, errors.New(BrokerError503)
 	case http.StatusBadRequest:
@@ -125,8 +124,7 @@ type WebRTCDialer struct {
 	webrtcConfig *webrtc.Configuration
 }
 
-func NewWebRTCDialer(
-	broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebRTCDialer {
+func NewWebRTCDialer(broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebRTCDialer {
 	var config webrtc.Configuration
 	if iceServers != nil {
 		config = webrtc.Configuration{

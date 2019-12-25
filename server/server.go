@@ -345,10 +345,10 @@ func main() {
 		}()
 	}
 
-	// wait for a signal
+	// Wait for a signal.
 	sig := <-sigChan
 
-	// signal received, shut down
+	// Signal received, shut down.
 	log.Printf("caught signal %q, exiting", sig)
 	for _, server := range servers {
 		server.Close()

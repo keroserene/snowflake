@@ -30,7 +30,6 @@ type Tongue interface {
 // Interface for collecting some number of Snowflakes, for passing along
 // ultimately to the SOCKS handler.
 type SnowflakeCollector interface {
-
 	// Add a Snowflake to the collection.
 	// Implementation should decide how to connect and maintain the webRTCConn.
 	Collect() (Snowflake, error)

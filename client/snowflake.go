@@ -30,9 +30,9 @@ func ConnectLoop(snowflakes sf.SnowflakeCollector) {
 	for {
 		// Check if ending is necessary.
 		_, err := snowflakes.Collect()
-		if nil != err {
-			log.Println("WebRTC:", err,
-				" Retrying in", sf.ReconnectTimeout, "seconds...")
+		if err != nil {
+			log.Printf("WebRTC: %v  Retrying in %v seconds...",
+				err, sf.ReconnectTimeout)
 		}
 		select {
 		case <-time.After(time.Second * sf.ReconnectTimeout):
@@ -52,7 +52,7 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 		log.Println("SOCKS listening...")
 		conn, err := ln.AcceptSocks()
 		if err != nil {
-			if e, ok := err.(net.Error); ok && e.Temporary() {
+			if err, ok := err.(net.Error); ok && err.Temporary() {
 				continue
 			}
 			log.Printf("SOCKS accept error: %s", err)
@@ -66,7 +66,7 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 	}
 }
 
-//s is a comma-separated list of ICE server URLs
+// s is a comma-separated list of ICE server URLs.
 func parseIceServers(s string) []webrtc.ICEServer {
 	var servers []webrtc.ICEServer
 	log.Println(s)
@@ -98,9 +98,9 @@ func main() {
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
-	// Don't write to stderr; versions of tor earlier than about
-	// 0.3.5.6 do not read from the pipe, and eventually we will
-	// deadlock because the buffer is full.
+	// Don't write to stderr; versions of tor earlier than about 0.3.5.6 do
+	// not read from the pipe, and eventually we will deadlock because the
+	// buffer is full.
 	// https://bugs.torproject.org/26360
 	// https://bugs.torproject.org/25600#comment:14
 	var logOutput = ioutil.Discard
@@ -120,7 +120,7 @@ func main() {
 		defer logFile.Close()
 		logOutput = logFile
 	}
-	//We want to send the log output through our scrubber first
+	// We want to send the log output through our scrubber first
 	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
@@ -194,10 +194,10 @@ func main() {
 		}()
 	}
 
-	// wait for a signal
+	// Wait for a signal.
 	<-sigChan
 
-	// signal received, shut down
+	// Signal received, shut down.
 	for _, ln := range listeners {
 		ln.Close()
 	}

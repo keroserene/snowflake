@@ -44,8 +44,7 @@ func (p *Peers) Collect() (Snowflake, error) {
 	cnt := p.Count()
 	s := fmt.Sprintf("Currently at [%d/%d]", cnt, p.capacity)
 	if cnt >= p.capacity {
-		s = fmt.Sprintf("At capacity [%d/%d]", cnt, p.capacity)
-		return nil, errors.New(s)
+		return nil, fmt.Errorf("At capacity [%d/%d]", cnt, p.capacity)
 	}
 	log.Println("WebRTC: Collecting a new Snowflake.", s)
 	// Engage the Snowflake Catching interface, which must be available.
@@ -68,12 +67,12 @@ func (p *Peers) Pop() Snowflake {
 	// Blocks until an available, valid snowflake appears.
 	var snowflake Snowflake
 	var ok bool
-	for nil == snowflake {
+	for snowflake == nil {
 		snowflake, ok = <-p.snowflakeChan
-		conn := snowflake.(*WebRTCPeer)
 		if !ok {
 			return nil
 		}
+		conn := snowflake.(*WebRTCPeer)
 		if conn.closed {
 			snowflake = nil
 		}
@@ -120,5 +119,5 @@ func (p *Peers) End() {
 		p.activePeers.Remove(e)
 		e = next
 	}
-	log.Println("WebRTC: melted all", cnt, "snowflakes.")
+	log.Printf("WebRTC: melted all %d snowflakes.", cnt)
 }
