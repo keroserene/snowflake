@@ -47,9 +47,7 @@ func ConnectLoop(snowflakes sf.SnowflakeCollector) {
 // Accept local SOCKS connections and pass them to the handler.
 func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 	defer ln.Close()
-	log.Println("Started SOCKS listener.")
 	for {
-		log.Println("SOCKS listening...")
 		conn, err := ln.AcceptSocks()
 		if err != nil {
 			if err, ok := err.(net.Error); ok && err.Temporary() {
@@ -58,7 +56,7 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 			log.Printf("SOCKS accept error: %s", err)
 			break
 		}
-		log.Println("SOCKS accepted: ", conn.Req)
+		log.Printf("SOCKS accepted: %v", conn.Req)
 		err = sf.Handler(conn, snowflakes)
 		if err != nil {
 			log.Printf("handler error: %s", err)
@@ -167,6 +165,7 @@ func main() {
 				pt.CmethodError(methodName, err.Error())
 				break
 			}
+			log.Printf("Started SOCKS listener at %v.", ln.Addr())
 			go socksAcceptLoop(ln, snowflakes)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			listeners = append(listeners, ln)
