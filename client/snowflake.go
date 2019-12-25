@@ -69,16 +69,13 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 // s is a comma-separated list of ICE server URLs.
 func parseIceServers(s string) []webrtc.ICEServer {
 	var servers []webrtc.ICEServer
-	log.Println(s)
 	s = strings.TrimSpace(s)
 	if len(s) == 0 {
 		return nil
 	}
 	urls := strings.Split(s, ",")
-	log.Printf("Using ICE Servers:")
 	for _, url := range urls {
 		url = strings.TrimSpace(url)
-		log.Printf("url: %s", url)
 		servers = append(servers, webrtc.ICEServer{
 			URLs: []string{url},
 		})
@@ -126,6 +123,10 @@ func main() {
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
 	iceServers := parseIceServers(*iceServersCommas)
+	log.Printf("Using ICE servers:")
+	for _, server := range iceServers {
+		log.Printf("url: %v", strings.Join(server.URLs, " "))
+	}
 
 	// Prepare to collect remote WebRTC peers.
 	snowflakes := sf.NewPeers(*max)
