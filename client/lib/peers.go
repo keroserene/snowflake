@@ -35,7 +35,7 @@ func NewPeers(max int) *Peers {
 	// Use buffered go channel to pass snowflakes onwards to the SOCKS handler.
 	p.snowflakeChan = make(chan Snowflake, max)
 	p.activePeers = list.New()
-	p.melt = make(chan struct{}, 1)
+	p.melt = make(chan struct{})
 	return p
 }
 
@@ -110,7 +110,7 @@ func (p *Peers) purgeClosedPeers() {
 // Close all Peers contained here.
 func (p *Peers) End() {
 	close(p.snowflakeChan)
-	p.melt <- struct{}{}
+	close(p.melt)
 	cnt := p.Count()
 	for e := p.activePeers.Front(); e != nil; {
 		next := e.Next()
