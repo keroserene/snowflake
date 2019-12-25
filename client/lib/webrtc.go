@@ -117,9 +117,9 @@ func (c *WebRTCPeer) checkForStaleness() {
 		if c.closed {
 			return
 		}
-		if time.Since(c.lastReceive).Seconds() > SnowflakeTimeout {
-			log.Println("WebRTC: No messages received for", SnowflakeTimeout,
-				"seconds -- closing stale connection.")
+		if time.Since(c.lastReceive) > SnowflakeTimeout {
+			log.Printf("WebRTC: No messages received for %v -- closing stale connection.",
+				SnowflakeTimeout)
 			c.Close()
 			return
 		}
@@ -314,8 +314,8 @@ func (c *WebRTCPeer) exchangeSDP() error {
 		go c.sendOfferToBroker()
 		answer, ok = <-c.answerChannel // Blocks...
 		if !ok || nil == answer {
-			log.Printf("Failed to retrieve answer. Retrying in %d seconds", ReconnectTimeout)
-			<-time.After(time.Second * ReconnectTimeout)
+			log.Printf("Failed to retrieve answer. Retrying in %v", ReconnectTimeout)
+			<-time.After(ReconnectTimeout)
 			answer = nil
 		}
 	}

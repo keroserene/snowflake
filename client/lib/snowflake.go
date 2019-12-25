@@ -6,11 +6,12 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 const (
-	ReconnectTimeout = 10
-	SnowflakeTimeout = 30
+	ReconnectTimeout = 10 * time.Second
+	SnowflakeTimeout = 30 * time.Second
 )
 
 // Given an accepted SOCKS connection, establish a WebRTC connection to the

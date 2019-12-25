@@ -31,11 +31,11 @@ func ConnectLoop(snowflakes sf.SnowflakeCollector) {
 		// Check if ending is necessary.
 		_, err := snowflakes.Collect()
 		if err != nil {
-			log.Printf("WebRTC: %v  Retrying in %v seconds...",
+			log.Printf("WebRTC: %v  Retrying in %v...",
 				err, sf.ReconnectTimeout)
 		}
 		select {
-		case <-time.After(time.Second * sf.ReconnectTimeout):
+		case <-time.After(sf.ReconnectTimeout):
 			continue
 		case <-snowflakes.Melted():
 			log.Println("ConnectLoop: stopped.")
