@@ -134,10 +134,6 @@ func main() {
 	broker := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport())
 	snowflakes.Tongue = sf.NewWebRTCDialer(broker, iceServers)
 
-	if nil == snowflakes.Tongue {
-		log.Fatal("Unable to prepare rendezvous method.")
-		return
-	}
 	// Use a real logger to periodically output how much traffic is happening.
 	snowflakes.BytesLogger = &sf.BytesSyncLogger{
 		InboundChan:  make(chan int, 5),
