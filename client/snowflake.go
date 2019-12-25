@@ -130,7 +130,10 @@ func main() {
 	snowflakes := sf.NewPeers(*max)
 
 	// Use potentially domain-fronting broker to rendezvous.
-	broker := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport())
+	broker, err := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport())
+	if err != nil {
+		log.Fatalf("parsing broker URL: %v", err)
+	}
 	snowflakes.Tongue = sf.NewWebRTCDialer(broker, iceServers)
 
 	// Use a real logger to periodically output how much traffic is happening.

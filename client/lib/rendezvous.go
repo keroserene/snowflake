@@ -48,10 +48,10 @@ func CreateBrokerTransport() http.RoundTripper {
 // Construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannel(broker string, front string, transport http.RoundTripper) *BrokerChannel {
+func NewBrokerChannel(broker string, front string, transport http.RoundTripper) (*BrokerChannel, error) {
 	targetURL, err := url.Parse(broker)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	log.Println("Rendezvous using Broker at:", broker)
 	bc := new(BrokerChannel)
@@ -63,7 +63,7 @@ func NewBrokerChannel(broker string, front string, transport http.RoundTripper) 
 	}
 
 	bc.transport = transport
-	return bc
+	return bc, nil
 }
 
 func limitedRead(r io.Reader, limit int64) ([]byte, error) {
@@ -141,9 +141,6 @@ func NewWebRTCDialer(broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebR
 
 // Initialize a WebRTC Connection by signaling through the broker.
 func (w WebRTCDialer) Catch() (Snowflake, error) {
-	if nil == w.BrokerChannel {
-		return nil, errors.New("cannot Dial WebRTC without a BrokerChannel")
-	}
 	// TODO: [#3] Fetch ICE server information from Broker.
 	// TODO: [#18] Consider TURN servers here too.
 	connection := NewWebRTCPeer(w.webrtcConfig, w.BrokerChannel)
