@@ -282,9 +282,7 @@ func main() {
 	servers := make([]*http.Server, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if bindaddr.MethodName != ptMethodName {
-			if err = pt.SmethodError(bindaddr.MethodName, "no such method"); err != nil {
-				log.Printf("pt.SmethodError returned error: %v", err)
-			}
+			pt.SmethodError(bindaddr.MethodName, "no such method")
 			continue
 		}
 
@@ -296,9 +294,7 @@ func main() {
 			lnHTTP01, err = net.ListenTCP("tcp", &addr)
 			if err != nil {
 				log.Printf("error opening HTTP-01 ACME listener: %s", err)
-				if inerr := pt.SmethodError(bindaddr.MethodName, "HTTP-01 ACME listener: "+err.Error()); inerr != nil {
-					log.Printf("pt.SmethodError returned error: %v", inerr)
-				}
+				pt.SmethodError(bindaddr.MethodName, "HTTP-01 ACME listener: "+err.Error())
 				continue
 			}
 			server := &http.Server{
@@ -326,9 +322,7 @@ func main() {
 		}
 		if err != nil {
 			log.Printf("error opening listener: %s", err)
-			if inerr := pt.SmethodError(bindaddr.MethodName, err.Error()); inerr != nil {
-				log.Printf("pt.SmethodError returned error: %v", inerr)
-			}
+			pt.SmethodError(bindaddr.MethodName, err.Error())
 			continue
 		}
 		pt.SmethodArgs(bindaddr.MethodName, bindaddr.Addr, args)

@@ -230,9 +230,7 @@ func main() {
 			bindaddr.Addr.Port = 12345 // lies!!!
 			pt.Smethod(bindaddr.MethodName, bindaddr.Addr)
 		default:
-			if err := pt.SmethodError(bindaddr.MethodName, "no such method"); err != nil {
-				log.Printf("SmethodError returned error: %v", err)
-			}
+			pt.SmethodError(bindaddr.MethodName, "no such method")
 		}
 	}
 	pt.SmethodsDone()
