@@ -94,7 +94,9 @@ func clientAddr(clientIPParam string) string {
 	return (&net.TCPAddr{IP: clientIP, Port: 1, Zone: ""}).String()
 }
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 
 type HTTPHandler struct{}
 
@@ -138,8 +140,6 @@ func initServer(addr *net.TCPAddr,
 	if addr.Port == 0 {
 		return nil, fmt.Errorf("cannot listen on port %d; configure a port using ServerTransportListenAddr", addr.Port)
 	}
-
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 
 	var handler HTTPHandler
 	server := &http.Server{
