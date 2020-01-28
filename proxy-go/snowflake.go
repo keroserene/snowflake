@@ -285,7 +285,7 @@ func datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
 		log.Printf("error dialing relay: %s", err)
 		return
 	}
-	wsConn := websocketconn.NewWebSocketConn(ws)
+	wsConn := websocketconn.New(ws)
 	log.Printf("connected to relay")
 	defer wsConn.Close()
 	CopyLoop(conn, &wsConn)

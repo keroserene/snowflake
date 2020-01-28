@@ -52,7 +52,7 @@ additional HTTP listener on port 80 to work with ACME.
 }
 
 // Copy from WebSocket to socket and vice versa.
-func proxy(local *net.TCPConn, conn *websocketconn.WebSocketConn) {
+func proxy(local *net.TCPConn, conn *websocketconn.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -107,7 +107,7 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn := websocketconn.NewWebSocketConn(ws)
+	conn := websocketconn.New(ws)
 	defer conn.Close()
 
 	// Pass the address of client as the remote address of incoming connection

@@ -60,7 +60,7 @@ type StubHandler struct{}
 func (handler *StubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ws, _ := upgrader.Upgrade(w, r, nil)
 
-	conn := websocketconn.NewWebSocketConn(ws)
+	conn := websocketconn.New(ws)
 	defer conn.Close()
 
 	//dial stub OR
@@ -90,7 +90,7 @@ func Test(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			ws, _, err := websocket.DefaultDialer.Dial("ws://localhost:8888", nil)
-			wsConn := websocketconn.NewWebSocketConn(ws)
+			wsConn := websocketconn.New(ws)
 			So(err, ShouldEqual, nil)
 			So(wsConn, ShouldNotEqual, nil)
 
@@ -133,7 +133,7 @@ func Test(t *testing.T) {
 
 			ws, _, err := websocket.DefaultDialer.Dial("ws://localhost:8888", nil)
 			So(err, ShouldEqual, nil)
-			wsConn := websocketconn.NewWebSocketConn(ws)
+			wsConn := websocketconn.New(ws)
 			So(wsConn, ShouldNotEqual, nil)
 
 			wsConn.Write([]byte("Hello"))

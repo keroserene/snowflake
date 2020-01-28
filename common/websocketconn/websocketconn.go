@@ -9,13 +9,13 @@ import (
 
 // An abstraction that makes an underlying WebSocket connection look like an
 // io.ReadWriteCloser.
-type WebSocketConn struct {
+type Conn struct {
 	Ws *websocket.Conn
 	r  io.Reader
 }
 
 // Implements io.Reader.
-func (conn *WebSocketConn) Read(b []byte) (n int, err error) {
+func (conn *Conn) Read(b []byte) (n int, err error) {
 	var opCode int
 	if conn.r == nil {
 		// New message
@@ -43,7 +43,7 @@ func (conn *WebSocketConn) Read(b []byte) (n int, err error) {
 }
 
 // Implements io.Writer.
-func (conn *WebSocketConn) Write(b []byte) (n int, err error) {
+func (conn *Conn) Write(b []byte) (n int, err error) {
 	var w io.WriteCloser
 	if w, err = conn.Ws.NextWriter(websocket.BinaryMessage); err != nil {
 		return
@@ -56,15 +56,15 @@ func (conn *WebSocketConn) Write(b []byte) (n int, err error) {
 }
 
 // Implements io.Closer.
-func (conn *WebSocketConn) Close() error {
+func (conn *Conn) Close() error {
 	// Ignore any error in trying to write a Close frame.
 	_ = conn.Ws.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
 	return conn.Ws.Close()
 }
 
-// Create a new WebSocketConn.
-func NewWebSocketConn(ws *websocket.Conn) WebSocketConn {
-	var conn WebSocketConn
+// Create a new Conn.
+func New(ws *websocket.Conn) Conn {
+	var conn Conn
 	conn.Ws = ws
 	return conn
 }
