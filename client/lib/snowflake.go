@@ -48,7 +48,7 @@ func Handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 
 // Exchanges bytes between two ReadWriters.
 // (In this case, between a SOCKS and WebRTC connection.)
-func copyLoop(WebRTC, SOCKS io.ReadWriter) {
+func copyLoop(SOCKS, WebRTC io.ReadWriter) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
