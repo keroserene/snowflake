@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -20,15 +22,26 @@ import (
 	"time"
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
+	"git.torproject.org/pluggable-transports/snowflake.git/common/encapsulation"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
+	"git.torproject.org/pluggable-transports/snowflake.git/common/turbotunnel"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
 	"github.com/gorilla/websocket"
+	"github.com/xtaci/kcp-go/v5"
+	"github.com/xtaci/smux"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/http2"
 )
 
 const ptMethodName = "snowflake"
 const requestTimeout = 10 * time.Second
+
+// How long to remember outgoing packets for a client, when we don't currently
+// have an active WebSocket connection corresponding to that client. Because a
+// client session may span multiple WebSocket connections, we keep packets we
+// aren't able to send immediately in memory, for a little while but not
+// indefinitely.
+const clientMapTimeout = 1 * time.Minute
 
 // How long to wait for ListenAndServe or ListenAndServeTLS to return an error
 // before deciding that it's not going to return.
@@ -49,8 +62,8 @@ additional HTTP listener on port 80 to work with ACME.
 	flag.PrintDefaults()
 }
 
-// Copy from WebSocket to socket and vice versa.
-func proxy(local *net.TCPConn, conn *websocketconn.Conn) {
+// Copy from one stream to another.
+func proxy(local *net.TCPConn, conn net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -101,7 +114,23 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-type HTTPHandler struct{}
+// overrideReadConn is a net.Conn with an overridden Read method. Compare to
+// recordingConn at
+// https://dave.cheney.net/2015/05/22/struct-composition-with-go.
+type overrideReadConn struct {
+	net.Conn
+	io.Reader
+}
+
+func (conn *overrideReadConn) Read(p []byte) (int, error) {
+	return conn.Reader.Read(p)
+}
+
+type HTTPHandler struct {
+	// pconn is the adapter layer between stream-oriented WebSocket
+	// connections and the packet-oriented KCP layer.
+	pconn *turbotunnel.QueuePacketConn
+}
 
 func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -116,15 +145,182 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Pass the address of client as the remote address of incoming connection
 	clientIPParam := r.URL.Query().Get("client_ip")
 	addr := clientAddr(clientIPParam)
+
+	var token [len(turbotunnel.Token)]byte
+	_, err = io.ReadFull(conn, token[:])
+	if err != nil {
+		// Don't bother logging EOF: that happens with an unused
+		// connection, which clients make frequently as they maintain a
+		// pool of proxies.
+		if err != io.EOF {
+			log.Printf("reading token: %v", err)
+		}
+		return
+	}
+
+	switch {
+	case bytes.Equal(token[:], turbotunnel.Token[:]):
+		err = turbotunnelMode(conn, addr, handler.pconn)
+	default:
+		// We didn't find a matching token, which means that we are
+		// dealing with a client that doesn't know about such things.
+		// "Unread" the token by constructing a new Reader and pass it
+		// to the old one-session-per-WebSocket mode.
+		conn2 := &overrideReadConn{Conn: conn, Reader: io.MultiReader(bytes.NewReader(token[:]), conn)}
+		err = oneshotMode(conn2, addr)
+	}
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+// oneshotMode handles clients that did not send turbotunnel.Token at the start
+// of their stream. These clients use the WebSocket as a raw pipe, and expect
+// their session to begin and end when this single WebSocket does.
+func oneshotMode(conn net.Conn, addr string) error {
 	statsChannel <- addr != ""
 	or, err := pt.DialOr(&ptInfo, addr, ptMethodName)
 	if err != nil {
-		log.Printf("failed to connect to ORPort: %s", err)
-		return
+		return fmt.Errorf("failed to connect to ORPort: %s", err)
 	}
 	defer or.Close()
 
 	proxy(or, conn)
+
+	return nil
+}
+
+// turbotunnelMode handles clients that sent turbotunnel.Token at the start of
+// their stream. These clients expect to send and receive encapsulated packets,
+// with a long-lived session identified by ClientID.
+func turbotunnelMode(conn net.Conn, addr string, pconn *turbotunnel.QueuePacketConn) error {
+	// Read the ClientID prefix. Every packet encapsulated in this WebSocket
+	// connection pertains to the same ClientID.
+	var clientID turbotunnel.ClientID
+	_, err := io.ReadFull(conn, clientID[:])
+	if err != nil {
+		return fmt.Errorf("reading ClientID: %v", err)
+	}
+
+	// TODO: ClientID-to-client_ip address mapping
+	// Peek at the first read packet to get the KCP conv ID.
+
+	errCh := make(chan error)
+
+	// The remainder of the WebSocket stream consists of encapsulated
+	// packets. We read them one by one and feed them into the
+	// QueuePacketConn on which kcp.ServeConn was set up, which eventually
+	// leads to KCP-level sessions in the acceptSessions function.
+	go func() {
+		for {
+			p, err := encapsulation.ReadData(conn)
+			if err != nil {
+				errCh <- err
+				break
+			}
+			pconn.QueueIncoming(p, clientID)
+		}
+	}()
+
+	// At the same time, grab packets addressed to this ClientID and
+	// encapsulate them into the downstream.
+	go func() {
+		// Buffer encapsulation.WriteData operations to keep length
+		// prefixes in the same send as the data that follows.
+		bw := bufio.NewWriter(conn)
+		for p := range pconn.OutgoingQueue(clientID) {
+			_, err := encapsulation.WriteData(bw, p)
+			if err == nil {
+				err = bw.Flush()
+			}
+			if err != nil {
+				errCh <- err
+				break
+			}
+		}
+	}()
+
+	// Wait until one of the above loops terminates. The closing of the
+	// WebSocket connection will terminate the other one.
+	<-errCh
+
+	return nil
+}
+
+// handleStream bidirectionally connects a client stream with the ORPort.
+func handleStream(stream net.Conn) error {
+	// TODO: This is where we need to provide the client IP address.
+	statsChannel <- false
+	or, err := pt.DialOr(&ptInfo, "", ptMethodName)
+	if err != nil {
+		return fmt.Errorf("connecting to ORPort: %v", err)
+	}
+	defer or.Close()
+
+	proxy(or, stream)
+
+	return nil
+}
+
+// acceptStreams layers an smux.Session on the KCP connection and awaits streams
+// on it. Passes each stream to handleStream.
+func acceptStreams(conn *kcp.UDPSession) error {
+	smuxConfig := smux.DefaultConfig()
+	smuxConfig.Version = 2
+	smuxConfig.KeepAliveTimeout = 10 * time.Minute
+	sess, err := smux.Server(conn, smuxConfig)
+	if err != nil {
+		return err
+	}
+	for {
+		stream, err := sess.AcceptStream()
+		if err != nil {
+			if err, ok := err.(net.Error); ok && err.Temporary() {
+				continue
+			}
+			return err
+		}
+		go func() {
+			defer stream.Close()
+			err := handleStream(stream)
+			if err != nil {
+				log.Printf("handleStream: %v", err)
+			}
+		}()
+	}
+}
+
+// acceptSessions listens for incoming KCP connections and passes them to
+// acceptStreams. It is handler.ServeHTTP that provides the network interface
+// that drives this function.
+func acceptSessions(ln *kcp.Listener) error {
+	for {
+		conn, err := ln.AcceptKCP()
+		if err != nil {
+			if err, ok := err.(net.Error); ok && err.Temporary() {
+				continue
+			}
+			return err
+		}
+		// Permit coalescing the payloads of consecutive sends.
+		conn.SetStreamMode(true)
+		// Disable the dynamic congestion window (limit only by the
+		// maximum of local and remote static windows).
+		conn.SetNoDelay(
+			0, // default nodelay
+			0, // default interval
+			0, // default resend
+			1, // nc=1 => congestion window off
+		)
+		go func() {
+			defer conn.Close()
+			err := acceptStreams(conn)
+			if err != nil {
+				log.Printf("acceptStreams: %v", err)
+			}
+		}()
+	}
 }
 
 func initServer(addr *net.TCPAddr,
@@ -140,7 +336,12 @@ func initServer(addr *net.TCPAddr,
 		return nil, fmt.Errorf("cannot listen on port %d; configure a port using ServerTransportListenAddr", addr.Port)
 	}
 
-	var handler HTTPHandler
+	handler := HTTPHandler{
+		// pconn is shared among all connections to this server. It
+		// overlays packet-based client sessions on top of ephemeral
+		// WebSocket connections.
+		pconn: turbotunnel.NewQueuePacketConn(addr, clientMapTimeout),
+	}
 	server := &http.Server{
 		Addr:        addr.String(),
 		Handler:     &handler,
@@ -175,6 +376,24 @@ func initServer(addr *net.TCPAddr,
 	case <-time.After(listenAndServeErrorTimeout):
 		break
 	}
+
+	// Start a KCP engine, set up to read and write its packets over the
+	// WebSocket connections that arrive at the web server.
+	// handler.ServeHTTP is responsible for encapsulation/decapsulation of
+	// packets on behalf of KCP. KCP takes those packets and turns them into
+	// sessions which appear in the acceptSessions function.
+	ln, err := kcp.ServeConn(nil, 0, 0, handler.pconn)
+	if err != nil {
+		server.Close()
+		return server, err
+	}
+	go func() {
+		defer ln.Close()
+		err := acceptSessions(ln)
+		if err != nil {
+			log.Printf("acceptSessions: %v", err)
+		}
+	}()
 
 	return server, err
 }
