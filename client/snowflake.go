@@ -57,10 +57,13 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 			break
 		}
 		log.Printf("SOCKS accepted: %v", conn.Req)
-		err = sf.Handler(conn, snowflakes)
-		if err != nil {
-			log.Printf("handler error: %s", err)
-		}
+		go func() {
+			defer conn.Close()
+			err = sf.Handler(conn, snowflakes)
+			if err != nil {
+				log.Printf("handler error: %s", err)
+			}
+		}()
 	}
 }
 

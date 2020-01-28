@@ -25,7 +25,6 @@ func Handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
 
 		return errors.New("handler: Received invalid Snowflake")
 	}
-	defer socks.Close()
 	defer snowflake.Close()
 	log.Println("---- Handler: snowflake assigned ----")
 	err := socks.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
