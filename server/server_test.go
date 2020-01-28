@@ -66,7 +66,7 @@ func (handler *StubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//dial stub OR
 	or, _ := net.DialTCP("tcp", nil, &net.TCPAddr{IP: net.ParseIP("localhost"), Port: 8889})
 
-	proxy(or, &conn)
+	proxy(or, conn)
 }
 
 func Test(t *testing.T) {

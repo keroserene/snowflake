@@ -125,7 +125,7 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer or.Close()
 
-	proxy(or, &conn)
+	proxy(or, conn)
 }
 
 func initServer(addr *net.TCPAddr,

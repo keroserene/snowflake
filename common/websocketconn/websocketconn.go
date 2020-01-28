@@ -63,8 +63,8 @@ func (conn *Conn) Close() error {
 }
 
 // Create a new Conn.
-func New(ws *websocket.Conn) Conn {
+func New(ws *websocket.Conn) *Conn {
 	var conn Conn
 	conn.Ws = ws
-	return conn
+	return &conn
 }
