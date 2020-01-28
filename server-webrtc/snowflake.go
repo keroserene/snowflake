@@ -21,17 +21,17 @@ var ptMethodName = "snowflake"
 var ptInfo pt.ServerInfo
 var logFile *os.File
 
-func copyLoop(WebRTC, ORPort net.Conn) {
+func copyLoop(webRTC, orPort net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		if _, err := io.Copy(ORPort, WebRTC); err != nil {
+		if _, err := io.Copy(orPort, webRTC); err != nil {
 			log.Printf("copy WebRTC to ORPort error in copyLoop: %v", err)
 		}
 		wg.Done()
 	}()
 	go func() {
-		if _, err := io.Copy(WebRTC, ORPort); err != nil {
+		if _, err := io.Copy(webRTC, orPort); err != nil {
 			log.Printf("copy ORPort to WebRTC error in copyLoop: %v", err)
 		}
 		wg.Done()
