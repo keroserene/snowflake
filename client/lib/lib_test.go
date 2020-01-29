@@ -271,12 +271,6 @@ func TestSnowflakeClient(t *testing.T) {
 			So(d.BrokerChannel, ShouldNotBeNil)
 			So(d.BrokerChannel.Host, ShouldEqual, "test")
 		})
-		Convey("WebRTCDialer cannot Catch a snowflake with nil broker.", func() {
-			d := NewWebRTCDialer(nil, nil)
-			conn, err := d.Catch()
-			So(conn, ShouldBeNil)
-			So(err, ShouldNotBeNil)
-		})
 		SkipConvey("WebRTCDialer can Catch a snowflake.", func() {
 			broker := &BrokerChannel{Host: "test"}
 			d := NewWebRTCDialer(broker, nil)
