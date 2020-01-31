@@ -14,9 +14,12 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 
+	"github.com/pion/sdp"
 	"github.com/pion/webrtc"
 )
 
@@ -31,9 +34,10 @@ const (
 type BrokerChannel struct {
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
-	Host      string
-	url       *url.URL
-	transport http.RoundTripper // Used to make all requests.
+	Host               string
+	url                *url.URL
+	transport          http.RoundTripper // Used to make all requests.
+	keepLocalAddresses bool
 }
 
 // We make a copy of DefaultTransport because we want the default Dial
@@ -48,7 +52,7 @@ func CreateBrokerTransport() http.RoundTripper {
 // Construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannel(broker string, front string, transport http.RoundTripper) (*BrokerChannel, error) {
+func NewBrokerChannel(broker string, front string, transport http.RoundTripper, keepLocalAddresses bool) (*BrokerChannel, error) {
 	targetURL, err := url.Parse(broker)
 	if err != nil {
 		return nil, err
@@ -63,6 +67,7 @@ func NewBrokerChannel(broker string, front string, transport http.RoundTripper) 
 	}
 
 	bc.transport = transport
+	bc.keepLocalAddresses = keepLocalAddresses
 	return bc, nil
 }
 
@@ -76,6 +81,41 @@ func limitedRead(r io.Reader, limit int64) ([]byte, error) {
 	return p, err
 }
 
+// Stolen from https://github.com/golang/go/pull/30278
+func IsLocal(ip net.IP) bool {
+	if ip4 := ip.To4(); ip4 != nil {
+		// Local IPv4 addresses are defined in https://tools.ietf.org/html/rfc1918
+		return ip4[0] == 10 ||
+			(ip4[0] == 172 && ip4[1]&0xf0 == 16) ||
+			(ip4[0] == 192 && ip4[1] == 168)
+	}
+	// Local IPv6 addresses are defined in https://tools.ietf.org/html/rfc4193
+	return len(ip) == net.IPv6len && ip[0]&0xfe == 0xfc
+}
+
+// Removes local LAN address ICE candidates
+func stripLocalAddresses(str string) string {
+	re := regexp.MustCompile(`a=candidate:.*?\\r\\n`)
+	return re.ReplaceAllStringFunc(str, func(s string) string {
+		t := s[len("a=candidate:") : len(s)-len("\\r\\n")]
+		var ice sdp.ICECandidate
+		err := ice.Unmarshal(t)
+		if err != nil {
+			return s
+		}
+		if ice.Typ == "host" {
+			ip := net.ParseIP(ice.Address)
+			if ip == nil {
+				return s
+			}
+			if IsLocal(ip) || ip.IsUnspecified() || ip.IsLoopback() {
+				return ""
+			}
+		}
+		return s
+	})
+}
+
 // Roundtrip HTTP POST using WebRTC SessionDescriptions.
 //
 // Send an SDP offer to the broker, which assigns a proxy and responds
@@ -84,7 +124,20 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
 	log.Println("Negotiating via BrokerChannel...\nTarget URL: ",
 		bc.Host, "\nFront URL:  ", bc.url.Host)
-	data := bytes.NewReader([]byte(serializeSessionDescription(offer)))
+	str := serializeSessionDescription(offer)
+	// Ideally, we could specify an `RTCIceTransportPolicy` that would handle
+	// this for us.  However, "public" was removed from the draft spec.
+	// See https://developer.mozilla.org/en-US/docs/Web/API/RTCConfiguration#RTCIceTransportPolicy_enum
+	//
+	// FIXME: We are stripping local addresses from the JSON serialized string,
+	// which is expedient but unsatisfying.  We could advocate upstream to
+	// implement a non-standard ICE transport policy, or to somehow alter
+	// APIs to avoid adding the undesirable candidates or a method to filter
+	// them from the marshalled session description.
+	if !bc.keepLocalAddresses {
+		str = stripLocalAddresses(str)
+	}
+	data := bytes.NewReader([]byte(str))
 	// Suffix with broker's client registration handler.
 	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
 	request, err := http.NewRequest("POST", clientURL.String(), data)

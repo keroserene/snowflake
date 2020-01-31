@@ -90,6 +90,7 @@ func main() {
 	frontDomain := flag.String("front", "", "front domain")
 	logFilename := flag.String("log", "", "name of log file")
 	logToStateDir := flag.Bool("logToStateDir", false, "resolve the log file relative to tor's pt state dir")
+	keepLocalAddresses := flag.Bool("keepLocalAddresses", false, "keep local LAN address ICE candidates")
 	max := flag.Int("max", DefaultSnowflakeCapacity,
 		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
@@ -133,7 +134,7 @@ func main() {
 	snowflakes := sf.NewPeers(*max)
 
 	// Use potentially domain-fronting broker to rendezvous.
-	broker, err := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport())
+	broker, err := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport(), *keepLocalAddresses)
 	if err != nil {
 		log.Fatalf("parsing broker URL: %v", err)
 	}
