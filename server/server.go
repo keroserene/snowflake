@@ -30,8 +30,6 @@ import (
 const ptMethodName = "snowflake"
 const requestTimeout = 10 * time.Second
 
-const maxMessageSize = 64 * 1024
-
 // How long to wait for ListenAndServe or ListenAndServeTLS to return an error
 // before deciding that it's not going to return.
 const listenAndServeErrorTimeout = 100 * time.Millisecond
