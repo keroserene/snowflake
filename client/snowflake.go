@@ -59,9 +59,17 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 		log.Printf("SOCKS accepted: %v", conn.Req)
 		go func() {
 			defer conn.Close()
+
+			err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
+			if err != nil {
+				log.Printf("conn.Grant error: %s", err)
+				return
+			}
+
 			err = sf.Handler(conn, snowflakes)
 			if err != nil {
 				log.Printf("handler error: %s", err)
+				return
 			}
 		}()
 	}

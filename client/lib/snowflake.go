@@ -16,22 +16,14 @@ const (
 
 // Given an accepted SOCKS connection, establish a WebRTC connection to the
 // remote peer and exchange traffic.
-func Handler(socks SocksConnector, snowflakes SnowflakeCollector) error {
+func Handler(socks net.Conn, snowflakes SnowflakeCollector) error {
 	// Obtain an available WebRTC remote. May block.
 	snowflake := snowflakes.Pop()
 	if nil == snowflake {
-		if err := socks.Reject(); err != nil {
-			log.Printf("socks.Reject returned error: %v", err)
-		}
-
 		return errors.New("handler: Received invalid Snowflake")
 	}
 	defer snowflake.Close()
 	log.Println("---- Handler: snowflake assigned ----")
-	err := socks.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
-	if err != nil {
-		return err
-	}
 
 	go func() {
 		// When WebRTC resets, close the SOCKS connection too.
