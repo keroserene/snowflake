@@ -7,29 +7,36 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// An abstraction that makes an underlying WebSocket connection look like an
-// io.ReadWriteCloser.
+// An abstraction that makes an underlying WebSocket connection look like a
+// net.Conn.
 type Conn struct {
-	ws     *websocket.Conn
+	*websocket.Conn
 	Reader io.Reader
 	Writer io.Writer
 }
 
-// Implements io.Reader.
 func (conn *Conn) Read(b []byte) (n int, err error) {
 	return conn.Reader.Read(b)
 }
 
-// Implements io.Writer.
 func (conn *Conn) Write(b []byte) (n int, err error) {
 	return conn.Writer.Write(b)
 }
 
-// Implements io.Closer.
 func (conn *Conn) Close() error {
 	// Ignore any error in trying to write a Close frame.
-	_ = conn.ws.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
-	return conn.ws.Close()
+	_ = conn.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
+	return conn.Conn.Close()
+}
+
+func (conn *Conn) SetDeadline(t time.Time) error {
+	errRead := conn.Conn.SetReadDeadline(t)
+	errWrite := conn.Conn.SetWriteDeadline(t)
+	err := errRead
+	if err == nil {
+		err = errWrite
+	}
+	return err
 }
 
 func readLoop(w io.Writer, ws *websocket.Conn) error {
@@ -105,7 +112,7 @@ func New(ws *websocket.Conn) *Conn {
 		pr2.CloseWithError(closeErrorToEOF(writeLoop(ws, pr2)))
 	}()
 	return &Conn{
-		ws:     ws,
+		Conn:   ws,
 		Reader: pr1,
 		Writer: pw2,
 	}
