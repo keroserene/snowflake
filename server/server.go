@@ -111,11 +111,7 @@ func (handler *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Pass the address of client as the remote address of incoming connection
 	clientIPParam := r.URL.Query().Get("client_ip")
 	addr := clientAddr(clientIPParam)
-	if addr == "" {
-		statsChannel <- false
-	} else {
-		statsChannel <- true
-	}
+	statsChannel <- addr != ""
 	or, err := pt.DialOr(&ptInfo, addr, ptMethodName)
 	if err != nil {
 		log.Printf("failed to connect to ORPort: %s", err)
