@@ -43,6 +43,11 @@ const requestTimeout = 10 * time.Second
 // indefinitely.
 const clientMapTimeout = 1 * time.Minute
 
+// How big to make the map of ClientIDs to IP addresses. The map is used in
+// turbotunnelMode to store a reasonable IP address for a client session that
+// may outlive any single WebSocket connection.
+const clientIDAddrMapCapacity = 1024
+
 // How long to wait for ListenAndServe or ListenAndServeTLS to return an error
 // before deciding that it's not going to return.
 const listenAndServeErrorTimeout = 100 * time.Millisecond
@@ -113,6 +118,15 @@ func clientAddr(clientIPParam string) string {
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
+
+// clientIDAddrMap stores short-term mappings from ClientIDs to IP addresses.
+// When we call pt.DialOr, tor wants us to provide a USERADDR string that
+// represents the remote IP address of the client (for metrics purposes, etc.).
+// This data structure bridges the gap between ServeHTTP, which knows about IP
+// addresses, and handleStream, which is what calls pt.DialOr. The common piece
+// of information linking both ends of the chain is the ClientID, which is
+// attached to the WebSocket connection and every session.
+var clientIDAddrMap = newClientIDMap(clientIDAddrMapCapacity)
 
 // overrideReadConn is a net.Conn with an overridden Read method. Compare to
 // recordingConn at
@@ -203,8 +217,16 @@ func turbotunnelMode(conn net.Conn, addr string, pconn *turbotunnel.QueuePacketC
 		return fmt.Errorf("reading ClientID: %v", err)
 	}
 
-	// TODO: ClientID-to-client_ip address mapping
-	// Peek at the first read packet to get the KCP conv ID.
+	// Store a a short-term mapping from the ClientID to the client IP
+	// address attached to this WebSocket connection. tor will want us to
+	// provide a client IP address when we call pt.DialOr. But a KCP session
+	// does not necessarily correspond to any single IP address--it's
+	// composed of packets that are carried in possibly multiple WebSocket
+	// streams. We apply the heuristic that the IP address of the most
+	// recent WebSocket connection that has had to do with a session, at the
+	// time the session is established, is the IP address that should be
+	// credited for the entire KCP session.
+	clientIDAddrMap.Set(clientID, addr)
 
 	errCh := make(chan error)
 
@@ -249,10 +271,9 @@ func turbotunnelMode(conn net.Conn, addr string, pconn *turbotunnel.QueuePacketC
 }
 
 // handleStream bidirectionally connects a client stream with the ORPort.
-func handleStream(stream net.Conn) error {
-	// TODO: This is where we need to provide the client IP address.
-	statsChannel <- false
-	or, err := pt.DialOr(&ptInfo, "", ptMethodName)
+func handleStream(stream net.Conn, addr string) error {
+	statsChannel <- addr != ""
+	or, err := pt.DialOr(&ptInfo, addr, ptMethodName)
 	if err != nil {
 		return fmt.Errorf("connecting to ORPort: %v", err)
 	}
@@ -266,6 +287,17 @@ func handleStream(stream net.Conn) error {
 // acceptStreams layers an smux.Session on the KCP connection and awaits streams
 // on it. Passes each stream to handleStream.
 func acceptStreams(conn *kcp.UDPSession) error {
+	// Look up the IP address associated with this KCP session, via the
+	// ClientID that is returned by the session's RemoteAddr method.
+	addr, ok := clientIDAddrMap.Get(conn.RemoteAddr().(turbotunnel.ClientID))
+	if !ok {
+		// This means that the map is tending to run over capacity, not
+		// just that there was not client_ip on the incoming connection.
+		// We store "" in the map in the absence of client_ip. This log
+		// message means you should increase clientIDAddrMapCapacity.
+		log.Printf("no address in clientID-to-IP map (capacity %d)", clientIDAddrMapCapacity)
+	}
+
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.Version = 2
 	smuxConfig.KeepAliveTimeout = 10 * time.Minute
@@ -273,6 +305,7 @@ func acceptStreams(conn *kcp.UDPSession) error {
 	if err != nil {
 		return err
 	}
+
 	for {
 		stream, err := sess.AcceptStream()
 		if err != nil {
@@ -283,7 +316,7 @@ func acceptStreams(conn *kcp.UDPSession) error {
 		}
 		go func() {
 			defer stream.Close()
-			err := handleStream(stream)
+			err := handleStream(stream, addr)
 			if err != nil {
 				log.Printf("handleStream: %v", err)
 			}
