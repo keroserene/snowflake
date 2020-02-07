@@ -214,12 +214,14 @@ func main() {
 	var acmeHostnamesCommas string
 	var disableTLS bool
 	var logFilename string
+	var unsafeLogging bool
 
 	flag.Usage = usage
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.StringVar(&logFilename, "log", "", "log file to write to")
+	flag.BoolVar(&unsafeLogging, "unsafe-logging", false, "prevent logs from being scrubbed")
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
@@ -233,8 +235,12 @@ func main() {
 		defer f.Close()
 		logOutput = f
 	}
-	//We want to send the log output through our scrubber first
-	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
+	if unsafeLogging {
+		log.SetOutput(logOutput)
+	} else {
+		// We want to send the log output through our scrubber first
+		log.SetOutput(&safelog.LogScrubber{Output: logOutput})
+	}
 
 	if !disableTLS && acmeHostnamesCommas == "" {
 		log.Fatal("the --acme-hostnames option is required")

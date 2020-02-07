@@ -91,6 +91,7 @@ func main() {
 	logFilename := flag.String("log", "", "name of log file")
 	logToStateDir := flag.Bool("logToStateDir", false, "resolve the log file relative to tor's pt state dir")
 	keepLocalAddresses := flag.Bool("keepLocalAddresses", false, "keep local LAN address ICE candidates")
+	unsafeLogging := flag.Bool("unsafe-logging", false, "prevent logs from being scrubbed")
 	max := flag.Int("max", DefaultSnowflakeCapacity,
 		"capacity for number of multiplexed WebRTC peers")
 	flag.Parse()
@@ -119,8 +120,12 @@ func main() {
 		defer logFile.Close()
 		logOutput = logFile
 	}
-	// We want to send the log output through our scrubber first
-	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
+	if *unsafeLogging {
+		log.SetOutput(logOutput)
+	} else {
+		// We want to send the log output through our scrubber first
+		log.SetOutput(&safelog.LogScrubber{Output: logOutput})
+	}
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 

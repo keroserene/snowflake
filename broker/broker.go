@@ -376,6 +376,7 @@ func main() {
 	var certFilename, keyFilename string
 	var disableGeoip bool
 	var metricsFilename string
+	var unsafeLogging bool
 
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for TLS certificate")
@@ -388,13 +389,18 @@ func main() {
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.BoolVar(&disableGeoip, "disable-geoip", false, "don't use geoip for stats collection")
 	flag.StringVar(&metricsFilename, "metrics-log", "", "path to metrics logging output")
+	flag.BoolVar(&unsafeLogging, "unsafe-logging", false, "prevent logs from being scrubbed")
 	flag.Parse()
 
 	var err error
 	var metricsFile io.Writer
 	var logOutput io.Writer = os.Stderr
-	//We want to send the log output through our scrubber first
-	log.SetOutput(&safelog.LogScrubber{Output: logOutput})
+	if unsafeLogging {
+		log.SetOutput(logOutput)
+	} else {
+		// We want to send the log output through our scrubber first
+		log.SetOutput(&safelog.LogScrubber{Output: logOutput})
+	}
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
