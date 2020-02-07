@@ -17,7 +17,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"regexp"
 
 	"github.com/pion/sdp"
 	"github.com/pion/webrtc"
@@ -95,25 +94,40 @@ func IsLocal(ip net.IP) bool {
 
 // Removes local LAN address ICE candidates
 func stripLocalAddresses(str string) string {
-	re := regexp.MustCompile(`a=candidate:.*?\\r\\n`)
-	return re.ReplaceAllStringFunc(str, func(s string) string {
-		t := s[len("a=candidate:") : len(s)-len("\\r\\n")]
-		var ice sdp.ICECandidate
-		err := ice.Unmarshal(t)
-		if err != nil {
-			return s
-		}
-		if ice.Typ == "host" {
-			ip := net.ParseIP(ice.Address)
-			if ip == nil {
-				return s
+	var desc sdp.SessionDescription
+	err := desc.Unmarshal([]byte(str))
+	if err != nil {
+		return str
+	}
+	for _, m := range desc.MediaDescriptions {
+		attrs := make([]sdp.Attribute, 0)
+		for _, a := range m.Attributes {
+			if a.IsICECandidate() {
+				ice, err := a.ToICECandidate()
+				if err != nil {
+					attrs = append(attrs, a)
+					continue
+				}
+				if ice.Typ == "host" {
+					ip := net.ParseIP(ice.Address)
+					if ip == nil {
+						attrs = append(attrs, a)
+						continue
+					}
+					if IsLocal(ip) || ip.IsUnspecified() || ip.IsLoopback() {
+						continue
+					}
+				}
 			}
-			if IsLocal(ip) || ip.IsUnspecified() || ip.IsLoopback() {
-				return ""
-			}
+			attrs = append(attrs, a)
 		}
-		return s
-	})
+		m.Attributes = attrs
+	}
+	bts, err := desc.Marshal()
+	if err != nil {
+		return str
+	}
+	return string(bts)
 }
 
 // Roundtrip HTTP POST using WebRTC SessionDescriptions.
@@ -124,20 +138,16 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
 	log.Println("Negotiating via BrokerChannel...\nTarget URL: ",
 		bc.Host, "\nFront URL:  ", bc.url.Host)
-	str := serializeSessionDescription(offer)
 	// Ideally, we could specify an `RTCIceTransportPolicy` that would handle
 	// this for us.  However, "public" was removed from the draft spec.
 	// See https://developer.mozilla.org/en-US/docs/Web/API/RTCConfiguration#RTCIceTransportPolicy_enum
-	//
-	// FIXME: We are stripping local addresses from the JSON serialized string,
-	// which is expedient but unsatisfying.  We could advocate upstream to
-	// implement a non-standard ICE transport policy, or to somehow alter
-	// APIs to avoid adding the undesirable candidates or a method to filter
-	// them from the marshalled session description.
 	if !bc.keepLocalAddresses {
-		str = stripLocalAddresses(str)
+		offer = &webrtc.SessionDescription{
+			Type: offer.Type,
+			SDP:  stripLocalAddresses(offer.SDP),
+		}
 	}
-	data := bytes.NewReader([]byte(str))
+	data := bytes.NewReader([]byte(serializeSessionDescription(offer)))
 	// Suffix with broker's client registration handler.
 	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
 	request, err := http.NewRequest("POST", clientURL.String(), data)
