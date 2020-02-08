@@ -104,17 +104,10 @@ func stripLocalAddresses(str string) string {
 		for _, a := range m.Attributes {
 			if a.IsICECandidate() {
 				ice, err := a.ToICECandidate()
-				if err != nil {
-					attrs = append(attrs, a)
-					continue
-				}
-				if ice.Typ == "host" {
+				if err == nil && ice.Typ == "host" {
 					ip := net.ParseIP(ice.Address)
-					if ip == nil {
-						attrs = append(attrs, a)
-						continue
-					}
-					if IsLocal(ip) || ip.IsUnspecified() || ip.IsLoopback() {
+					if ip != nil && (IsLocal(ip) || ip.IsUnspecified() || ip.IsLoopback()) {
+						/* no append in this case */
 						continue
 					}
 				}
