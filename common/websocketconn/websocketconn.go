@@ -53,7 +53,6 @@ func readLoop(w io.Writer, ws *websocket.Conn) error {
 			return err
 		}
 	}
-	return nil
 }
 
 func writeLoop(ws *websocket.Conn, r io.Reader) error {
