@@ -233,3 +233,31 @@ func TestConcurrentWrite(t *testing.T) {
 		t.Fatalf("Write: %v", err)
 	}
 }
+
+// Test that Read and Write methods return errors after Close.
+func TestClose(t *testing.T) {
+	s, c, err := connPair()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	err = s.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf [10]byte
+	n, err := s.Read(buf[:])
+	if n != 0 || err == nil {
+		t.Fatalf("Read after Close returned (%v, %v), expected (%v, non-nil)", n, err, 0)
+	}
+
+	_, err = s.Write([]byte{1, 2, 3})
+	// Here we break the abstraction a little and look for a specific error,
+	// io.ErrClosedPipe. This is because we know the Conn uses an io.Pipe
+	// internally.
+	if err != io.ErrClosedPipe {
+		t.Fatalf("Write after Close returned %v, expected %v", err, io.ErrClosedPipe)
+	}
+}

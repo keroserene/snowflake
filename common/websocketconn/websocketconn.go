@@ -24,6 +24,8 @@ func (conn *Conn) Write(b []byte) (n int, err error) {
 }
 
 func (conn *Conn) Close() error {
+	conn.Reader.(*io.PipeReader).Close()
+	conn.Writer.(*io.PipeWriter).Close()
 	// Ignore any error in trying to write a Close frame.
 	_ = conn.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
 	return conn.Conn.Close()
