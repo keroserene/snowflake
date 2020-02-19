@@ -90,8 +90,6 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 func (c *webRTCConn) Write(b []byte) (int, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	// log.Printf("webrtc Write %d %+q", len(b), string(b))
-	log.Printf("Write %d bytes --> WebRTC", len(b))
 	if c.dc != nil {
 		c.dc.Send(b)
 	}
@@ -320,7 +318,6 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config webrtc.C
 			pw.Close()
 		})
 		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
-			log.Printf("OnMessage <--- %d bytes", len(msg.Data))
 			var n int
 			n, err = pw.Write(msg.Data)
 			if err != nil {
