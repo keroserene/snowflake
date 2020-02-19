@@ -88,6 +88,11 @@ func clientAddr(clientIPParam string) string {
 	if clientIP == nil {
 		return ""
 	}
+	// Check if client addr is 0.0.0.0 or [::]. Some proxies erroneously
+	// report an address of 0.0.0.0: https://bugs.torproject.org/33157.
+	if clientIP.IsUnspecified() {
+		return ""
+	}
 	// Add a dummy port number. USERADDR requires a port number.
 	return (&net.TCPAddr{IP: clientIP, Port: 1, Zone: ""}).String()
 }

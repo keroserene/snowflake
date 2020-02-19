@@ -46,6 +46,8 @@ func TestClientAddr(t *testing.T) {
 			"abc",
 			"1.2.3.4.5",
 			"[12::34]",
+			"0.0.0.0",
+			"[::]",
 		} {
 			useraddr := clientAddr(input)
 			if useraddr != "" {
