@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -41,20 +40,19 @@ func Handler(socks net.Conn, snowflakes SnowflakeCollector) error {
 // Exchanges bytes between two ReadWriters.
 // (In this case, between a SOCKS and WebRTC connection.)
 func copyLoop(socks, webRTC io.ReadWriter) {
-	var wg sync.WaitGroup
-	wg.Add(2)
+	done := make(chan struct{}, 2)
 	go func() {
 		if _, err := io.Copy(socks, webRTC); err != nil {
 			log.Printf("copying WebRTC to SOCKS resulted in error: %v", err)
 		}
-		wg.Done()
+		done <- struct{}{}
 	}()
 	go func() {
 		if _, err := io.Copy(webRTC, socks); err != nil {
 			log.Printf("copying SOCKS to WebRTC resulted in error: %v", err)
 		}
-		wg.Done()
+		done <- struct{}{}
 	}()
-	wg.Wait()
+	<-done
 	log.Println("copy loop ended")
 }
