@@ -1,6 +1,6 @@
 // A web app for Google App Engine that proxies HTTP requests and responses to
 // the Snowflake broker.
-package reflect
+package main
 
 import (
 	"context"
