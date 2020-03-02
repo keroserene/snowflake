@@ -22,14 +22,6 @@ before_install:
     - nvm install $TRAVIS_NODE_VERSION
 
 install:
-    - go get -u github.com/smartystreets/goconvey
-    - go get -u github.com/keroserene/go-webrtc
-    - go get -u github.com/pion/webrtc
-    - go get -u github.com/dchest/uniuri
-    - go get -u github.com/gorilla/websocket
-    - go get -u git.torproject.org/pluggable-transports/goptlib.git
-    - go get -u golang.org/x/crypto/acme/autocert
-    - go get -u golang.org/x/net/http2
     - pushd proxy
     - npm install
     - popd
