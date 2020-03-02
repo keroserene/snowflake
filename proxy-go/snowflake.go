@@ -23,7 +23,7 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
 	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc"
+	"github.com/pion/webrtc/v2"
 )
 
 const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"

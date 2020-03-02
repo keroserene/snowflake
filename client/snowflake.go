@@ -17,7 +17,7 @@ import (
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
-	"github.com/pion/webrtc"
+	"github.com/pion/webrtc/v2"
 )
 
 const (

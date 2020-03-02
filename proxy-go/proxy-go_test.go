@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
-	"github.com/pion/webrtc"
+	"github.com/pion/webrtc/v2"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

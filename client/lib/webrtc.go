@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dchest/uniuri"
-	"github.com/pion/webrtc"
+	"github.com/pion/webrtc/v2"
 )
 
 // Remote WebRTC peer.

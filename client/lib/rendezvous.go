@@ -18,8 +18,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/pion/sdp"
-	"github.com/pion/webrtc"
+	"github.com/pion/sdp/v2"
+	"github.com/pion/webrtc/v2"
 )
 
 const (
