@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -21,6 +20,7 @@ import (
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
+	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v2"
@@ -199,7 +199,7 @@ func (b *Broker) pollOffer(sid string) *webrtc.SessionDescription {
 						return nil
 					}
 					if offer != "" {
-						return deserializeSessionDescription(offer)
+						return util.DeserializeSessionDescription(offer)
 					}
 				}
 			}
@@ -209,7 +209,7 @@ func (b *Broker) pollOffer(sid string) *webrtc.SessionDescription {
 
 func (b *Broker) sendAnswer(sid string, pc *webrtc.PeerConnection) error {
 	brokerPath := b.url.ResolveReference(&url.URL{Path: "answer"})
-	answer := string([]byte(serializeSessionDescription(pc.LocalDescription())))
+	answer := string([]byte(util.SerializeSessionDescription(pc.LocalDescription())))
 	body, err := messages.EncodeAnswerRequest(answer, sid)
 	if err != nil {
 		return err
@@ -464,50 +464,4 @@ func main() {
 		sessionID := genSessionID()
 		runSession(sessionID)
 	}
-}
-
-func deserializeSessionDescription(msg string) *webrtc.SessionDescription {
-	var parsed map[string]interface{}
-	err := json.Unmarshal([]byte(msg), &parsed)
-	if nil != err {
-		log.Println(err)
-		return nil
-	}
-	if _, ok := parsed["type"]; !ok {
-		log.Println("Cannot deserialize SessionDescription without type field.")
-		return nil
-	}
-	if _, ok := parsed["sdp"]; !ok {
-		log.Println("Cannot deserialize SessionDescription without sdp field.")
-		return nil
-	}
-
-	var stype webrtc.SDPType
-	switch parsed["type"].(string) {
-	default:
-		log.Println("Unknown SDP type")
-		return nil
-	case "offer":
-		stype = webrtc.SDPTypeOffer
-	case "pranswer":
-		stype = webrtc.SDPTypePranswer
-	case "answer":
-		stype = webrtc.SDPTypeAnswer
-	case "rollback":
-		stype = webrtc.SDPTypeRollback
-	}
-
-	return &webrtc.SessionDescription{
-		Type: stype,
-		SDP:  parsed["sdp"].(string),
-	}
-}
-
-func serializeSessionDescription(desc *webrtc.SessionDescription) string {
-	bytes, err := json.Marshal(*desc)
-	if nil != err {
-		log.Println(err)
-		return ""
-	}
-	return string(bytes)
 }

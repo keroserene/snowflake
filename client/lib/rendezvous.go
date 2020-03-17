@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"github.com/pion/sdp/v2"
 	"github.com/pion/webrtc/v2"
 )
@@ -140,7 +141,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 			SDP:  stripLocalAddresses(offer.SDP),
 		}
 	}
-	data := bytes.NewReader([]byte(serializeSessionDescription(offer)))
+	data := bytes.NewReader([]byte(util.SerializeSessionDescription(offer)))
 	// Suffix with broker's client registration handler.
 	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
 	request, err := http.NewRequest("POST", clientURL.String(), data)
@@ -163,7 +164,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		if nil != err {
 			return nil, err
 		}
-		answer := deserializeSessionDescription(string(body))
+		answer := util.DeserializeSessionDescription(string(body))
 		return answer, nil
 	case http.StatusServiceUnavailable:
 		return nil, errors.New(BrokerError503)

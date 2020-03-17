@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"github.com/pion/webrtc/v2"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -230,7 +231,7 @@ func TestSnowflakeClient(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				c.offerChannel <- nil
-				answer := deserializeSessionDescription(sampleAnswer)
+				answer := util.DeserializeSessionDescription(sampleAnswer)
 				So(answer, ShouldNotBeNil)
 				c.answerChannel <- answer
 				err = c.exchangeSDP()
@@ -255,7 +256,7 @@ func TestSnowflakeClient(t *testing.T) {
 					ctx.So(err, ShouldBeNil)
 					wg.Done()
 				}()
-				answer := deserializeSessionDescription(sampleAnswer)
+				answer := util.DeserializeSessionDescription(sampleAnswer)
 				c.answerChannel <- answer
 				wg.Wait()
 			})
@@ -285,7 +286,7 @@ func TestSnowflakeClient(t *testing.T) {
 			http.StatusOK,
 			[]byte(`{"type":"answer","sdp":"fake"}`),
 		}
-		fakeOffer := deserializeSessionDescription(`{"type":"offer","sdp":"test"}`)
+		fakeOffer := util.DeserializeSessionDescription(`{"type":"offer","sdp":"test"}`)
 
 		Convey("Construct BrokerChannel with no front domain", func() {
 			b, err := NewBrokerChannel("test.broker", "", transport, false)

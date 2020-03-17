@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"github.com/pion/webrtc/v2"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -197,7 +198,7 @@ func TestSessionDescriptions(t *testing.T) {
 				},
 			},
 		} {
-			desc := deserializeSessionDescription(test.msg)
+			desc := util.DeserializeSessionDescription(test.msg)
 			So(desc, ShouldResemble, test.ret)
 		}
 	})
@@ -214,7 +215,7 @@ func TestSessionDescriptions(t *testing.T) {
 				`{"type":"offer","sdp":"test"}`,
 			},
 		} {
-			msg := serializeSessionDescription(test.desc)
+			msg := util.SerializeSessionDescription(test.desc)
 			So(msg, ShouldResemble, test.ret)
 		}
 	})
@@ -239,7 +240,7 @@ func TestBrokerInteractions(t *testing.T) {
 			},
 		}
 		pc, _ := webrtc.NewPeerConnection(config)
-		offer := deserializeSessionDescription(sampleOffer)
+		offer := util.DeserializeSessionDescription(sampleOffer)
 		pc.SetRemoteDescription(*offer)
 		answer, _ := pc.CreateAnswer(nil)
 		pc.SetLocalDescription(answer)
