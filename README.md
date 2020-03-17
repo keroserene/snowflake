@@ -15,7 +15,7 @@ Pluggable Transport using WebRTC, inspired by Flashproxy.
   - [Test Environment](#test-environment)
 - [FAQ](#faq)
 - [Appendix](#appendix)
-    - [-- Testing directly via WebRTC Server --](#---testing-directly-via-webrtc-server---)
+    - [-- Testing with Standalone Proxy --](#---testing-with-standalone-proxy---)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -141,11 +141,6 @@ cd proxy-go
 go build
 ./proxy-go
 ```
-
-##### -- Testing directly via WebRTC Server --
-
-See server-webrtc/README.md for information on connecting directly to a
-WebRTC server transport plugin, bypassing the Broker and browser proxy.
 
 More documentation on the way.
 
