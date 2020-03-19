@@ -1,4 +1,0 @@
-[submodule "proxy/translation"]
-	path = proxy/translation
-	url = https://git.torproject.org/translation.git
-	branch = snowflakeaddon-messages.json_completed
