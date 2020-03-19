@@ -89,11 +89,16 @@ func main() {
 	brokerURL := flag.String("url", "", "URL of signaling broker")
 	frontDomain := flag.String("front", "", "front domain")
 	logFilename := flag.String("log", "", "name of log file")
-	logToStateDir := flag.Bool("logToStateDir", false, "resolve the log file relative to tor's pt state dir")
-	keepLocalAddresses := flag.Bool("keepLocalAddresses", false, "keep local LAN address ICE candidates")
+	logToStateDir := flag.Bool("log-to-state-dir", false, "resolve the log file relative to tor's pt state dir")
+	keepLocalAddresses := flag.Bool("keep-local-addresses", false, "keep local LAN address ICE candidates")
 	unsafeLogging := flag.Bool("unsafe-logging", false, "prevent logs from being scrubbed")
 	max := flag.Int("max", DefaultSnowflakeCapacity,
 		"capacity for number of multiplexed WebRTC peers")
+
+	// Deprecated
+	oldLogToStateDir := flag.Bool("logToStateDir", false, "use -log-to-state-dir instead")
+	oldKeepLocalAddresses := flag.Bool("keepLocalAddresses", false, "use -keep-local-addresses instead")
+
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
@@ -105,7 +110,7 @@ func main() {
 	// https://bugs.torproject.org/25600#comment:14
 	var logOutput = ioutil.Discard
 	if *logFilename != "" {
-		if *logToStateDir {
+		if *logToStateDir || *oldLogToStateDir {
 			stateDir, err := pt.MakeStateDir()
 			if err != nil {
 				log.Fatal(err)
@@ -139,7 +144,9 @@ func main() {
 	snowflakes := sf.NewPeers(*max)
 
 	// Use potentially domain-fronting broker to rendezvous.
-	broker, err := sf.NewBrokerChannel(*brokerURL, *frontDomain, sf.CreateBrokerTransport(), *keepLocalAddresses)
+	broker, err := sf.NewBrokerChannel(
+		*brokerURL, *frontDomain, sf.CreateBrokerTransport(),
+		*keepLocalAddresses || *oldKeepLocalAddresses)
 	if err != nil {
 		log.Fatalf("parsing broker URL: %v", err)
 	}

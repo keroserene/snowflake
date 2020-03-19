@@ -3,6 +3,6 @@ DataDirectory datadir
 
 ClientTransportPlugin snowflake exec ./client \
 -url http://localhost:8080/ \
--keepLocalAddresses
+-keep-local-addresses
 
 Bridge snowflake 0.0.3.0:1
