@@ -70,8 +70,9 @@ func remoteIPFromSDP(sdp string) net.IP {
 }
 
 type Broker struct {
-	url       *url.URL
-	transport http.RoundTripper
+	url                *url.URL
+	transport          http.RoundTripper
+	keepLocalAddresses bool
 }
 
 type webRTCConn struct {
@@ -209,7 +210,14 @@ func (b *Broker) pollOffer(sid string) *webrtc.SessionDescription {
 
 func (b *Broker) sendAnswer(sid string, pc *webrtc.PeerConnection) error {
 	brokerPath := b.url.ResolveReference(&url.URL{Path: "answer"})
-	answer := string([]byte(util.SerializeSessionDescription(pc.LocalDescription())))
+	ld := pc.LocalDescription()
+	if !b.keepLocalAddresses {
+		ld = &webrtc.SessionDescription{
+			Type: ld.Type,
+			SDP:  util.StripLocalAddresses(ld.SDP),
+		}
+	}
+	answer := string([]byte(util.SerializeSessionDescription(ld)))
 	body, err := messages.EncodeAnswerRequest(answer, sid)
 	if err != nil {
 		return err
@@ -409,6 +417,7 @@ func main() {
 	var logFilename string
 	var rawBrokerURL string
 	var unsafeLogging bool
+	var keepLocalAddresses bool
 
 	flag.UintVar(&capacity, "capacity", 10, "maximum concurrent clients")
 	flag.StringVar(&rawBrokerURL, "broker", defaultBrokerURL, "broker URL")
@@ -416,6 +425,7 @@ func main() {
 	flag.StringVar(&stunURL, "stun", defaultSTUNURL, "stun URL")
 	flag.StringVar(&logFilename, "log", "", "log filename")
 	flag.BoolVar(&unsafeLogging, "unsafe-logging", false, "prevent logs from being scrubbed")
+	flag.BoolVar(&keepLocalAddresses, "keep-local-addresses", false, "keep local LAN address ICE candidates")
 	flag.Parse()
 
 	var logOutput io.Writer = os.Stderr
@@ -439,6 +449,7 @@ func main() {
 
 	var err error
 	broker = new(Broker)
+	broker.keepLocalAddresses = keepLocalAddresses
 	broker.url, err = url.Parse(rawBrokerURL)
 	if err != nil {
 		log.Fatalf("invalid broker url: %s", err)
