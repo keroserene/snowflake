@@ -5,4 +5,4 @@ ClientTransportPlugin snowflake exec ./client \
 -url http://localhost:8080/ \
 -keep-local-addresses
 
-Bridge snowflake 0.0.3.0:1
+Bridge snowflake 192.0.2.3:1
