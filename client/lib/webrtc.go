@@ -2,13 +2,14 @@ package lib
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"io"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/dchest/uniuri"
 	"github.com/pion/webrtc/v2"
 )
 
@@ -46,7 +47,13 @@ type WebRTCPeer struct {
 func NewWebRTCPeer(config *webrtc.Configuration,
 	broker *BrokerChannel) *WebRTCPeer {
 	connection := new(WebRTCPeer)
-	connection.id = "snowflake-" + uniuri.New()
+	{
+		var buf [8]byte
+		if _, err := rand.Read(buf[:]); err != nil {
+			panic(err)
+		}
+		connection.id = "snowflake-" + hex.EncodeToString(buf[:])
+	}
 	connection.config = config
 	connection.broker = broker
 	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)

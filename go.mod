@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	git.torproject.org/pluggable-transports/goptlib.git v1.1.0
-	github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
 	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/gorilla/websocket v1.4.1
 	github.com/pion/sdp/v2 v2.3.4
