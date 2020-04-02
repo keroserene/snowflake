@@ -148,8 +148,8 @@ func NewWebRTCDialer(broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebR
 
 // Initialize a WebRTC Connection by signaling through the broker.
 func (w WebRTCDialer) Catch() (Snowflake, error) {
-	// TODO: [#3] Fetch ICE server information from Broker.
-	// TODO: [#18] Consider TURN servers here too.
+	// TODO: [#25591] Fetch ICE server information from Broker.
+	// TODO: [#25596] Consider TURN servers here too.
 	connection := NewWebRTCPeer(w.webrtcConfig, w.BrokerChannel)
 	err := connection.Connect()
 	return connection, err
