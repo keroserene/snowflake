@@ -108,9 +108,9 @@ abundance of ephemeral and short-lived (and special!) volunteer proxies...
 ##### -- Testing with Standalone Proxy --
 
 ```
-cd proxy-go
+cd proxy
 go build
-./proxy-go
+./proxy
 ```
 
 More documentation on the way.
