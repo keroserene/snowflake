@@ -1,5 +1,7 @@
 module git.torproject.org/pluggable-transports/snowflake.git
 
+go 1.13
+
 require (
 	git.torproject.org/pluggable-transports/goptlib.git v1.1.0
 	github.com/golang/protobuf v1.3.1 // indirect
