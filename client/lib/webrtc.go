@@ -120,17 +120,17 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 	if err != nil {
 		return err
 	}
-	err = c.establishDataChannel()
-	if err != nil {
-		// nolint: golint
-		return errors.New("WebRTC: Could not establish DataChannel")
-	}
 	answer := exchangeSDP(broker, c.pc.LocalDescription())
 	log.Printf("Received Answer.\n")
 	err = c.pc.SetRemoteDescription(*answer)
 	if nil != err {
 		log.Println("WebRTC: Unable to SetRemoteDescription:", err)
 		return err
+	}
+	err = c.establishDataChannel()
+	if err != nil {
+		// nolint: golint
+		return errors.New("WebRTC: Could not establish DataChannel")
 	}
 	go c.checkForStaleness()
 	return nil
