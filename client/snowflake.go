@@ -161,15 +161,7 @@ func main() {
 	snowflakes.Tongue = sf.NewWebRTCDialer(broker, iceServers)
 
 	// Use a real logger to periodically output how much traffic is happening.
-	snowflakes.BytesLogger = &sf.BytesSyncLogger{
-		InboundChan:  make(chan int, 5),
-		OutboundChan: make(chan int, 5),
-		Inbound:      0,
-		Outbound:     0,
-		InEvents:     0,
-		OutEvents:    0,
-	}
-	go snowflakes.BytesLogger.Log()
+	snowflakes.BytesLogger = sf.NewBytesSyncLogger()
 
 	go ConnectLoop(snowflakes)
 
