@@ -6,34 +6,11 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"sync"
 	"testing"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
-	"github.com/pion/webrtc/v2"
 	. "github.com/smartystreets/goconvey/convey"
 )
-
-type MockDataChannel struct {
-	destination bytes.Buffer
-	done        chan bool
-}
-
-func (m *MockDataChannel) Send(data []byte) error {
-	m.destination.Write(data)
-	m.done <- true
-	return nil
-}
-
-func (*MockDataChannel) Close() error { return nil }
-
-type MockResponse struct{}
-
-func (m *MockResponse) Read(p []byte) (int, error) {
-	p = []byte(`{"type":"answer","sdp":"fake"}`)
-	return 0, nil
-}
-func (m *MockResponse) Close() error { return nil }
 
 type MockTransport struct {
 	statusOverride int
@@ -73,10 +50,6 @@ type FakePeers struct{ toRelease *WebRTCPeer }
 func (f FakePeers) Collect() (*WebRTCPeer, error) { return &WebRTCPeer{}, nil }
 func (f FakePeers) Pop() *WebRTCPeer              { return nil }
 func (f FakePeers) Melted() <-chan struct{}       { return nil }
-
-const sampleSDP = `"v=0\r\no=- 4358805017720277108 2 IN IP4 8.8.8.8\r\ns=-\r\nt=0 0\r\na=group:BUNDLE data\r\na=msid-semantic: WMS\r\nm=application 56688 DTLS/SCTP 5000\r\nc=IN IP4 8.8.8.8\r\na=candidate:3769337065 1 udp 2122260223 8.8.8.8 56688 typ host generation 0 network-id 1 network-cost 50\r\na=candidate:2921887769 1 tcp 1518280447 8.8.8.8 35441 typ host tcptype passive generation 0 network-id 1 network-cost 50\r\na=ice-ufrag:aMAZ\r\na=ice-pwd:jcHb08Jjgrazp2dzjdrvPPvV\r\na=ice-options:trickle\r\na=fingerprint:sha-256 C8:88:EE:B9:E7:02:2E:21:37:ED:7A:D1:EB:2B:A3:15:A2:3B:5B:1C:3D:D4:D5:1F:06:CF:52:40:03:F8:DD:66\r\na=setup:actpass\r\na=mid:data\r\na=sctpmap:5000 webrtc-datachannel 1024\r\n"`
-
-const sampleAnswer = `{"type":"answer","sdp":` + sampleSDP + `}`
 
 func TestSnowflakeClient(t *testing.T) {
 
@@ -190,79 +163,6 @@ func TestSnowflakeClient(t *testing.T) {
 			snowflakes.toRelease = nil
 			Handler(socks, snowflakes)
 			So(socks.rejected, ShouldEqual, true)
-		})
-
-		Convey("WebRTC Connection", func() {
-			c := NewWebRTCPeer(nil, nil)
-			So(c.buffer.Bytes(), ShouldEqual, nil)
-
-			Convey("Can construct a WebRTCConn", func() {
-				s := NewWebRTCPeer(nil, nil)
-				So(s, ShouldNotBeNil)
-				So(s.offerChannel, ShouldNotBeNil)
-				So(s.answerChannel, ShouldNotBeNil)
-				s.Close()
-			})
-
-			Convey("Write buffers when datachannel is nil", func() {
-				c.Write([]byte("test"))
-				c.transport = nil
-				So(c.buffer.Bytes(), ShouldResemble, []byte("test"))
-			})
-
-			Convey("Write sends to datachannel when not nil", func() {
-				mock := new(MockDataChannel)
-				c.transport = mock
-				mock.done = make(chan bool, 1)
-				c.Write([]byte("test"))
-				<-mock.done
-				So(c.buffer.Bytes(), ShouldEqual, nil)
-				So(mock.destination.Bytes(), ShouldResemble, []byte("test"))
-			})
-
-			Convey("Exchange SDP sets remote description", func() {
-				c.offerChannel = make(chan *webrtc.SessionDescription, 1)
-				c.answerChannel = make(chan *webrtc.SessionDescription, 1)
-
-				c.config = &webrtc.Configuration{}
-				c.pc, _ = webrtc.NewPeerConnection(*c.config)
-				offer, _ := c.pc.CreateOffer(nil)
-				err := c.pc.SetLocalDescription(offer)
-				So(err, ShouldBeNil)
-
-				c.offerChannel <- nil
-				answer, err := util.DeserializeSessionDescription(sampleAnswer)
-				So(err, ShouldBeNil)
-				So(answer, ShouldNotBeNil)
-				c.answerChannel <- answer
-				err = c.exchangeSDP()
-				So(err, ShouldBeNil)
-			})
-
-			Convey("Exchange SDP keeps trying on nil answer", func(ctx C) {
-				var wg sync.WaitGroup
-				wg.Add(1)
-
-				c.offerChannel = make(chan *webrtc.SessionDescription, 1)
-				c.answerChannel = make(chan *webrtc.SessionDescription, 1)
-				c.config = &webrtc.Configuration{}
-				c.pc, _ = webrtc.NewPeerConnection(*c.config)
-				offer, _ := c.pc.CreateOffer(nil)
-				c.pc.SetLocalDescription(offer)
-
-				c.offerChannel <- nil
-				c.answerChannel <- nil
-				go func() {
-					err := c.exchangeSDP()
-					ctx.So(err, ShouldBeNil)
-					wg.Done()
-				}()
-				answer, err := util.DeserializeSessionDescription(sampleAnswer)
-				So(err, ShouldBeNil)
-				c.answerChannel <- answer
-				wg.Wait()
-			})
-
 		})
 	})
 

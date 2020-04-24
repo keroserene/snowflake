@@ -5,10 +5,6 @@ import (
 	"net"
 )
 
-type Connector interface {
-	Connect() error
-}
-
 // Interface for catching Snowflakes. (aka the remote dialer)
 type Tongue interface {
 	Catch() (*WebRTCPeer, error)

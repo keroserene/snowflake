@@ -153,7 +153,5 @@ func NewWebRTCDialer(broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebR
 func (w WebRTCDialer) Catch() (*WebRTCPeer, error) {
 	// TODO: [#25591] Fetch ICE server information from Broker.
 	// TODO: [#25596] Consider TURN servers here too.
-	connection := NewWebRTCPeer(w.webrtcConfig, w.BrokerChannel)
-	err := connection.Connect()
-	return connection, err
+	return NewWebRTCPeer(w.webrtcConfig, w.BrokerChannel)
 }

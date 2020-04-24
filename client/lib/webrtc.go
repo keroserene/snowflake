@@ -41,7 +41,7 @@ type WebRTCPeer struct {
 
 // Construct a WebRTC PeerConnection.
 func NewWebRTCPeer(config *webrtc.Configuration,
-	broker *BrokerChannel) *WebRTCPeer {
+	broker *BrokerChannel) (*WebRTCPeer, error) {
 	connection := new(WebRTCPeer)
 	{
 		var buf [8]byte
@@ -60,7 +60,13 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
-	return connection
+
+	err := connection.connect()
+	if err != nil {
+		connection.Close()
+		return nil, err
+	}
+	return connection, nil
 }
 
 // Read bytes from local SOCKS.
@@ -113,8 +119,7 @@ func (c *WebRTCPeer) checkForStaleness() {
 	}
 }
 
-// As part of |Connector| interface.
-func (c *WebRTCPeer) Connect() error {
+func (c *WebRTCPeer) connect() error {
 	log.Println(c.id, " connecting...")
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
