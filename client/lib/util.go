@@ -31,11 +31,9 @@ type BytesSyncLogger struct {
 	Inbound      int
 	OutEvents    int
 	InEvents     int
-	IsLogging    bool
 }
 
 func (b *BytesSyncLogger) Log() {
-	b.IsLogging = true
 	var amount int
 	output := func() {
 		log.Printf("Traffic Bytes (in|out): %d | %d -- (%d OnMessages, %d Sends)",
@@ -71,15 +69,9 @@ func (b *BytesSyncLogger) Log() {
 }
 
 func (b *BytesSyncLogger) AddOutbound(amount int) {
-	if !b.IsLogging {
-		return
-	}
 	b.OutboundChan <- amount
 }
 
 func (b *BytesSyncLogger) AddInbound(amount int) {
-	if !b.IsLogging {
-		return
-	}
 	b.InboundChan <- amount
 }
