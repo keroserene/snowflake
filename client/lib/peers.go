@@ -20,7 +20,7 @@ import (
 // version of Snowflake)
 type Peers struct {
 	Tongue
-	BytesLogger
+	BytesLogger BytesLogger
 
 	snowflakeChan chan Snowflake
 	activePeers   *list.List

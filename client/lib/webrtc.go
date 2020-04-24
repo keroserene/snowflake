@@ -40,7 +40,7 @@ type WebRTCPeer struct {
 	lock sync.Mutex // Synchronization for DataChannel destruction
 	once sync.Once  // Synchronization for PeerConnection destruction
 
-	BytesLogger
+	BytesLogger BytesLogger
 }
 
 // Construct a WebRTC PeerConnection.
