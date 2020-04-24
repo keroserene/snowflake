@@ -165,10 +165,7 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 		c.pc = nil
 	}
 
-	s := webrtc.SettingEngine{}
-	s.SetTrickle(true)
-	api := webrtc.NewAPI(webrtc.WithSettingEngine(s))
-	pc, err := api.NewPeerConnection(*c.config)
+	pc, err := webrtc.NewPeerConnection(*c.config)
 	if err != nil {
 		log.Printf("NewPeerConnection ERROR: %s", err)
 		return err
@@ -178,21 +175,10 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate == nil {
 			log.Printf("WebRTC: Done gathering candidates")
+			c.offerChannel <- pc.LocalDescription()
 		} else {
 			log.Printf("WebRTC: Got ICE candidate: %s", candidate.String())
 		}
-	})
-	pc.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
-		if state == webrtc.ICEGathererStateComplete {
-			log.Println("WebRTC: ICEGatheringStateComplete")
-			c.offerChannel <- pc.LocalDescription()
-		}
-	})
-	// This callback is not expected, as the Client initiates the creation
-	// of the data channel, not the remote peer.
-	pc.OnDataChannel(func(channel *webrtc.DataChannel) {
-		log.Println("OnDataChannel")
-		panic("Unexpected OnDataChannel!")
 	})
 	c.pc = pc
 	go func() {
@@ -226,9 +212,6 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		Ordered: &ordered,
 	}
 	dc, err := c.pc.CreateDataChannel(c.id, dataChannelOptions)
-	// Triggers "OnNegotiationNeeded" on the PeerConnection, which will prepare
-	// an SDP offer while other goroutines operating on this struct handle the
-	// signaling. Eventually fires "OnOpen".
 	if err != nil {
 		log.Printf("CreateDataChannel ERROR: %s", err)
 		return err
