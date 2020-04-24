@@ -21,7 +21,7 @@ type WebRTCPeer struct {
 	id        string
 	config    *webrtc.Configuration
 	pc        *webrtc.PeerConnection
-	transport SnowflakeDataChannel // Holds the WebRTC DataChannel.
+	transport *webrtc.DataChannel
 	broker    *BrokerChannel
 
 	offerChannel  chan *webrtc.SessionDescription
@@ -321,7 +321,7 @@ func (c *WebRTCPeer) cleanup() {
 		if c.pc == nil {
 			panic("DataChannel w/o PeerConnection, not good.")
 		}
-		dataChannel.(*webrtc.DataChannel).Close()
+		dataChannel.Close()
 	} else {
 		c.lock.Unlock()
 	}

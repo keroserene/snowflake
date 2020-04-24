@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"io"
 	"net"
 )
 
@@ -29,10 +28,4 @@ type SocksConnector interface {
 	Grant(*net.TCPAddr) error
 	Reject() error
 	net.Conn
-}
-
-// Interface for the Snowflake's transport. (Typically just webrtc.DataChannel)
-type SnowflakeDataChannel interface {
-	io.Closer
-	Send([]byte) error
 }
