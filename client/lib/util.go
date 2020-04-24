@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	LogTimeInterval = 5
+	LogTimeInterval = 5 * time.Second
 )
 
 type BytesLogger interface {
@@ -39,35 +39,24 @@ func NewBytesSyncLogger() *BytesSyncLogger {
 
 func (b *BytesSyncLogger) log() {
 	var outbound, inbound, outEvents, inEvents int
-	output := func() {
-		log.Printf("Traffic Bytes (in|out): %d | %d -- (%d OnMessages, %d Sends)",
-			inbound, outbound, inEvents, outEvents)
-		outbound = 0
-		outEvents = 0
-		inbound = 0
-		inEvents = 0
-	}
-	last := time.Now()
+	ticker := time.NewTicker(LogTimeInterval)
 	for {
 		select {
+		case <-ticker.C:
+			if outEvents > 0 || inEvents > 0 {
+				log.Printf("Traffic Bytes (in|out): %d | %d -- (%d OnMessages, %d Sends)",
+					inbound, outbound, inEvents, outEvents)
+			}
+			outbound = 0
+			outEvents = 0
+			inbound = 0
+			inEvents = 0
 		case amount := <-b.outboundChan:
 			outbound += amount
 			outEvents++
-			if time.Since(last) > time.Second*LogTimeInterval {
-				last = time.Now()
-				output()
-			}
 		case amount := <-b.inboundChan:
 			inbound += amount
 			inEvents++
-			if time.Since(last) > time.Second*LogTimeInterval {
-				last = time.Now()
-				output()
-			}
-		case <-time.After(time.Second * LogTimeInterval):
-			if inEvents > 0 || outEvents > 0 {
-				output()
-			}
 		}
 	}
 }
