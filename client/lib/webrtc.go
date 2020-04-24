@@ -21,7 +21,6 @@ type WebRTCPeer struct {
 	id        string
 	pc        *webrtc.PeerConnection
 	transport *webrtc.DataChannel
-	broker    *BrokerChannel
 
 	recvPipe    *io.PipeReader
 	writePipe   *io.PipeWriter
@@ -47,7 +46,6 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 		}
 		connection.id = "snowflake-" + hex.EncodeToString(buf[:])
 	}
-	connection.broker = broker
 
 	// Override with something that's not NullLogger to have real logging.
 	connection.BytesLogger = &BytesNullLogger{}
@@ -55,7 +53,7 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
 
-	err := connection.connect(config)
+	err := connection.connect(config, broker)
 	if err != nil {
 		connection.Close()
 		return nil, err
@@ -113,7 +111,7 @@ func (c *WebRTCPeer) checkForStaleness() {
 	}
 }
 
-func (c *WebRTCPeer) connect(config *webrtc.Configuration) error {
+func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel) error {
 	log.Println(c.id, " connecting...")
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
@@ -127,8 +125,11 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration) error {
 		// nolint: golint
 		return errors.New("WebRTC: Could not establish DataChannel")
 	}
-	err = c.exchangeSDP()
-	if err != nil {
+	answer := exchangeSDP(broker, c.pc.LocalDescription())
+	log.Printf("Received Answer.\n")
+	err = c.pc.SetRemoteDescription(*answer)
+	if nil != err {
+		log.Println("WebRTC: Unable to SetRemoteDescription:", err)
 		return err
 	}
 	go c.checkForStaleness()
@@ -246,29 +247,20 @@ func (c *WebRTCPeer) establishDataChannel() error {
 	return nil
 }
 
-// exchangeSDP sends the local SDP offer to the Broker and awaits the SDP
-// answer.
-func (c *WebRTCPeer) exchangeSDP() error {
+// exchangeSDP sends the local SDP offer to the Broker, awaits the SDP answer,
+// and returns the answer.
+func exchangeSDP(broker *BrokerChannel, offer *webrtc.SessionDescription) *webrtc.SessionDescription {
 	// Keep trying the same offer until a valid answer arrives.
-	var answer *webrtc.SessionDescription
 	for {
-		var err error
 		// Send offer to broker (blocks).
-		answer, err = c.broker.Negotiate(c.pc.LocalDescription())
+		answer, err := broker.Negotiate(offer)
 		if err == nil {
-			break
+			return answer
 		}
 		log.Printf("BrokerChannel Error: %s", err)
 		log.Printf("Failed to retrieve answer. Retrying in %v", ReconnectTimeout)
 		<-time.After(ReconnectTimeout)
 	}
-	log.Printf("Received Answer.\n")
-	err := c.pc.SetRemoteDescription(*answer)
-	if nil != err {
-		log.Println("WebRTC: Unable to SetRemoteDescription:", err)
-		return err
-	}
-	return nil
 }
 
 // Close all channels and transports
