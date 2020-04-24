@@ -304,8 +304,8 @@ func (c *WebRTCPeer) sendOfferToBroker() {
 	c.answerChannel <- answer
 }
 
-// Block until an SDP offer is available, send it to either
-// the Broker or signal pipe, then await for the SDP answer.
+// exchangeSDP blocks until an SDP offer is available, sends it to the Broker,
+// then awaits the SDP answer.
 func (c *WebRTCPeer) exchangeSDP() error {
 	select {
 	case <-c.offerChannel:
