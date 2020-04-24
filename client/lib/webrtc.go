@@ -28,7 +28,6 @@ type WebRTCPeer struct {
 
 	offerChannel  chan *webrtc.SessionDescription
 	answerChannel chan *webrtc.SessionDescription
-	errorChannel  chan error
 	recvPipe      *io.PipeReader
 	writePipe     *io.PipeWriter
 	lastReceive   time.Time
@@ -57,9 +56,6 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	connection.broker = broker
 	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
 	connection.answerChannel = make(chan *webrtc.SessionDescription, 1)
-	// Error channel is mostly for reporting during the initial SDP offer
-	// creation & local description setting, which happens asynchronously.
-	connection.errorChannel = make(chan error, 1)
 
 	// Override with something that's not NullLogger to have real logging.
 	connection.BytesLogger = &BytesNullLogger{}
@@ -167,21 +163,23 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 		}
 	})
 	c.pc = pc
-	go func() {
-		offer, err := pc.CreateOffer(nil)
-		// TODO: Potentially timeout and retry if ICE isn't working.
-		if err != nil {
-			c.errorChannel <- err
-			return
-		}
-		log.Println("WebRTC: Created offer")
-		err = pc.SetLocalDescription(offer)
-		if err != nil {
-			c.errorChannel <- err
-			return
-		}
-		log.Println("WebRTC: Set local description")
-	}()
+
+	offer, err := pc.CreateOffer(nil)
+	// TODO: Potentially timeout and retry if ICE isn't working.
+	if err != nil {
+		log.Println("Failed to prepare offer", err)
+		c.Close()
+		return err
+	}
+	log.Println("WebRTC: Created offer")
+	err = pc.SetLocalDescription(offer)
+	if err != nil {
+		log.Println("Failed to prepare offer", err)
+		c.Close()
+		return err
+	}
+	log.Println("WebRTC: Set local description")
+
 	log.Println("WebRTC: PeerConnection created.")
 	return nil
 }
@@ -276,13 +274,7 @@ func (c *WebRTCPeer) sendOfferToBroker() {
 // exchangeSDP blocks until an SDP offer is available, sends it to the Broker,
 // then awaits the SDP answer.
 func (c *WebRTCPeer) exchangeSDP() error {
-	select {
-	case <-c.offerChannel:
-	case err := <-c.errorChannel:
-		log.Println("Failed to prepare offer", err)
-		c.Close()
-		return err
-	}
+	<-c.offerChannel
 	// Keep trying the same offer until a valid answer arrives.
 	var ok bool
 	var answer *webrtc.SessionDescription
@@ -311,9 +303,6 @@ func (c *WebRTCPeer) cleanup() {
 	}
 	if nil != c.answerChannel {
 		close(c.answerChannel)
-	}
-	if nil != c.errorChannel {
-		close(c.errorChannel)
 	}
 	// Close this side of the SOCKS pipe.
 	if nil != c.writePipe {
