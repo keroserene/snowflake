@@ -52,7 +52,7 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 type FakeDialer struct{}
 
-func (w FakeDialer) Catch() (Snowflake, error) {
+func (w FakeDialer) Catch() (*WebRTCPeer, error) {
 	fmt.Println("Caught a dummy snowflake.")
 	return &WebRTCPeer{}, nil
 }
@@ -70,9 +70,9 @@ func (f FakeSocksConn) Grant(addr *net.TCPAddr) error { return nil }
 
 type FakePeers struct{ toRelease *WebRTCPeer }
 
-func (f FakePeers) Collect() (Snowflake, error) { return &WebRTCPeer{}, nil }
-func (f FakePeers) Pop() Snowflake              { return nil }
-func (f FakePeers) Melted() <-chan struct{}     { return nil }
+func (f FakePeers) Collect() (*WebRTCPeer, error) { return &WebRTCPeer{}, nil }
+func (f FakePeers) Pop() *WebRTCPeer              { return nil }
+func (f FakePeers) Melted() <-chan struct{}       { return nil }
 
 const sampleSDP = `"v=0\r\no=- 4358805017720277108 2 IN IP4 8.8.8.8\r\ns=-\r\nt=0 0\r\na=group:BUNDLE data\r\na=msid-semantic: WMS\r\nm=application 56688 DTLS/SCTP 5000\r\nc=IN IP4 8.8.8.8\r\na=candidate:3769337065 1 udp 2122260223 8.8.8.8 56688 typ host generation 0 network-id 1 network-cost 50\r\na=candidate:2921887769 1 tcp 1518280447 8.8.8.8 35441 typ host tcptype passive generation 0 network-id 1 network-cost 50\r\na=ice-ufrag:aMAZ\r\na=ice-pwd:jcHb08Jjgrazp2dzjdrvPPvV\r\na=ice-options:trickle\r\na=fingerprint:sha-256 C8:88:EE:B9:E7:02:2E:21:37:ED:7A:D1:EB:2B:A3:15:A2:3B:5B:1C:3D:D4:D5:1F:06:CF:52:40:03:F8:DD:66\r\na=setup:actpass\r\na=mid:data\r\na=sctpmap:5000 webrtc-datachannel 1024\r\n"`
 

@@ -9,16 +9,9 @@ type Connector interface {
 	Connect() error
 }
 
-// Interface for a single remote WebRTC peer.
-// In the Client context, "Snowflake" refers to the remote browser proxy.
-type Snowflake interface {
-	io.ReadWriteCloser
-	Connector
-}
-
 // Interface for catching Snowflakes. (aka the remote dialer)
 type Tongue interface {
-	Catch() (Snowflake, error)
+	Catch() (*WebRTCPeer, error)
 }
 
 // Interface for collecting some number of Snowflakes, for passing along
@@ -26,10 +19,10 @@ type Tongue interface {
 type SnowflakeCollector interface {
 	// Add a Snowflake to the collection.
 	// Implementation should decide how to connect and maintain the webRTCConn.
-	Collect() (Snowflake, error)
+	Collect() (*WebRTCPeer, error)
 
 	// Remove and return the most available Snowflake from the collection.
-	Pop() Snowflake
+	Pop() *WebRTCPeer
 
 	// Signal when the collector has stopped collecting.
 	Melted() <-chan struct{}

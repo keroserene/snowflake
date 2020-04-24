@@ -22,7 +22,7 @@ type Peers struct {
 	Tongue
 	BytesLogger BytesLogger
 
-	snowflakeChan chan Snowflake
+	snowflakeChan chan *WebRTCPeer
 	activePeers   *list.List
 	capacity      int
 
@@ -33,14 +33,14 @@ type Peers struct {
 func NewPeers(max int) *Peers {
 	p := &Peers{capacity: max}
 	// Use buffered go channel to pass snowflakes onwards to the SOCKS handler.
-	p.snowflakeChan = make(chan Snowflake, max)
+	p.snowflakeChan = make(chan *WebRTCPeer, max)
 	p.activePeers = list.New()
 	p.melt = make(chan struct{})
 	return p
 }
 
 // As part of |SnowflakeCollector| interface.
-func (p *Peers) Collect() (Snowflake, error) {
+func (p *Peers) Collect() (*WebRTCPeer, error) {
 	cnt := p.Count()
 	s := fmt.Sprintf("Currently at [%d/%d]", cnt, p.capacity)
 	if cnt >= p.capacity {
@@ -64,21 +64,18 @@ func (p *Peers) Collect() (Snowflake, error) {
 
 // Pop blocks until an available, valid snowflake appears. Returns nil after End
 // has been called.
-//
-// Part of |SnowflakeCollector| interface.
-func (p *Peers) Pop() Snowflake {
+func (p *Peers) Pop() *WebRTCPeer {
 	for {
 		snowflake, ok := <-p.snowflakeChan
 		if !ok {
 			return nil
 		}
-		conn := snowflake.(*WebRTCPeer)
-		if conn.closed {
+		if snowflake.closed {
 			continue
 		}
 		// Set to use the same rate-limited traffic logger to keep consistency.
-		conn.BytesLogger = p.BytesLogger
-		return conn
+		snowflake.BytesLogger = p.BytesLogger
+		return snowflake
 	}
 }
 

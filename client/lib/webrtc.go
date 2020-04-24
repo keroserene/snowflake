@@ -14,8 +14,6 @@ import (
 )
 
 // Remote WebRTC peer.
-// Implements the |Snowflake| interface, which includes
-// |io.ReadWriter| and |Connector|.
 //
 // Handles preparation of go-webrtc PeerConnection. Only ever has
 // one DataChannel.
@@ -87,7 +85,6 @@ func (c *WebRTCPeer) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// As part of |Snowflake|
 func (c *WebRTCPeer) Close() error {
 	c.once.Do(func() {
 		c.closed = true
