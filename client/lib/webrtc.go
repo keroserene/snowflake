@@ -15,7 +15,7 @@ import (
 
 // Remote WebRTC peer.
 // Implements the |Snowflake| interface, which includes
-// |io.ReadWriter|, |Resetter|, and |Connector|.
+// |io.ReadWriter| and |Connector|.
 //
 // Handles preparation of go-webrtc PeerConnection. Only ever has
 // one DataChannel.
@@ -33,7 +33,6 @@ type WebRTCPeer struct {
 	writePipe     *io.PipeWriter
 	lastReceive   time.Time
 	buffer        bytes.Buffer
-	reset         chan struct{}
 
 	closed bool
 
@@ -61,7 +60,6 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	// Error channel is mostly for reporting during the initial SDP offer
 	// creation & local description setting, which happens asynchronously.
 	connection.errorChannel = make(chan error, 1)
-	connection.reset = make(chan struct{}, 1)
 
 	// Override with something that's not NullLogger to have real logging.
 	connection.BytesLogger = &BytesNullLogger{}
@@ -98,22 +96,10 @@ func (c *WebRTCPeer) Close() error {
 	c.once.Do(func() {
 		c.closed = true
 		c.cleanup()
-		c.Reset()
 		log.Printf("WebRTC: Closing")
 	})
 	return nil
 }
-
-// As part of |Resetter|
-func (c *WebRTCPeer) Reset() {
-	if nil == c.reset {
-		return
-	}
-	c.reset <- struct{}{}
-}
-
-// As part of |Resetter|
-func (c *WebRTCPeer) WaitForReset() { <-c.reset }
 
 // Prevent long-lived broken remotes.
 // Should also update the DataChannel in underlying go-webrtc's to make Closes

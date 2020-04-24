@@ -9,16 +9,10 @@ type Connector interface {
 	Connect() error
 }
 
-type Resetter interface {
-	Reset()
-	WaitForReset()
-}
-
 // Interface for a single remote WebRTC peer.
 // In the Client context, "Snowflake" refers to the remote browser proxy.
 type Snowflake interface {
 	io.ReadWriteCloser
-	Resetter
 	Connector
 }
 
