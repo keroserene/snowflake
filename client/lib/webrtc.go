@@ -19,7 +19,6 @@ import (
 // one DataChannel.
 type WebRTCPeer struct {
 	id        string
-	config    *webrtc.Configuration
 	pc        *webrtc.PeerConnection
 	transport *webrtc.DataChannel
 	broker    *BrokerChannel
@@ -48,7 +47,6 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 		}
 		connection.id = "snowflake-" + hex.EncodeToString(buf[:])
 	}
-	connection.config = config
 	connection.broker = broker
 
 	// Override with something that's not NullLogger to have real logging.
@@ -57,7 +55,7 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
 
-	err := connection.connect()
+	err := connection.connect(config)
 	if err != nil {
 		connection.Close()
 		return nil, err
@@ -115,11 +113,12 @@ func (c *WebRTCPeer) checkForStaleness() {
 	}
 }
 
-func (c *WebRTCPeer) connect() error {
+func (c *WebRTCPeer) connect(config *webrtc.Configuration) error {
 	log.Println(c.id, " connecting...")
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
-	err := c.preparePeerConnection()
+	var err error
+	c.pc, err = preparePeerConnection(config)
 	if err != nil {
 		return err
 	}
@@ -136,19 +135,13 @@ func (c *WebRTCPeer) connect() error {
 	return nil
 }
 
-// Create and prepare callbacks on a new WebRTC PeerConnection.
-func (c *WebRTCPeer) preparePeerConnection() error {
-	if nil != c.pc {
-		if err := c.pc.Close(); err != nil {
-			log.Printf("c.pc.Close returned error: %v", err)
-		}
-		c.pc = nil
-	}
-
-	pc, err := webrtc.NewPeerConnection(*c.config)
+// preparePeerConnection creates a new WebRTC PeerConnection and returns it
+// after ICE candidate gathering is complete..
+func preparePeerConnection(config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
+	pc, err := webrtc.NewPeerConnection(*config)
 	if err != nil {
 		log.Printf("NewPeerConnection ERROR: %s", err)
-		return err
+		return nil, err
 	}
 	// Prepare PeerConnection callbacks.
 	offerChannel := make(chan struct{})
@@ -161,27 +154,26 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 			log.Printf("WebRTC: Got ICE candidate: %s", candidate.String())
 		}
 	})
-	c.pc = pc
 
 	offer, err := pc.CreateOffer(nil)
 	// TODO: Potentially timeout and retry if ICE isn't working.
 	if err != nil {
 		log.Println("Failed to prepare offer", err)
-		c.Close()
-		return err
+		pc.Close()
+		return nil, err
 	}
 	log.Println("WebRTC: Created offer")
 	err = pc.SetLocalDescription(offer)
 	if err != nil {
 		log.Println("Failed to prepare offer", err)
-		c.Close()
-		return err
+		pc.Close()
+		return nil, err
 	}
 	log.Println("WebRTC: Set local description")
 
 	<-offerChannel // Wait for ICE candidate gathering to complete.
 	log.Println("WebRTC: PeerConnection created.")
-	return nil
+	return pc, nil
 }
 
 // Create a WebRTC DataChannel locally.
