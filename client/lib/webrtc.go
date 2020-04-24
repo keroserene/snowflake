@@ -24,11 +24,10 @@ type WebRTCPeer struct {
 	transport *webrtc.DataChannel
 	broker    *BrokerChannel
 
-	offerChannel chan *webrtc.SessionDescription
-	recvPipe     *io.PipeReader
-	writePipe    *io.PipeWriter
-	lastReceive  time.Time
-	buffer       bytes.Buffer
+	recvPipe    *io.PipeReader
+	writePipe   *io.PipeWriter
+	lastReceive time.Time
+	buffer      bytes.Buffer
 
 	closed bool
 
@@ -51,7 +50,6 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	}
 	connection.config = config
 	connection.broker = broker
-	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
 
 	// Override with something that's not NullLogger to have real logging.
 	connection.BytesLogger = &BytesNullLogger{}
@@ -153,11 +151,12 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 		return err
 	}
 	// Prepare PeerConnection callbacks.
+	offerChannel := make(chan struct{})
 	// Allow candidates to accumulate until ICEGatheringStateComplete.
 	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate == nil {
 			log.Printf("WebRTC: Done gathering candidates")
-			c.offerChannel <- pc.LocalDescription()
+			close(offerChannel)
 		} else {
 			log.Printf("WebRTC: Got ICE candidate: %s", candidate.String())
 		}
@@ -180,6 +179,7 @@ func (c *WebRTCPeer) preparePeerConnection() error {
 	}
 	log.Println("WebRTC: Set local description")
 
+	<-offerChannel // Wait for ICE candidate gathering to complete.
 	log.Println("WebRTC: PeerConnection created.")
 	return nil
 }
@@ -254,10 +254,9 @@ func (c *WebRTCPeer) establishDataChannel() error {
 	return nil
 }
 
-// exchangeSDP blocks until an SDP offer is available, sends it to the Broker,
-// then awaits the SDP answer.
+// exchangeSDP sends the local SDP offer to the Broker and awaits the SDP
+// answer.
 func (c *WebRTCPeer) exchangeSDP() error {
-	<-c.offerChannel
 	// Keep trying the same offer until a valid answer arrives.
 	var answer *webrtc.SessionDescription
 	for {
@@ -282,9 +281,6 @@ func (c *WebRTCPeer) exchangeSDP() error {
 
 // Close all channels and transports
 func (c *WebRTCPeer) cleanup() {
-	if nil != c.offerChannel {
-		close(c.offerChannel)
-	}
 	// Close this side of the SOCKS pipe.
 	if nil != c.writePipe {
 		c.writePipe.Close()
