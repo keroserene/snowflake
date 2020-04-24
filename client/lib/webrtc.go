@@ -24,12 +24,11 @@ type WebRTCPeer struct {
 	transport *webrtc.DataChannel
 	broker    *BrokerChannel
 
-	offerChannel  chan *webrtc.SessionDescription
-	answerChannel chan *webrtc.SessionDescription
-	recvPipe      *io.PipeReader
-	writePipe     *io.PipeWriter
-	lastReceive   time.Time
-	buffer        bytes.Buffer
+	offerChannel chan *webrtc.SessionDescription
+	recvPipe     *io.PipeReader
+	writePipe    *io.PipeWriter
+	lastReceive  time.Time
+	buffer       bytes.Buffer
 
 	closed bool
 
@@ -53,7 +52,6 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	connection.config = config
 	connection.broker = broker
 	connection.offerChannel = make(chan *webrtc.SessionDescription, 1)
-	connection.answerChannel = make(chan *webrtc.SessionDescription, 1)
 
 	// Override with something that's not NullLogger to have real logging.
 	connection.BytesLogger = &BytesNullLogger{}
@@ -256,34 +254,22 @@ func (c *WebRTCPeer) establishDataChannel() error {
 	return nil
 }
 
-func (c *WebRTCPeer) sendOfferToBroker() {
-	if nil == c.broker {
-		return
-	}
-	offer := c.pc.LocalDescription()
-	answer, err := c.broker.Negotiate(offer)
-	if nil != err || nil == answer {
-		log.Printf("BrokerChannel Error: %s", err)
-		answer = nil
-	}
-	c.answerChannel <- answer
-}
-
 // exchangeSDP blocks until an SDP offer is available, sends it to the Broker,
 // then awaits the SDP answer.
 func (c *WebRTCPeer) exchangeSDP() error {
 	<-c.offerChannel
 	// Keep trying the same offer until a valid answer arrives.
-	var ok bool
 	var answer *webrtc.SessionDescription
-	for nil == answer {
-		go c.sendOfferToBroker()
-		answer, ok = <-c.answerChannel // Blocks...
-		if !ok || nil == answer {
-			log.Printf("Failed to retrieve answer. Retrying in %v", ReconnectTimeout)
-			<-time.After(ReconnectTimeout)
-			answer = nil
+	for {
+		var err error
+		// Send offer to broker (blocks).
+		answer, err = c.broker.Negotiate(c.pc.LocalDescription())
+		if err == nil {
+			break
 		}
+		log.Printf("BrokerChannel Error: %s", err)
+		log.Printf("Failed to retrieve answer. Retrying in %v", ReconnectTimeout)
+		<-time.After(ReconnectTimeout)
 	}
 	log.Printf("Received Answer.\n")
 	err := c.pc.SetRemoteDescription(*answer)
@@ -298,9 +284,6 @@ func (c *WebRTCPeer) exchangeSDP() error {
 func (c *WebRTCPeer) cleanup() {
 	if nil != c.offerChannel {
 		close(c.offerChannel)
-	}
-	if nil != c.answerChannel {
-		close(c.answerChannel)
 	}
 	// Close this side of the SOCKS pipe.
 	if nil != c.writePipe {
