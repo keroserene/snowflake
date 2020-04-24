@@ -17,6 +17,8 @@ import (
 const (
 	ReconnectTimeout = 10 * time.Second
 	SnowflakeTimeout = 30 * time.Second
+	// How long to wait for the OnOpen callback on a DataChannel.
+	DataChannelTimeout = 30 * time.Second
 )
 
 type dummyAddr struct{}
