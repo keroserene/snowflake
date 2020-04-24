@@ -239,18 +239,14 @@ func (c *WebRTCPeer) establishDataChannel() error {
 		if len(msg.Data) <= 0 {
 			log.Println("0 length message---")
 		}
-		c.BytesLogger.AddInbound(len(msg.Data))
 		n, err := c.writePipe.Write(msg.Data)
+		c.BytesLogger.AddInbound(n)
 		if err != nil {
 			// TODO: Maybe shouldn't actually close.
 			log.Println("Error writing to SOCKS pipe")
 			if inerr := c.writePipe.CloseWithError(err); inerr != nil {
 				log.Printf("c.writePipe.CloseWithError returned error: %v", inerr)
 			}
-		}
-		if n != len(msg.Data) {
-			log.Println("Error: short write")
-			panic("short write")
 		}
 		c.lastReceive = time.Now()
 	})
