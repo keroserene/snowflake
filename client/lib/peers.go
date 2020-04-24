@@ -62,24 +62,24 @@ func (p *Peers) Collect() (Snowflake, error) {
 	return connection, nil
 }
 
-// As part of |SnowflakeCollector| interface.
+// Pop blocks until an available, valid snowflake appears. Returns nil after End
+// has been called.
+//
+// Part of |SnowflakeCollector| interface.
 func (p *Peers) Pop() Snowflake {
-	// Blocks until an available, valid snowflake appears.
-	var snowflake Snowflake
-	var ok bool
-	for snowflake == nil {
-		snowflake, ok = <-p.snowflakeChan
+	for {
+		snowflake, ok := <-p.snowflakeChan
 		if !ok {
 			return nil
 		}
 		conn := snowflake.(*WebRTCPeer)
 		if conn.closed {
-			snowflake = nil
+			continue
 		}
+		// Set to use the same rate-limited traffic logger to keep consistency.
+		conn.BytesLogger = p.BytesLogger
+		return conn
 	}
-	// Set to use the same rate-limited traffic logger to keep consistency.
-	snowflake.(*WebRTCPeer).BytesLogger = p.BytesLogger
-	return snowflake
 }
 
 // As part of |SnowflakeCollector| interface.
