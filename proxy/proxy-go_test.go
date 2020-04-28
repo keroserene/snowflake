@@ -198,7 +198,7 @@ func TestSessionDescriptions(t *testing.T) {
 				},
 			},
 		} {
-			desc := util.DeserializeSessionDescription(test.msg)
+			desc, _ := util.DeserializeSessionDescription(test.msg)
 			So(desc, ShouldResemble, test.ret)
 		}
 	})
@@ -215,8 +215,9 @@ func TestSessionDescriptions(t *testing.T) {
 				`{"type":"offer","sdp":"test"}`,
 			},
 		} {
-			msg := util.SerializeSessionDescription(test.desc)
+			msg, err := util.SerializeSessionDescription(test.desc)
 			So(msg, ShouldResemble, test.ret)
+			So(err, ShouldBeNil)
 		}
 	})
 }
@@ -240,7 +241,7 @@ func TestBrokerInteractions(t *testing.T) {
 			},
 		}
 		pc, _ := webrtc.NewPeerConnection(config)
-		offer := util.DeserializeSessionDescription(sampleOffer)
+		offer, _ := util.DeserializeSessionDescription(sampleOffer)
 		pc.SetRemoteDescription(*offer)
 		answer, _ := pc.CreateAnswer(nil)
 		pc.SetLocalDescription(answer)
