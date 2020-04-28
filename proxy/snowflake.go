@@ -200,7 +200,13 @@ func (b *Broker) pollOffer(sid string) *webrtc.SessionDescription {
 						return nil
 					}
 					if offer != "" {
-						return util.DeserializeSessionDescription(offer)
+						offer, err := util.DeserializeSessionDescription(offer)
+						if err != nil {
+							log.Printf("Error processing session description: %s", err.Error())
+							return nil
+						}
+						return offer
+
 					}
 				}
 			}
@@ -217,7 +223,10 @@ func (b *Broker) sendAnswer(sid string, pc *webrtc.PeerConnection) error {
 			SDP:  util.StripLocalAddresses(ld.SDP),
 		}
 	}
-	answer := string([]byte(util.SerializeSessionDescription(ld)))
+	answer, err := util.SerializeSessionDescription(ld)
+	if err != nil {
+		return err
+	}
 	body, err := messages.EncodeAnswerRequest(answer, sid)
 	if err != nil {
 		return err
