@@ -236,7 +236,9 @@ func exchangeSDP(broker *BrokerChannel, offer *webrtc.SessionDescription) *webrt
 // Close all channels and transports
 func (c *WebRTCPeer) cleanup() {
 	// Close this side of the SOCKS pipe.
-	c.writePipe.Close()
+	if c.writePipe != nil { // c.writePipe can be nil in tests.
+		c.writePipe.Close()
+	}
 	if nil != c.transport {
 		log.Printf("WebRTC: closing DataChannel")
 		c.transport.Close()
