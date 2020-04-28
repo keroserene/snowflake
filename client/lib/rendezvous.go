@@ -96,7 +96,11 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 			SDP:  util.StripLocalAddresses(offer.SDP),
 		}
 	}
-	data := bytes.NewReader([]byte(util.SerializeSessionDescription(offer)))
+	offerSDP, err := util.SerializeSessionDescription(offer)
+	if err != nil {
+		return nil, err
+	}
+	data := bytes.NewReader([]byte(offerSDP))
 	// Suffix with broker's client registration handler.
 	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
 	request, err := http.NewRequest("POST", clientURL.String(), data)
@@ -119,8 +123,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		if nil != err {
 			return nil, err
 		}
-		answer := util.DeserializeSessionDescription(string(body))
-		return answer, nil
+		return util.DeserializeSessionDescription(string(body))
 	case http.StatusServiceUnavailable:
 		return nil, errors.New(BrokerError503)
 	case http.StatusBadRequest:

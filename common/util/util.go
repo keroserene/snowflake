@@ -2,43 +2,38 @@ package util
 
 import (
 	"encoding/json"
-	"log"
+	"errors"
 	"net"
 
 	"github.com/pion/sdp/v2"
 	"github.com/pion/webrtc/v2"
 )
 
-func SerializeSessionDescription(desc *webrtc.SessionDescription) string {
+func SerializeSessionDescription(desc *webrtc.SessionDescription) (string, error) {
 	bytes, err := json.Marshal(*desc)
-	if nil != err {
-		log.Println(err)
-		return ""
+	if err != nil {
+		return "", err
 	}
-	return string(bytes)
+	return string(bytes), nil
 }
 
-func DeserializeSessionDescription(msg string) *webrtc.SessionDescription {
+func DeserializeSessionDescription(msg string) (*webrtc.SessionDescription, error) {
 	var parsed map[string]interface{}
 	err := json.Unmarshal([]byte(msg), &parsed)
-	if nil != err {
-		log.Println(err)
-		return nil
+	if err != nil {
+		return nil, err
 	}
 	if _, ok := parsed["type"]; !ok {
-		log.Println("Cannot deserialize SessionDescription without type field.")
-		return nil
+		return nil, errors.New("cannot deserialize SessionDescription without type field")
 	}
 	if _, ok := parsed["sdp"]; !ok {
-		log.Println("Cannot deserialize SessionDescription without sdp field.")
-		return nil
+		return nil, errors.New("cannot deserialize SessionDescription without sdp field")
 	}
 
 	var stype webrtc.SDPType
 	switch parsed["type"].(string) {
 	default:
-		log.Println("Unknown SDP type")
-		return nil
+		return nil, errors.New("Unknown SDP type")
 	case "offer":
 		stype = webrtc.SDPTypeOffer
 	case "pranswer":
@@ -49,14 +44,10 @@ func DeserializeSessionDescription(msg string) *webrtc.SessionDescription {
 		stype = webrtc.SDPTypeRollback
 	}
 
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
 	return &webrtc.SessionDescription{
 		Type: stype,
 		SDP:  parsed["sdp"].(string),
-	}
+	}, nil
 }
 
 // Stolen from https://github.com/golang/go/pull/30278

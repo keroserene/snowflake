@@ -231,7 +231,8 @@ func TestSnowflakeClient(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				c.offerChannel <- nil
-				answer := util.DeserializeSessionDescription(sampleAnswer)
+				answer, err := util.DeserializeSessionDescription(sampleAnswer)
+				So(err, ShouldBeNil)
 				So(answer, ShouldNotBeNil)
 				c.answerChannel <- answer
 				err = c.exchangeSDP()
@@ -256,7 +257,8 @@ func TestSnowflakeClient(t *testing.T) {
 					ctx.So(err, ShouldBeNil)
 					wg.Done()
 				}()
-				answer := util.DeserializeSessionDescription(sampleAnswer)
+				answer, err := util.DeserializeSessionDescription(sampleAnswer)
+				So(err, ShouldBeNil)
 				c.answerChannel <- answer
 				wg.Wait()
 			})
@@ -286,7 +288,10 @@ func TestSnowflakeClient(t *testing.T) {
 			http.StatusOK,
 			[]byte(`{"type":"answer","sdp":"fake"}`),
 		}
-		fakeOffer := util.DeserializeSessionDescription(`{"type":"offer","sdp":"test"}`)
+		fakeOffer, err := util.DeserializeSessionDescription(`{"type":"offer","sdp":"test"}`)
+		if err != nil {
+			panic(err)
+		}
 
 		Convey("Construct BrokerChannel with no front domain", func() {
 			b, err := NewBrokerChannel("test.broker", "", transport, false)
