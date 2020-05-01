@@ -121,7 +121,7 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 	}
 	c.transport, err = c.establishDataChannel()
 	if err != nil {
-		log.Printf("establishDataChannel: %v", err)
+		log.Printf("WebRTC: establishing data channel: %v", err)
 		// nolint: golint
 		return errors.New("WebRTC: Could not establish DataChannel")
 	}
