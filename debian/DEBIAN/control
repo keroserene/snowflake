@@ -1,0 +1,12 @@
+Source: snowflake
+Section: devel
+Priority: optional
+Homepage: https://trac.torproject.org/projects/tor/wiki/doc/Snowflake
+Maintainer: Hans-Christoph Steiner <hans@eds.org>
+Package: snowflake
+Architecture: amd64
+Version: 0.0-1
+Recommends: nodejs,
+            tor
+Description: Pluggable Transport using WebRTC, inspired by Flashproxy
+ Snowflake is a Pluggable Transport that pipes traffic through WebRTC proxies.

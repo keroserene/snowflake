@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# put pieces into Debian binary package layout and build a .deb
+
+set -e
+set -x
+
+basedir=$(cd $(dirname $0); pwd)
+
+mkdir -p $basedir/debian/usr/bin/
+mkdir -p $basedir/debian/usr/share/doc/snowflake/examples/
+
+cd $basedir/debian/usr/bin
+go build github.com/keroserene/snowflake/broker
+go build github.com/keroserene/snowflake/client
+go build github.com/keroserene/snowflake/proxy-go
+go build github.com/keroserene/snowflake/server
+go build github.com/keroserene/snowflake/server-webrtc
+
+cd $basedir
+cp CONTRIBUTING.md LICENSE README.md \
+   debian/usr/share/doc/snowflake/
+cp client/torrc \
+   client/torrc-localhost \
+   client/torrc-manual \
+   debian/usr/share/doc/snowflake/examples/
+chmod -R go-w debian/
+
+export VERSION=0.0.$(git rev-list --count HEAD)~g${CI_COMMIT_SHA:0:7}-1~$(date '+%s')
+sed -i "s/^Version:.*/Version: $VERSION/" debian/DEBIAN/control
+grep "^Version: $VERSION" debian/DEBIAN/control
+
+dpkg-deb --build debian
+
+if [ -z "$CI_COMMIT_SHA" ]; then
+    CI_COMMIT_SHA=`git describe --always`
+fi
+mv --verbose debian.deb snowflake_${VERSION}_$(dpkg --print-architecture).deb
