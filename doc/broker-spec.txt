@@ -67,3 +67,116 @@ Metrics data from the Snowflake broker can be retrieved by sending an HTTP GET r
 
         A count of the number of times a client successfully received a
         proxy from the broker, rounded up to the nearest multiple of 8.
+
+2. Broker messaging specification and endpoints
+
+The broker facilitates the connection of snowflake clients and snowflake proxies
+through the exchange of WebRTC SDP information with its endpoints.
+
+2.1. Client interactions with the broker
+
+Clients interact with the broker by making a POST request to `/client` with the
+offer SDP in the request body:
+```
+POST /client HTTP
+
+[offer SDP]
+```
+If the broker is behind a domain-fronted connection, this request is accompanied
+with the necessary HOST information.
+
+If the client is matched up with a proxy, they receive a 200 OK response with
+the proxy's answer SDP in the request body:
+```
+HTTP 200 OK
+
+[answer SDP]
+```
+
+If no proxies were available, they receive a 503 status code:
+```
+HTTP 503 Service Unavailable
+```
+
+
+2.2 Proxy interactions with the broker
+
+Proxies poll the broker with a proxy poll request to `/proxy`:
+
+```
+POST /proxy HTTP
+
+{
+  Sid: [generated session id of proxy],
+  Version: 1.1,
+  Type: ["badge"|"webext"|"standalone"|"mobile"]
+}
+```
+
+If the request is well-formed, they receive a 200 OK response.
+
+If a client is matched:
+```
+HTTP 200 OK
+
+{
+  Status: "client match",
+  {
+    type: offer,
+    sdp: [WebRTC SDP]
+  }
+}
+```
+
+If a client is not matched:
+```
+HTTP 200 OK
+
+{
+    Status: "no match"
+}
+```
+
+If the request is malformed:
+```
+HTTP 400 BadRequest
+```
+
+If they are matched with a client, they provide their SDP answer with a POST
+request to `/answer`:
+```
+POST /answer HTTP
+
+{
+  Sid: [generated session id of proxy],
+  Version: 1.1,
+  Answer:
+  {
+    type: answer,
+    sdp: [WebRTC SDP]
+  }
+}
+```
+
+If the request is well-formed, they receive a 200 OK response.
+
+If the client retrieved the answer:
+```
+HTTP 200 OK
+
+{
+  Status: "success"
+}
+```
+
+If the client left:
+```
+HTTP 200 OK
+
+{
+  Status: "client gone"
+}
+
+3) If the request is malformed:
+HTTP 400 BadRequest
+```
