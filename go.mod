@@ -7,6 +7,7 @@ require (
 	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/gorilla/websocket v1.4.1
 	github.com/pion/sdp/v2 v2.3.4
+	github.com/pion/stun v0.3.5
 	github.com/pion/webrtc/v2 v2.2.2
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/xtaci/kcp-go/v5 v5.5.12

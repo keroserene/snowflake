@@ -16,7 +16,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"github.com/pion/webrtc/v2"
 )
@@ -36,6 +38,8 @@ type BrokerChannel struct {
 	url                *url.URL
 	transport          http.RoundTripper // Used to make all requests.
 	keepLocalAddresses bool
+	NATType            string
+	lock               sync.Mutex
 }
 
 // We make a copy of DefaultTransport because we want the default Dial
@@ -66,6 +70,7 @@ func NewBrokerChannel(broker string, front string, transport http.RoundTripper, 
 
 	bc.transport = transport
 	bc.keepLocalAddresses = keepLocalAddresses
+	bc.NATType = nat.NATUnknown
 	return bc, nil
 }
 
@@ -110,6 +115,10 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	if "" != bc.Host { // Set true host if necessary.
 		request.Host = bc.Host
 	}
+	// include NAT-TYPE
+	bc.lock.Lock()
+	request.Header.Set("Snowflake-NAT-TYPE", bc.NATType)
+	bc.lock.Unlock()
 	resp, err := bc.transport.RoundTrip(request)
 	if nil != err {
 		return nil, err
@@ -131,6 +140,13 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	default:
 		return nil, errors.New(BrokerErrorUnexpected)
 	}
+}
+
+func (bc *BrokerChannel) SetNATType(NATType string) {
+	bc.lock.Lock()
+	bc.NATType = NATType
+	bc.lock.Unlock()
+	log.Printf("NAT Type: %s", NATType)
 }
 
 // Implements the |Tongue| interface to catch snowflakes, using BrokerChannel.
