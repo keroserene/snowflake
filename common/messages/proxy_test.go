@@ -13,6 +13,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 		for _, test := range []struct {
 			sid       string
 			proxyType string
+			natType   string
 			data      string
 			err       error
 		}{
@@ -20,6 +21,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				//Version 1.0 proxy message
 				"ymbcCMto7KHNGYlp",
 				"",
+				"unknown",
 				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`,
 				nil,
 			},
@@ -27,17 +29,28 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				//Version 1.1 proxy message
 				"ymbcCMto7KHNGYlp",
 				"standalone",
+				"unknown",
 				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.1","Type":"standalone"}`,
+				nil,
+			},
+			{
+				//Version 1.2 proxy message
+				"ymbcCMto7KHNGYlp",
+				"standalone",
+				"restricted",
+				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted"}`,
 				nil,
 			},
 			{
 				//Version 0.X proxy message:
 				"",
 				"",
-				"ymbcCMto7KHNGYlp",
+				"",
+				"",
 				&json.SyntaxError{},
 			},
 			{
+				"",
 				"",
 				"",
 				`{"Sid":"ymbcCMto7KHNGYlp"}`,
@@ -46,10 +59,12 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 			{
 				"",
 				"",
+				"",
 				"{}",
 				fmt.Errorf(""),
 			},
 			{
+				"",
 				"",
 				"",
 				`{"Version":"1.0"}`,
@@ -58,13 +73,15 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 			{
 				"",
 				"",
+				"",
 				`{"Version":"2.0"}`,
 				fmt.Errorf(""),
 			},
 		} {
-			sid, proxyType, err := DecodePollRequest([]byte(test.data))
+			sid, proxyType, natType, err := DecodePollRequest([]byte(test.data))
 			So(sid, ShouldResemble, test.sid)
 			So(proxyType, ShouldResemble, test.proxyType)
+			So(natType, ShouldResemble, test.natType)
 			So(err, ShouldHaveSameTypeAs, test.err)
 		}
 
@@ -73,11 +90,12 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 
 func TestEncodeProxyPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
-		b, err := EncodePollRequest("ymbcCMto7KHNGYlp", "standalone")
+		b, err := EncodePollRequest("ymbcCMto7KHNGYlp", "standalone", "unknown")
 		So(err, ShouldEqual, nil)
-		sid, proxyType, err := DecodePollRequest(b)
+		sid, proxyType, natType, err := DecodePollRequest(b)
 		So(sid, ShouldEqual, "ymbcCMto7KHNGYlp")
 		So(proxyType, ShouldEqual, "standalone")
+		So(natType, ShouldEqual, "unknown")
 		So(err, ShouldEqual, nil)
 	})
 }

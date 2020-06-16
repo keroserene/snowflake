@@ -9,15 +9,16 @@ import (
 	"strings"
 )
 
-const version = "1.1"
+const version = "1.2"
 
-/* Version 1.1 specification:
+/* Version 1.2 specification:
 
 == ProxyPollRequest ==
 {
   Sid: [generated session id of proxy],
-  Version: 1.1,
+  Version: 1.2,
   Type: ["badge"|"webext"|"standalone"]
+  NAT: ["unknown"|"restricted"|"unrestricted"]
 }
 
 == ProxyPollResponse ==
@@ -44,7 +45,7 @@ HTTP 400 BadRequest
 == ProxyAnswerRequest ==
 {
   Sid: [generated session id of proxy],
-  Version: 1.1,
+  Version: 1.2,
   Answer:
   {
     type: answer,
@@ -76,37 +77,44 @@ type ProxyPollRequest struct {
 	Sid     string
 	Version string
 	Type    string
+	NAT     string
 }
 
-func EncodePollRequest(sid string, proxyType string) ([]byte, error) {
+func EncodePollRequest(sid string, proxyType string, natType string) ([]byte, error) {
 	return json.Marshal(ProxyPollRequest{
 		Sid:     sid,
 		Version: version,
 		Type:    proxyType,
+		NAT:     natType,
 	})
 }
 
 // Decodes a poll message from a snowflake proxy and returns the
 // sid and proxy type of the proxy on success and an error if it failed
-func DecodePollRequest(data []byte) (string, string, error) {
+func DecodePollRequest(data []byte) (string, string, string, error) {
 	var message ProxyPollRequest
 
 	err := json.Unmarshal(data, &message)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	majorVersion := strings.Split(message.Version, ".")[0]
 	if majorVersion != "1" {
-		return "", "", fmt.Errorf("using unknown version")
+		return "", "", "", fmt.Errorf("using unknown version")
 	}
 
 	// Version 1.x requires an Sid
 	if message.Sid == "" {
-		return "", "", fmt.Errorf("no supplied session id")
+		return "", "", "", fmt.Errorf("no supplied session id")
 	}
 
-	return message.Sid, message.Type, nil
+	natType := message.NAT
+	if natType == "" {
+		natType = "unknown"
+	}
+
+	return message.Sid, message.Type, natType, nil
 }
 
 type ProxyPollResponse struct {
@@ -159,7 +167,7 @@ type ProxyAnswerRequest struct {
 
 func EncodeAnswerRequest(answer string, sid string) ([]byte, error) {
 	return json.Marshal(ProxyAnswerRequest{
-		Version: "1.1",
+		Version: version,
 		Sid:     sid,
 		Answer:  answer,
 	})

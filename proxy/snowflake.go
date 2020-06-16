@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
@@ -30,6 +31,11 @@ const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
 const defaultSTUNURL = "stun:stun.l.google.com:19302"
 const pollInterval = 5 * time.Second
+const (
+	NATUnknown      = "unknown"
+	NATRestricted   = "restricted"
+	NATUnrestricted = "unrestricted"
+)
 
 //amount of time after sending an SDP answer before the proxy assumes the
 //client is not going to connect
@@ -39,6 +45,8 @@ const readLimit = 100000 //Maximum number of bytes to be read from an HTTP reque
 
 var broker *Broker
 var relayURL string
+
+var currentNATType = NATUnknown
 
 const (
 	sessionIDLength = 16
@@ -174,7 +182,7 @@ func (b *Broker) pollOffer(sid string) *webrtc.SessionDescription {
 			timeOfNextPoll = now
 		}
 
-		body, err := messages.EncodePollRequest(sid, "standalone")
+		body, err := messages.EncodePollRequest(sid, "standalone", currentNATType)
 		if err != nil {
 			log.Printf("Error encoding poll message: %s", err.Error())
 			return nil
@@ -485,9 +493,35 @@ func main() {
 		tokens <- true
 	}
 
+	// determine NAT type before polling
+	updateNATType(config.ICEServers)
+	log.Printf("NAT type: %s", currentNATType)
+
 	for {
 		getToken()
 		sessionID := genSessionID()
 		runSession(sessionID)
+	}
+}
+
+// use provided STUN server(s) to determine NAT type
+func updateNATType(servers []webrtc.ICEServer) {
+
+	var restrictedNAT bool
+	var err error
+	for _, server := range servers {
+		addr := strings.TrimPrefix(server.URLs[0], "stun:")
+		restrictedNAT, err = nat.CheckIfRestrictedNAT(addr)
+		if err == nil {
+			if restrictedNAT {
+				currentNATType = NATRestricted
+			} else {
+				currentNATType = NATUnrestricted
+			}
+			break
+		}
+	}
+	if err != nil {
+		currentNATType = NATUnknown
 	}
 }
