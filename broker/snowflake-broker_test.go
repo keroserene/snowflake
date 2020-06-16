@@ -29,7 +29,7 @@ func TestBroker(t *testing.T) {
 		Convey("Adds Snowflake", func() {
 			So(ctx.snowflakes.Len(), ShouldEqual, 0)
 			So(len(ctx.idToSnowflake), ShouldEqual, 0)
-			ctx.AddSnowflake("foo", "")
+			ctx.AddSnowflake("foo", "", NATUnknown)
 			So(ctx.snowflakes.Len(), ShouldEqual, 1)
 			So(len(ctx.idToSnowflake), ShouldEqual, 1)
 		})
@@ -55,7 +55,7 @@ func TestBroker(t *testing.T) {
 		Convey("Request an offer from the Snowflake Heap", func() {
 			done := make(chan []byte)
 			go func() {
-				offer := ctx.RequestOffer("test", "")
+				offer := ctx.RequestOffer("test", "", NATUnknown)
 				done <- offer
 			}()
 			request := <-ctx.proxyPolls
@@ -79,7 +79,7 @@ func TestBroker(t *testing.T) {
 			Convey("with a proxy answer if available.", func() {
 				done := make(chan bool)
 				// Prepare a fake proxy to respond with.
-				snowflake := ctx.AddSnowflake("fake", "")
+				snowflake := ctx.AddSnowflake("fake", "", NATUnknown)
 				go func() {
 					clientOffers(ctx, w, r)
 					done <- true
@@ -97,7 +97,7 @@ func TestBroker(t *testing.T) {
 					return
 				}
 				done := make(chan bool)
-				snowflake := ctx.AddSnowflake("fake", "")
+				snowflake := ctx.AddSnowflake("fake", "", NATUnknown)
 				go func() {
 					clientOffers(ctx, w, r)
 					// Takes a few seconds here...
@@ -147,7 +147,7 @@ func TestBroker(t *testing.T) {
 		})
 
 		Convey("Responds to proxy answers...", func() {
-			s := ctx.AddSnowflake("test", "")
+			s := ctx.AddSnowflake("test", "", NATUnknown)
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte(`{"Version":"1.0","Sid":"test","Answer":"test"}`))
 
@@ -260,7 +260,7 @@ func TestBroker(t *testing.T) {
 			// Manually do the Broker goroutine action here for full control.
 			p := <-ctx.proxyPolls
 			So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
-			s := ctx.AddSnowflake(p.id, "")
+			s := ctx.AddSnowflake(p.id, "", NATUnknown)
 			go func() {
 				offer := <-s.offerChannel
 				p.offerChannel <- offer
@@ -537,7 +537,7 @@ func TestMetrics(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			// Prepare a fake proxy to respond with.
-			snowflake := ctx.AddSnowflake("fake", "")
+			snowflake := ctx.AddSnowflake("fake", "", NATUnknown)
 			go func() {
 				clientOffers(ctx, w, r)
 				done <- true

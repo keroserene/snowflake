@@ -31,12 +31,18 @@ const (
 	ClientTimeout = 10
 	ProxyTimeout  = 10
 	readLimit     = 100000 //Maximum number of bytes to be read from an HTTP request
+
+	NATUnknown      = "unknown"
+	NATRestricted   = "restricted"
+	NATUnrestricted = "unrestricted"
 )
 
 type BrokerContext struct {
-	snowflakes *SnowflakeHeap
-	// Map keeping track of snowflakeIDs required to match SDP answers from
-	// the second http POST.
+	snowflakes           *SnowflakeHeap
+	restrictedSnowflakes *SnowflakeHeap
+	// Maps keeping track of snowflakeIDs required to match SDP answers from
+	// the second http POST. Restricted snowflakes can only be matched up with
+	// clients behind an unrestricted NAT.
 	idToSnowflake map[string]*Snowflake
 	// Synchronization for the snowflake map and heap
 	snowflakeLock sync.Mutex
@@ -47,6 +53,8 @@ type BrokerContext struct {
 func NewBrokerContext(metricsLogger *log.Logger) *BrokerContext {
 	snowflakes := new(SnowflakeHeap)
 	heap.Init(snowflakes)
+	rSnowflakes := new(SnowflakeHeap)
+	heap.Init(rSnowflakes)
 	metrics, err := NewMetrics(metricsLogger)
 
 	if err != nil {
@@ -58,10 +66,11 @@ func NewBrokerContext(metricsLogger *log.Logger) *BrokerContext {
 	}
 
 	return &BrokerContext{
-		snowflakes:    snowflakes,
-		idToSnowflake: make(map[string]*Snowflake),
-		proxyPolls:    make(chan *ProxyPoll),
-		metrics:       metrics,
+		snowflakes:           snowflakes,
+		restrictedSnowflakes: rSnowflakes,
+		idToSnowflake:        make(map[string]*Snowflake),
+		proxyPolls:           make(chan *ProxyPoll),
+		metrics:              metrics,
 	}
 }
 
@@ -79,7 +88,7 @@ type MetricsHandler struct {
 
 func (sh SnowflakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID, Snowflake-NAT-Type")
 	// Return early if it's CORS preflight.
 	if "OPTIONS" == r.Method {
 		return
@@ -101,15 +110,17 @@ func (mh MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type ProxyPoll struct {
 	id           string
 	proxyType    string
+	natType      string
 	offerChannel chan []byte
 }
 
 // Registers a Snowflake and waits for some Client to send an offer,
 // as part of the polling logic of the proxy handler.
-func (ctx *BrokerContext) RequestOffer(id string, proxyType string) []byte {
+func (ctx *BrokerContext) RequestOffer(id string, proxyType string, natType string) []byte {
 	request := new(ProxyPoll)
 	request.id = id
 	request.proxyType = proxyType
+	request.natType = natType
 	request.offerChannel = make(chan []byte)
 	ctx.proxyPolls <- request
 	// Block until an offer is available, or timeout which sends a nil offer.
@@ -122,7 +133,7 @@ func (ctx *BrokerContext) RequestOffer(id string, proxyType string) []byte {
 // client offer or nil on timeout / none are available.
 func (ctx *BrokerContext) Broker() {
 	for request := range ctx.proxyPolls {
-		snowflake := ctx.AddSnowflake(request.id, request.proxyType)
+		snowflake := ctx.AddSnowflake(request.id, request.proxyType, request.natType)
 		// Wait for a client to avail an offer to the snowflake.
 		go func(request *ProxyPoll) {
 			select {
@@ -133,7 +144,11 @@ func (ctx *BrokerContext) Broker() {
 				ctx.snowflakeLock.Lock()
 				defer ctx.snowflakeLock.Unlock()
 				if snowflake.index != -1 {
-					heap.Remove(ctx.snowflakes, snowflake.index)
+					if request.natType == NATRestricted {
+						heap.Remove(ctx.restrictedSnowflakes, snowflake.index)
+					} else {
+						heap.Remove(ctx.snowflakes, snowflake.index)
+					}
 					delete(ctx.idToSnowflake, snowflake.id)
 					close(request.offerChannel)
 				}
@@ -145,7 +160,7 @@ func (ctx *BrokerContext) Broker() {
 // Create and add a Snowflake to the heap.
 // Required to keep track of proxies between providing them
 // with an offer and awaiting their second POST with an answer.
-func (ctx *BrokerContext) AddSnowflake(id string, proxyType string) *Snowflake {
+func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType string) *Snowflake {
 	snowflake := new(Snowflake)
 	snowflake.id = id
 	snowflake.clients = 0
@@ -153,7 +168,11 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string) *Snowflake {
 	snowflake.offerChannel = make(chan []byte)
 	snowflake.answerChannel = make(chan []byte)
 	ctx.snowflakeLock.Lock()
-	heap.Push(ctx.snowflakes, snowflake)
+	if natType == NATRestricted {
+		heap.Push(ctx.restrictedSnowflakes, snowflake)
+	} else {
+		heap.Push(ctx.snowflakes, snowflake)
+	}
 	ctx.snowflakeLock.Unlock()
 	ctx.idToSnowflake[id] = snowflake
 	return snowflake
@@ -170,7 +189,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sid, proxyType, _, err := messages.DecodePollRequest(body)
+	sid, proxyType, natType, err := messages.DecodePollRequest(body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -187,7 +206,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
-	offer := ctx.RequestOffer(sid, proxyType)
+	offer := ctx.RequestOffer(sid, proxyType, natType)
 	var b []byte
 	if nil == offer {
 		ctx.metrics.lock.Lock()
@@ -226,9 +245,23 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	natType := r.Header.Get("Snowflake-NAT-Type")
+	if natType == "" {
+		natType = NATUnknown
+	}
+
+	// Only hand out known restricted snowflakes to unrestricted clients
+	var snowflakeHeap *SnowflakeHeap
+	if natType == NATUnrestricted {
+		snowflakeHeap = ctx.restrictedSnowflakes
+	} else {
+		snowflakeHeap = ctx.snowflakes
+	}
+
 	// Immediately fail if there are no snowflakes available.
 	ctx.snowflakeLock.Lock()
-	numSnowflakes := ctx.snowflakes.Len()
+	numSnowflakes := snowflakeHeap.Len()
 	ctx.snowflakeLock.Unlock()
 	if numSnowflakes <= 0 {
 		ctx.metrics.lock.Lock()
@@ -240,7 +273,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	// Otherwise, find the most available snowflake proxy, and pass the offer to it.
 	// Delete must be deferred in order to correctly process answer request later.
 	ctx.snowflakeLock.Lock()
-	snowflake := heap.Pop(ctx.snowflakes).(*Snowflake)
+	snowflake := heap.Pop(snowflakeHeap).(*Snowflake)
 	ctx.snowflakeLock.Unlock()
 	snowflake.offerChannel <- offer
 
