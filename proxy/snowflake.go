@@ -201,7 +201,7 @@ func (b *Broker) pollOffer(sid string) *webrtc.SessionDescription {
 					log.Printf("error reading broker response: %s", err)
 				} else {
 
-					offer, err := messages.DecodePollResponse(body)
+					offer, _, err := messages.DecodePollResponse(body)
 					if err != nil {
 						log.Printf("error reading broker response: %s", err.Error())
 						log.Printf("body: %s", body)

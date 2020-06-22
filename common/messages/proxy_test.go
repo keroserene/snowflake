@@ -109,7 +109,7 @@ func TestDecodeProxyPollResponse(t *testing.T) {
 		}{
 			{
 				"fake offer",
-				`{"Status":"client match","Offer":"fake offer"}`,
+				`{"Status":"client match","Offer":"fake offer","NAT":"unknown"}`,
 				nil,
 			},
 			{
@@ -128,9 +128,9 @@ func TestDecodeProxyPollResponse(t *testing.T) {
 				fmt.Errorf(""),
 			},
 		} {
-			offer, err := DecodePollResponse([]byte(test.data))
-			So(offer, ShouldResemble, test.offer)
+			offer, _, err := DecodePollResponse([]byte(test.data))
 			So(err, ShouldHaveSameTypeAs, test.err)
+			So(offer, ShouldResemble, test.offer)
 		}
 
 	})
@@ -138,16 +138,18 @@ func TestDecodeProxyPollResponse(t *testing.T) {
 
 func TestEncodeProxyPollResponse(t *testing.T) {
 	Convey("Context", t, func() {
-		b, err := EncodePollResponse("fake offer", true)
+		b, err := EncodePollResponse("fake offer", true, "restricted")
 		So(err, ShouldEqual, nil)
-		offer, err := DecodePollResponse(b)
+		offer, natType, err := DecodePollResponse(b)
 		So(offer, ShouldEqual, "fake offer")
+		So(natType, ShouldEqual, "restricted")
 		So(err, ShouldEqual, nil)
 
-		b, err = EncodePollResponse("", false)
+		b, err = EncodePollResponse("", false, "unknown")
 		So(err, ShouldEqual, nil)
-		offer, err = DecodePollResponse(b)
+		offer, natType, err = DecodePollResponse(b)
 		So(offer, ShouldEqual, "")
+		So(natType, ShouldEqual, "unknown")
 		So(err, ShouldEqual, nil)
 	})
 }

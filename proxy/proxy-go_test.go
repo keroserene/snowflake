@@ -249,7 +249,7 @@ func TestBrokerInteractions(t *testing.T) {
 		Convey("polls broker correctly", func() {
 			var err error
 
-			b, err := messages.EncodePollResponse(sampleOffer, true)
+			b, err := messages.EncodePollResponse(sampleOffer, true, "unknown")
 			So(err, ShouldEqual, nil)
 			broker.transport = &MockTransport{
 				http.StatusOK,

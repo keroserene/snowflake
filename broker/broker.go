@@ -111,17 +111,17 @@ type ProxyPoll struct {
 	id           string
 	proxyType    string
 	natType      string
-	offerChannel chan []byte
+	offerChannel chan *ClientOffer
 }
 
 // Registers a Snowflake and waits for some Client to send an offer,
 // as part of the polling logic of the proxy handler.
-func (ctx *BrokerContext) RequestOffer(id string, proxyType string, natType string) []byte {
+func (ctx *BrokerContext) RequestOffer(id string, proxyType string, natType string) *ClientOffer {
 	request := new(ProxyPoll)
 	request.id = id
 	request.proxyType = proxyType
 	request.natType = natType
-	request.offerChannel = make(chan []byte)
+	request.offerChannel = make(chan *ClientOffer)
 	ctx.proxyPolls <- request
 	// Block until an offer is available, or timeout which sends a nil offer.
 	offer := <-request.offerChannel
@@ -165,7 +165,7 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	snowflake.id = id
 	snowflake.clients = 0
 	snowflake.proxyType = proxyType
-	snowflake.offerChannel = make(chan []byte)
+	snowflake.offerChannel = make(chan *ClientOffer)
 	snowflake.answerChannel = make(chan []byte)
 	ctx.snowflakeLock.Lock()
 	if natType == NATRestricted {
@@ -213,7 +213,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		ctx.metrics.proxyIdleCount++
 		ctx.metrics.lock.Unlock()
 
-		b, err = messages.EncodePollResponse("", false)
+		b, err = messages.EncodePollResponse("", false, "")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -222,7 +222,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.Write(b)
 		return
 	}
-	b, err = messages.EncodePollResponse(string(offer), true)
+	b, err = messages.EncodePollResponse(string(offer.sdp), true, offer.natType)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -232,28 +232,37 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Client offer contains an SDP and the NAT type of the client
+type ClientOffer struct {
+	natType string
+	sdp     []byte
+}
+
 /*
 Expects a WebRTC SDP offer in the Request to give to an assigned
 snowflake proxy, which responds with the SDP answer to be sent in
 the HTTP response back to the client.
 */
 func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
+	var err error
+
 	startTime := time.Now()
-	offer, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
+	offer := &ClientOffer{}
+	offer.sdp, err = ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
 	if nil != err {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	natType := r.Header.Get("Snowflake-NAT-Type")
-	if natType == "" {
-		natType = NATUnknown
+	offer.natType = r.Header.Get("Snowflake-NAT-Type")
+	if offer.natType == "" {
+		offer.natType = NATUnknown
 	}
 
 	// Only hand out known restricted snowflakes to unrestricted clients
 	var snowflakeHeap *SnowflakeHeap
-	if natType == NATUnrestricted {
+	if offer.natType == NATUnrestricted {
 		snowflakeHeap = ctx.restrictedSnowflakes
 	} else {
 		snowflakeHeap = ctx.snowflakes

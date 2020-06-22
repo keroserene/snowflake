@@ -37,7 +37,7 @@ func TestBroker(t *testing.T) {
 		Convey("Broker goroutine matches clients with proxies", func() {
 			p := new(ProxyPoll)
 			p.id = "test"
-			p.offerChannel = make(chan []byte)
+			p.offerChannel = make(chan *ClientOffer)
 			go func(ctx *BrokerContext) {
 				ctx.proxyPolls <- p
 				close(ctx.proxyPolls)
@@ -45,23 +45,23 @@ func TestBroker(t *testing.T) {
 			ctx.Broker()
 			So(ctx.snowflakes.Len(), ShouldEqual, 1)
 			snowflake := heap.Pop(ctx.snowflakes).(*Snowflake)
-			snowflake.offerChannel <- []byte("test offer")
+			snowflake.offerChannel <- &ClientOffer{sdp: []byte("test offer")}
 			offer := <-p.offerChannel
 			So(ctx.idToSnowflake["test"], ShouldNotBeNil)
-			So(offer, ShouldResemble, []byte("test offer"))
+			So(offer.sdp, ShouldResemble, []byte("test offer"))
 			So(ctx.snowflakes.Len(), ShouldEqual, 0)
 		})
 
 		Convey("Request an offer from the Snowflake Heap", func() {
-			done := make(chan []byte)
+			done := make(chan *ClientOffer)
 			go func() {
 				offer := ctx.RequestOffer("test", "", NATUnknown)
 				done <- offer
 			}()
 			request := <-ctx.proxyPolls
-			request.offerChannel <- []byte("test offer")
+			request.offerChannel <- &ClientOffer{sdp: []byte("test offer")}
 			offer := <-done
-			So(offer, ShouldResemble, []byte("test offer"))
+			So(offer.sdp, ShouldResemble, []byte("test offer"))
 		})
 
 		Convey("Responds to client offers...", func() {
@@ -85,7 +85,7 @@ func TestBroker(t *testing.T) {
 					done <- true
 				}()
 				offer := <-snowflake.offerChannel
-				So(offer, ShouldResemble, []byte("test"))
+				So(offer.sdp, ShouldResemble, []byte("test"))
 				snowflake.answerChannel <- []byte("fake answer")
 				<-done
 				So(w.Body.String(), ShouldEqual, "fake answer")
@@ -104,7 +104,7 @@ func TestBroker(t *testing.T) {
 					done <- true
 				}()
 				offer := <-snowflake.offerChannel
-				So(offer, ShouldResemble, []byte("test"))
+				So(offer.sdp, ShouldResemble, []byte("test"))
 				<-done
 				So(w.Code, ShouldEqual, http.StatusGatewayTimeout)
 			})
@@ -125,10 +125,10 @@ func TestBroker(t *testing.T) {
 				// Pass a fake client offer to this proxy
 				p := <-ctx.proxyPolls
 				So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
-				p.offerChannel <- []byte("fake offer")
+				p.offerChannel <- &ClientOffer{sdp: []byte("fake offer")}
 				<-done
 				So(w.Code, ShouldEqual, http.StatusOK)
-				So(w.Body.String(), ShouldEqual, `{"Status":"client match","Offer":"fake offer"}`)
+				So(w.Body.String(), ShouldEqual, `{"Status":"client match","Offer":"fake offer","NAT":""}`)
 			})
 
 			Convey("return empty 200 OK when no client offer is available.", func() {
@@ -141,7 +141,7 @@ func TestBroker(t *testing.T) {
 				// nil means timeout
 				p.offerChannel <- nil
 				<-done
-				So(w.Body.String(), ShouldEqual, `{"Status":"no match","Offer":""}`)
+				So(w.Body.String(), ShouldEqual, `{"Status":"no match","Offer":"","NAT":""}`)
 				So(w.Code, ShouldEqual, http.StatusOK)
 			})
 		})
@@ -279,7 +279,7 @@ func TestBroker(t *testing.T) {
 
 			<-polled
 			So(wP.Code, ShouldEqual, http.StatusOK)
-			So(wP.Body.String(), ShouldResemble, `{"Status":"client match","Offer":"fake offer"}`)
+			So(wP.Body.String(), ShouldResemble, `{"Status":"client match","Offer":"fake offer","NAT":"unknown"}`)
 			So(ctx.idToSnowflake["ymbcCMto7KHNGYlp"], ShouldNotBeNil)
 			// Follow up with the answer request afterwards
 			wA := httptest.NewRecorder()
@@ -543,7 +543,7 @@ func TestMetrics(t *testing.T) {
 				done <- true
 			}()
 			offer := <-snowflake.offerChannel
-			So(offer, ShouldResemble, []byte("test"))
+			So(offer.sdp, ShouldResemble, []byte("test"))
 			snowflake.answerChannel <- []byte("fake answer")
 			<-done
 
