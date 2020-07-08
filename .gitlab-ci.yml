@@ -41,6 +41,15 @@
         git
         lbzip2
 
+.go_test: &go-test
+  - test -z "$(go fmt ./...)"
+  - go vet ./...
+  - go test -v -race ./...
+
+  - cd $CI_PROJECT_DIR/client/
+  - go get
+  - go build
+
 .test-template: &test-template
   artifacts:
     name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
@@ -52,17 +61,35 @@
     when: on_success
   after_script:
     - echo "Download debug artifacts from https://gitlab.com/${CI_PROJECT_PATH}/-/jobs"
+
+# -- jobs ------------------------------------------------------------
+
+android:
+  image: registry.gitlab.com/fdroid/ci-images-client
+  variables:
+    GOPATH: "/go"
+  cache:
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+  before_script:
+    - apt-get -qy update
+    - apt-get -qy install --no-install-recommends
+        build-essential
+        gnupg
+        wget
+    - cd /usr/local
+    - export gotarball="go1.13.12.linux-amd64.tar.gz"
+    - wget -q https://dl.google.com/go/${gotarball}
+    - wget -q https://dl.google.com/go/${gotarball}.asc
+    - curl https://dl.google.com/linux/linux_signing_key.pub | gpg --import
+    - gpg --verify ${gotarball}.asc
+    - echo "9cacc6653563771b458c13056265aa0c21b8a23ca9408278484e4efde4160618  ${gotarball}" | sha256sum -c
+    - tar -xzf ${gotarball}
+    - export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"  # putting this in 'variables:' cause weird runner errors
+    - cd $CI_PROJECT_DIR
   script:
-    - test -z "$(go fmt ./...)"
-    - go vet ./...
-    - go test -v -race ./...
-
-    - cd $CI_PROJECT_DIR/client/
-    - go get
-    - go build
-
-    # build for Android if this is the right job
-    - test "$CI_JOB_NAME" = "android" || exit 0
+    - *go-test
     - export GRADLE_USER_HOME=$PWD/.gradle
     # This build was setup before go.mod was a thing, go back to the old days!
     # 920f6791f3ec8e7467c43ee0cefffe63200bed2b broke the gomobile build.
@@ -93,47 +120,25 @@
     # gomobile builds a shared library not a CLI executable
     - sed -i 's,^package main$,package snowflakeclient,' snowflake.go client_test.go
     - gomobile bind -v -target=android git.torproject.org/pluggable-transports/snowflake/client
-
-
-# -- jobs ------------------------------------------------------------
-
-android:
-  image: registry.gitlab.com/fdroid/ci-images-client
-  variables:
-    GOPATH: "/go"
-  cache:
-    paths:
-      - .gradle/wrapper
-      - .gradle/caches
-  before_script:
-    - apt-get -qy update
-    - apt-get -qy install --no-install-recommends
-        build-essential
-        gnupg
-        wget
-    - cd /usr/local
-    - export gotarball="go1.13.12.linux-amd64.tar.gz"
-    - wget -q https://dl.google.com/go/${gotarball}
-    - wget -q https://dl.google.com/go/${gotarball}.asc
-    - curl https://dl.google.com/linux/linux_signing_key.pub | gpg --import
-    - gpg --verify ${gotarball}.asc
-    - echo "9cacc6653563771b458c13056265aa0c21b8a23ca9408278484e4efde4160618  ${gotarball}" | sha256sum -c
-    - tar -xzf ${gotarball}
-    - export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"  # putting this in 'variables:' cause weird runner errors
-    - cd $CI_PROJECT_DIR
   <<: *test-template
 
 go-1.13:
   image: golang:1.13-stretch
   <<: *golang-docker-debian-template
   <<: *test-template
+  script:
+    - *go-test
 
 go-1.14:
   image: golang:1.14-stretch
   <<: *golang-docker-debian-template
   <<: *test-template
+  script:
+    - *go-test
 
 debian-testing:
   image: debian:testing
   <<: *debian-native-template
   <<: *test-template
+  script:
+    - *go-test
