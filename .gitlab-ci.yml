@@ -91,10 +91,6 @@ android:
   script:
     - *go-test
     - export GRADLE_USER_HOME=$PWD/.gradle
-    # This build was setup before go.mod was a thing, go back to the old days!
-    # 920f6791f3ec8e7467c43ee0cefffe63200bed2b broke the gomobile build.
-    # https://dev.to/maelvls/why-is-go111module-everywhere-and-everything-about-go-modules-24k
-    - export GO111MODULE=off
     - go version
     - go env
 
@@ -105,21 +101,12 @@ android:
     - echo y | $ANDROID_HOME/tools/bin/sdkmanager 'ndk-bundle' > /dev/null
     - gomobile init
 
-    # Create symbolic links under $GOPATH, this is needed for local build
-    - export src=$GOPATH/src
-    - mkdir -p $src/git.torproject.org/pluggable-transports
-    - mkdir -p $src/github.com/keroserene
-    - mkdir -p $src/gitlab.com/$CI_PROJECT_NAMESPACE
-    - ln -s $CI_PROJECT_DIR $src/git.torproject.org/pluggable-transports/snowflake
-    - ln -s $CI_PROJECT_DIR $src/github.com/keroserene/snowflake
-    - ln -s $CI_PROJECT_DIR $src/gitlab.com/$CI_PROJECT_PATH
-
     - git -C $CI_PROJECT_DIR reset --hard
     - git -C $CI_PROJECT_DIR clean -fdx
     - cd $CI_PROJECT_DIR/client
     # gomobile builds a shared library not a CLI executable
     - sed -i 's,^package main$,package snowflakeclient,' snowflake.go client_test.go
-    - gomobile bind -v -target=android git.torproject.org/pluggable-transports/snowflake/client
+    - gomobile bind -v -target=android .
   <<: *test-template
 
 go-1.13:
