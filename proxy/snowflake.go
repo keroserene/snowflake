@@ -29,7 +29,7 @@ import (
 
 const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
 const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
-const defaultSTUNURL = "stun:stun.l.google.com:19302"
+const defaultSTUNURL = "stun:stun.stunprotocol.org:3478"
 const pollInterval = 5 * time.Second
 const (
 	NATUnknown      = "unknown"
