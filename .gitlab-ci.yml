@@ -8,7 +8,7 @@
     DEBIAN_FRONTEND: noninteractive
     GOPATH: /usr/share/gocode
   before_script:
-    - apt-get -qy update
+    - apt-get update
     - apt-get -qy install --no-install-recommends
         build-essential
         ca-certificates
@@ -35,13 +35,13 @@
   variables:
     DEBIAN_FRONTEND: noninteractive
   before_script:
-    - apt-get -qy update
+    - apt-get update
     - apt-get -qy install --no-install-recommends
         ca-certificates
         git
         lbzip2
 
-.go_test: &go-test
+.go-test: &go-test
   - test -z "$(go fmt ./...)"
   - go vet ./...
   - go test -v -race ./...
@@ -57,10 +57,13 @@
       - client/*.aar
       - client/*.jar
       - client/client
-    expire_in: 1 day
+    expire_in: 1 week
     when: on_success
   after_script:
     - echo "Download debug artifacts from https://gitlab.com/${CI_PROJECT_PATH}/-/jobs"
+    # this file changes every time but should not be cached
+    - rm -f $GRADLE_USER_HOME/caches/modules-2/modules-2.lock
+    - rm -rf $GRADLE_USER_HOME/caches/*/plugin-resolution/
 
 # -- jobs ------------------------------------------------------------
 
