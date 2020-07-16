@@ -11,3 +11,9 @@ proxy/proxy
 probetest/probetest
 snowflake.log
 ignore/
+
+# from running the vagrant setup
+/.vagrant/
+/sdk-tools-linux-*.zip*
+/android-ndk-*
+/tools/

@@ -1,4 +1,18 @@
 
+.apt-template: &apt-template
+- export LC_ALL=C.UTF-8
+- export DEBIAN_FRONTEND=noninteractive
+- echo Etc/UTC > /etc/timezone
+- echo 'quiet "1";'
+       'APT::Install-Recommends "0";'
+       'APT::Install-Suggests "0";'
+       'APT::Acquire::Retries "20";'
+       'APT::Get::Assume-Yes "true";'
+       'Dpkg::Use-Pty "0";'
+      > /etc/apt/apt.conf.d/99gitlab
+- apt-get update
+- apt-get dist-upgrade
+
 # Set things up to use the OS-native packages for Go.  Anything that
 # is downloaded by go during the `go fmt` stage is not coming from the
 # Debian/Ubuntu repo. So those would need to be packaged for this to
@@ -25,6 +39,7 @@
         golang-github-xtaci-smux-dev
         golang-golang-x-crypto-dev
         golang-golang-x-net-dev
+        golang-goptlib-dev
         golang-golang-x-sys-dev
         golang-golang-x-text-dev
         golang-golang-x-xerrors-dev
@@ -68,33 +83,45 @@
 # -- jobs ------------------------------------------------------------
 
 android:
-  image: registry.gitlab.com/fdroid/ci-images-client
+  image: debian:bullseye-backports
   variables:
+    ANDROID_HOME: /usr/lib/android-sdk
+    DEBIAN_FRONTEND: noninteractive
     GOPATH: "/go"
-    ANDROID_VERSION: 29
+    LANG: C.UTF-8
+    PATH: "/go/bin:/usr/lib/go-1.16/bin:/usr/bin:/bin"
   cache:
     paths:
       - .gradle/wrapper
       - .gradle/caches
+  <<: *test-template
   before_script:
-    - apt-get -qy update
-    - apt-get -qy install --no-install-recommends
+    - *apt-template
+    - apt-get install
+        android-sdk-platform-23
+        android-sdk-platform-tools
         build-essential
+        curl
+        default-jdk-headless
+        git
         gnupg
+        unzip
         wget
-    - cd /usr/local
-    - export gotarball="go1.16.8.linux-amd64.tar.gz"
-    - wget -q https://dl.google.com/go/${gotarball}
-    - wget -q https://dl.google.com/go/${gotarball}.asc
-    - curl https://dl.google.com/linux/linux_signing_key.pub | gpg --import
-    - gpg --verify ${gotarball}.asc
-    - echo "f32501aeb8b7b723bc7215f6c373abb6981bbc7e1c7b44e9f07317e1a300dce2  ${gotarball}" | sha256sum -c
-    - tar -xzf ${gotarball}
-    - export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"  # putting this in 'variables:' cause weird runner errors
-    - cd $CI_PROJECT_DIR
+    - apt-get install -t bullseye-backports golang-1.16
+
+    - ndk=android-ndk-r21e-linux-x86_64.zip
+    - wget --continue --no-verbose https://dl.google.com/android/repository/$ndk
+    - echo "ad7ce5467e18d40050dc51b8e7affc3e635c85bd8c59be62de32352328ed467e  $ndk" > $ndk.sha256
+    - sha256sum -c $ndk.sha256
+    - unzip -q $ndk
+    - rm ${ndk}*
+    - mv android-ndk-* $ANDROID_HOME/ndk-bundle/
+
+    - chmod -R a+rX $ANDROID_HOME
+
   script:
     - *go-test
-    - export GRADLE_USER_HOME=$PWD/.gradle
+    - export GRADLE_USER_HOME=$CI_PROJECT_DIR/.gradle
     - go version
     - go env
 
@@ -102,18 +129,13 @@ android:
     - go get golang.org/x/mobile/cmd/gobind
     - go install golang.org/x/mobile/cmd/gobind
     - go install golang.org/x/mobile/cmd/gomobile
-    - echo y | $ANDROID_HOME/tools/bin/sdkmanager 'ndk-bundle' > /dev/null
-    - echo y | $ANDROID_HOME/tools/bin/sdkmanager "platforms;android-${ANDROID_VERSION}" > /dev/null
     - gomobile init
 
-    - git -C $CI_PROJECT_DIR reset --hard
-    - git -C $CI_PROJECT_DIR clean -fdx
     - cd $CI_PROJECT_DIR/client
     # gomobile builds a shared library not a CLI executable
     - sed -i 's,^package main$,package snowflakeclient,' snowflake.go
     - go get golang.org/x/mobile/bind
-    - gomobile bind -v -target=android .
-  <<: *test-template
+    - gomobile bind -v -target=android -trimpath .
 
 go-1.13:
   image: golang:1.13-stretch

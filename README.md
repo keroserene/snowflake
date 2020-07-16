@@ -87,3 +87,13 @@ abundance of ephemeral and short-lived (and special!) volunteer proxies...
 ### More info and links
 
 We have more documentation in the [Snowflake wiki](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/wikis/home) and at https://snowflake.torproject.org/.
+
+
+##### -- Android AAR Reproducible Build Setup  --
+
+Using `gomobile` it is possible to build snowflake as shared libraries for all
+the architectures supported by Android.  This is in the _.gitlab-ci.yml_, which
+runs in GitLab CI.  It is also possible to run this setup in a Virtual Machine
+using [vagrant](https://www.vagrantup.com/).  Just run `vagrant up` and it will
+create and provision the VM.  `vagrant ssh` to get into the VM to use it as a
+development environment.
