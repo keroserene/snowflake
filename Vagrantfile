@@ -7,7 +7,8 @@ configfile = YAML.load_file(File.join(srvpath, "/.gitlab-ci.yml"))
 remote_url = 'https://git.torproject.org/pluggable-transports/snowflake.git'
 
 # set up essential environment variables
-env = configfile['android']['variables']
+env = configfile['variables']
+env = env.merge(configfile['android']['variables'])
 env['CI_PROJECT_DIR'] = '/builds/tpo/anti-censorship/pluggable-transports/snowflake'
 env_file = Tempfile.new('env')
 File.chmod(0644, env_file.path)

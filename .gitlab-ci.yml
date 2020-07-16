@@ -1,4 +1,9 @@
 
+variables:
+  DEBIAN_FRONTEND: noninteractive
+  REPRODUCIBLE_FLAGS: -trimpath -ldflags=-buildid=
+
+# set up apt for automated use
 .apt-template: &apt-template
 - export LC_ALL=C.UTF-8
 - export DEBIAN_FRONTEND=noninteractive
@@ -13,13 +18,13 @@
 - apt-get update
 - apt-get dist-upgrade
 
+
 # Set things up to use the OS-native packages for Go.  Anything that
 # is downloaded by go during the `go fmt` stage is not coming from the
 # Debian/Ubuntu repo. So those would need to be packaged for this to
 # make it into Debian and/or Ubuntu.
 .debian-native-template: &debian-native-template
   variables:
-    DEBIAN_FRONTEND: noninteractive
     GOPATH: /usr/share/gocode
   before_script:
     - apt-get update
@@ -47,8 +52,6 @@
 
 # use Go installed as part of the official, Debian-based Docker images
 .golang-docker-debian-template: &golang-docker-debian-template
-  variables:
-    DEBIAN_FRONTEND: noninteractive
   before_script:
     - apt-get update
     - apt-get -qy install --no-install-recommends
@@ -63,7 +66,7 @@
 
   - cd $CI_PROJECT_DIR/client/
   - go get
-  - go build
+  - go build $REPRODUCIBLE_FLAGS
 
 .test-template: &test-template
   artifacts:
@@ -86,7 +89,6 @@ android:
   image: debian:bullseye-backports
   variables:
     ANDROID_HOME: /usr/lib/android-sdk
-    DEBIAN_FRONTEND: noninteractive
     GOPATH: "/go"
     LANG: C.UTF-8
     PATH: "/go/bin:/usr/lib/go-1.16/bin:/usr/bin:/bin"
@@ -135,7 +137,7 @@ android:
     # gomobile builds a shared library not a CLI executable
     - sed -i 's,^package main$,package snowflakeclient,' snowflake.go
     - go get golang.org/x/mobile/bind
-    - gomobile bind -v -target=android -trimpath .
+    - gomobile bind -v -target=android $REPRODUCIBLE_FLAGS .
 
 go-1.13:
   image: golang:1.13-stretch
