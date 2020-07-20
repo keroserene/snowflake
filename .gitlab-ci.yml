@@ -70,7 +70,7 @@ variables:
 
 .test-template: &test-template
   artifacts:
-    name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
+    name: "${CI_PROJECT_PATH}_${CI_JOB_STAGE}_${CI_JOB_ID}_${CI_COMMIT_REF_NAME}_${CI_COMMIT_SHA}"
     paths:
       - client/*.aar
       - client/*.jar
