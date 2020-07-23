@@ -49,8 +49,8 @@ func TestICEServerParser(t *testing.T) {
 
 			So(len(servers), ShouldEqual, test.length)
 
-			for i, server := range servers {
-				So(server.URLs, ShouldResemble, test.urls[i])
+			for _, server := range servers {
+				So(test.urls, ShouldContain, server.URLs)
 			}
 
 		}
