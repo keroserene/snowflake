@@ -78,7 +78,6 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 }
 
 // s is a comma-separated list of ICE server URLs.
-// chooses a random subset of servers from inputs
 func parseIceServers(s string) []webrtc.ICEServer {
 	var servers []webrtc.ICEServer
 	s = strings.TrimSpace(s)
@@ -91,13 +90,6 @@ func parseIceServers(s string) []webrtc.ICEServer {
 		servers = append(servers, webrtc.ICEServer{
 			URLs: []string{url},
 		})
-	}
-	rand.Seed(time.Now().Unix())
-	rand.Shuffle(len(servers), func(i, j int) {
-		servers[i], servers[j] = servers[j], servers[i]
-	})
-	if len(servers) > 2 {
-		servers = servers[:len(servers)/2]
 	}
 	return servers
 }
@@ -153,6 +145,14 @@ func main() {
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
 	iceServers := parseIceServers(*iceServersCommas)
+	// chooses a random subset of servers from inputs
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(iceServers), func(i, j int) {
+		iceServers[i], iceServers[j] = iceServers[j], iceServers[i]
+	})
+	if len(iceServers) > 2 {
+		iceServers = iceServers[:(len(iceServers)+1)/2]
+	}
 	log.Printf("Using ICE servers:")
 	for _, server := range iceServers {
 		log.Printf("url: %v", strings.Join(server.URLs, " "))
