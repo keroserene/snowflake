@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
@@ -48,6 +49,7 @@ type BrokerChannel struct {
 func CreateBrokerTransport() http.RoundTripper {
 	transport := http.DefaultTransport.(*http.Transport)
 	transport.Proxy = nil
+	transport.ResponseHeaderTimeout = 15 * time.Second
 	return transport
 }
 

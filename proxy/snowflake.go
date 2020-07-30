@@ -481,6 +481,7 @@ func main() {
 	}
 
 	broker.transport = http.DefaultTransport.(*http.Transport)
+	broker.transport.(*http.Transport).ResponseHeaderTimeout = 15 * time.Second
 	config = webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
