@@ -142,7 +142,17 @@ var sessionManager = sessionManager_{}
 
 // Given an accepted SOCKS connection, establish a WebRTC connection to the
 // remote peer and exchange traffic.
-func Handler(socks net.Conn, snowflakes SnowflakeCollector) error {
+func Handler(socks net.Conn, tongue Tongue) error {
+	// Prepare to collect remote WebRTC peers.
+	snowflakes := NewPeers(1)
+	snowflakes.Tongue = tongue
+
+	// Use a real logger to periodically output how much traffic is happening.
+	snowflakes.BytesLogger = NewBytesSyncLogger()
+
+	log.Printf("---- Handler: begin collecting snowflakes ---")
+	go connectLoop(snowflakes)
+
 	// Return the global smux.Session.
 	sess, err := sessionManager.Get(snowflakes)
 	if err != nil {
@@ -160,7 +170,29 @@ func Handler(socks net.Conn, snowflakes SnowflakeCollector) error {
 	log.Printf("---- Handler: begin stream %v ---", stream.ID())
 	copyLoop(socks, stream)
 	log.Printf("---- Handler: closed stream %v ---", stream.ID())
+	snowflakes.End()
+	log.Printf("---- Handler: end collecting snowflakes ---")
 	return nil
+}
+
+// Maintain |SnowflakeCapacity| number of available WebRTC connections, to
+// transfer to the Tor SOCKS handler when needed.
+func connectLoop(snowflakes SnowflakeCollector) {
+	for {
+		// Check if ending is necessary.
+		_, err := snowflakes.Collect()
+		if err != nil {
+			log.Printf("WebRTC: %v  Retrying in %v...",
+				err, ReconnectTimeout)
+		}
+		select {
+		case <-time.After(ReconnectTimeout):
+			continue
+		case <-snowflakes.Melted():
+			log.Println("ConnectLoop: stopped.")
+			return
+		}
+	}
 }
 
 // Exchanges bytes between two ReadWriters.

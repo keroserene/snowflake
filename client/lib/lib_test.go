@@ -157,11 +157,11 @@ func TestSnowflakeClient(t *testing.T) {
 
 		SkipConvey("Handler Grants correctly", func() {
 			socks := &FakeSocksConn{}
-			snowflakes := &FakePeers{}
+			broker := &BrokerChannel{Host: "test"}
+			d := NewWebRTCDialer(broker, nil)
 
 			So(socks.rejected, ShouldEqual, false)
-			snowflakes.toRelease = nil
-			Handler(socks, snowflakes)
+			Handler(socks, d)
 			So(socks.rejected, ShouldEqual, true)
 		})
 	})

@@ -26,28 +26,8 @@ const (
 	DefaultSnowflakeCapacity = 1
 )
 
-// Maintain |SnowflakeCapacity| number of available WebRTC connections, to
-// transfer to the Tor SOCKS handler when needed.
-func ConnectLoop(snowflakes sf.SnowflakeCollector) {
-	for {
-		// Check if ending is necessary.
-		_, err := snowflakes.Collect()
-		if err != nil {
-			log.Printf("WebRTC: %v  Retrying in %v...",
-				err, sf.ReconnectTimeout)
-		}
-		select {
-		case <-time.After(sf.ReconnectTimeout):
-			continue
-		case <-snowflakes.Melted():
-			log.Println("ConnectLoop: stopped.")
-			return
-		}
-	}
-}
-
 // Accept local SOCKS connections and pass them to the handler.
-func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
+func socksAcceptLoop(ln *pt.SocksListener, tongue sf.Tongue) {
 	defer ln.Close()
 	for {
 		conn, err := ln.AcceptSocks()
@@ -68,7 +48,7 @@ func socksAcceptLoop(ln *pt.SocksListener, snowflakes sf.SnowflakeCollector) {
 				return
 			}
 
-			err = sf.Handler(conn, snowflakes)
+			err = sf.Handler(conn, tongue)
 			if err != nil {
 				log.Printf("handler error: %s", err)
 				return
@@ -158,9 +138,6 @@ func main() {
 		log.Printf("url: %v", strings.Join(server.URLs, " "))
 	}
 
-	// Prepare to collect remote WebRTC peers.
-	snowflakes := sf.NewPeers(*max)
-
 	// Use potentially domain-fronting broker to rendezvous.
 	broker, err := sf.NewBrokerChannel(
 		*brokerURL, *frontDomain, sf.CreateBrokerTransport(),
@@ -170,12 +147,8 @@ func main() {
 	}
 	go updateNATType(iceServers, broker)
 
-	snowflakes.Tongue = sf.NewWebRTCDialer(broker, iceServers)
-
-	// Use a real logger to periodically output how much traffic is happening.
-	snowflakes.BytesLogger = sf.NewBytesSyncLogger()
-
-	go ConnectLoop(snowflakes)
+	// Create a new WebRTCDialer to use as the |Tongue| to catch snowflakes
+	dialer := sf.NewWebRTCDialer(broker, iceServers)
 
 	// Begin goptlib client process.
 	ptInfo, err := pt.ClientSetup(nil)
@@ -197,7 +170,7 @@ func main() {
 				break
 			}
 			log.Printf("Started SOCKS listener at %v.", ln.Addr())
-			go socksAcceptLoop(ln, snowflakes)
+			go socksAcceptLoop(ln, dialer)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			listeners = append(listeners, ln)
 		default:
@@ -228,7 +201,6 @@ func main() {
 	for _, ln := range listeners {
 		ln.Close()
 	}
-	snowflakes.End()
 	log.Println("snowflake is done.")
 }
 
