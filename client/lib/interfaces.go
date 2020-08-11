@@ -7,6 +7,9 @@ import (
 // Interface for catching Snowflakes. (aka the remote dialer)
 type Tongue interface {
 	Catch() (*WebRTCPeer, error)
+
+	// Get the maximum number of snowflakes
+	GetMax() int
 }
 
 // Interface for collecting some number of Snowflakes, for passing along

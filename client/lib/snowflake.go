@@ -144,8 +144,10 @@ var sessionManager = sessionManager_{}
 // remote peer and exchange traffic.
 func Handler(socks net.Conn, tongue Tongue) error {
 	// Prepare to collect remote WebRTC peers.
-	snowflakes := NewPeers(1)
-	snowflakes.Tongue = tongue
+	snowflakes, err := NewPeers(tongue)
+	if err != nil {
+		return err
+	}
 
 	// Use a real logger to periodically output how much traffic is happening.
 	snowflakes.BytesLogger = NewBytesSyncLogger()

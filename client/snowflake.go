@@ -148,7 +148,7 @@ func main() {
 	go updateNATType(iceServers, broker)
 
 	// Create a new WebRTCDialer to use as the |Tongue| to catch snowflakes
-	dialer := sf.NewWebRTCDialer(broker, iceServers)
+	dialer := sf.NewWebRTCDialer(broker, iceServers, *max)
 
 	// Begin goptlib client process.
 	ptInfo, err := pt.ClientSetup(nil)

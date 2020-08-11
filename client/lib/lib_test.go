@@ -27,11 +27,17 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return r, nil
 }
 
-type FakeDialer struct{}
+type FakeDialer struct {
+	max int
+}
 
 func (w FakeDialer) Catch() (*WebRTCPeer, error) {
 	fmt.Println("Caught a dummy snowflake.")
 	return &WebRTCPeer{}, nil
+}
+
+func (w FakeDialer) GetMax() int {
+	return w.max
 }
 
 type FakeSocksConn struct {
@@ -55,19 +61,19 @@ func TestSnowflakeClient(t *testing.T) {
 
 	Convey("Peers", t, func() {
 		Convey("Can construct", func() {
-			p := NewPeers(1)
-			So(p.capacity, ShouldEqual, 1)
+			d := &FakeDialer{max: 1}
+			p, _ := NewPeers(d)
+			So(p.Tongue.GetMax(), ShouldEqual, 1)
 			So(p.snowflakeChan, ShouldNotBeNil)
 			So(cap(p.snowflakeChan), ShouldEqual, 1)
 		})
 
 		Convey("Collecting a Snowflake requires a Tongue.", func() {
-			p := NewPeers(1)
-			_, err := p.Collect()
+			p, err := NewPeers(nil)
 			So(err, ShouldNotBeNil)
-			So(p.Count(), ShouldEqual, 0)
 			// Set the dialer so that collection is possible.
-			p.Tongue = FakeDialer{}
+			d := &FakeDialer{max: 1}
+			p, err = NewPeers(d)
 			_, err = p.Collect()
 			So(err, ShouldBeNil)
 			So(p.Count(), ShouldEqual, 1)
@@ -77,8 +83,7 @@ func TestSnowflakeClient(t *testing.T) {
 
 		Convey("Collection continues until capacity.", func() {
 			c := 5
-			p := NewPeers(c)
-			p.Tongue = FakeDialer{}
+			p, _ := NewPeers(FakeDialer{max: c})
 			// Fill up to capacity.
 			for i := 0; i < c; i++ {
 				fmt.Println("Adding snowflake ", i)
@@ -104,8 +109,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("Count correctly purges peers marked for deletion.", func() {
-			p := NewPeers(4)
-			p.Tongue = FakeDialer{}
+			p, _ := NewPeers(FakeDialer{max: 5})
 			p.Collect()
 			p.Collect()
 			p.Collect()
@@ -121,7 +125,7 @@ func TestSnowflakeClient(t *testing.T) {
 
 		Convey("End Closes all peers.", func() {
 			cnt := 5
-			p := NewPeers(cnt)
+			p, _ := NewPeers(FakeDialer{max: cnt})
 			for i := 0; i < cnt; i++ {
 				p.activePeers.PushBack(&WebRTCPeer{})
 			}
@@ -132,8 +136,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("Pop skips over closed peers.", func() {
-			p := NewPeers(4)
-			p.Tongue = FakeDialer{}
+			p, _ := NewPeers(FakeDialer{max: 4})
 			wc1, _ := p.Collect()
 			wc2, _ := p.Collect()
 			wc3, _ := p.Collect()
@@ -158,7 +161,7 @@ func TestSnowflakeClient(t *testing.T) {
 		SkipConvey("Handler Grants correctly", func() {
 			socks := &FakeSocksConn{}
 			broker := &BrokerChannel{Host: "test"}
-			d := NewWebRTCDialer(broker, nil)
+			d := NewWebRTCDialer(broker, nil, 1)
 
 			So(socks.rejected, ShouldEqual, false)
 			Handler(socks, d)
@@ -169,14 +172,14 @@ func TestSnowflakeClient(t *testing.T) {
 	Convey("Dialers", t, func() {
 		Convey("Can construct WebRTCDialer.", func() {
 			broker := &BrokerChannel{Host: "test"}
-			d := NewWebRTCDialer(broker, nil)
+			d := NewWebRTCDialer(broker, nil, 1)
 			So(d, ShouldNotBeNil)
 			So(d.BrokerChannel, ShouldNotBeNil)
 			So(d.BrokerChannel.Host, ShouldEqual, "test")
 		})
 		SkipConvey("WebRTCDialer can Catch a snowflake.", func() {
 			broker := &BrokerChannel{Host: "test"}
-			d := NewWebRTCDialer(broker, nil)
+			d := NewWebRTCDialer(broker, nil, 1)
 			conn, err := d.Catch()
 			So(conn, ShouldBeNil)
 			So(err, ShouldNotBeNil)

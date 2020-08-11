@@ -155,15 +155,18 @@ func (bc *BrokerChannel) SetNATType(NATType string) {
 type WebRTCDialer struct {
 	*BrokerChannel
 	webrtcConfig *webrtc.Configuration
+	max          int
 }
 
-func NewWebRTCDialer(broker *BrokerChannel, iceServers []webrtc.ICEServer) *WebRTCDialer {
+func NewWebRTCDialer(broker *BrokerChannel, iceServers []webrtc.ICEServer, max int) *WebRTCDialer {
 	config := webrtc.Configuration{
 		ICEServers: iceServers,
 	}
+
 	return &WebRTCDialer{
 		BrokerChannel: broker,
 		webrtcConfig:  &config,
+		max:           max,
 	}
 }
 
@@ -172,4 +175,9 @@ func (w WebRTCDialer) Catch() (*WebRTCPeer, error) {
 	// TODO: [#25591] Fetch ICE server information from Broker.
 	// TODO: [#25596] Consider TURN servers here too.
 	return NewWebRTCPeer(w.webrtcConfig, w.BrokerChannel)
+}
+
+// Returns the maximum number of snowflakes to collect
+func (w WebRTCDialer) GetMax() int {
+	return w.max
 }
