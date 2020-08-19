@@ -8,7 +8,7 @@ The Snowflake broker is used to hand out Snowflake proxies to clients using the 
 
 This document specifies how the Snowflake broker interacts with other parts of the Tor ecosystem, starting with the metrics CollecTor module and to be expanded upon later.
 
-1. Metrics Reporting (version 1.0)
+1. Metrics Reporting (version 1.1)
 
 Metrics data from the Snowflake broker can be retrieved by sending an HTTP GET request to https://[Snowflake broker URL]/metrics and consists of the following items:
 
@@ -62,11 +62,43 @@ Metrics data from the Snowflake broker can be retrieved by sending an HTTP GET r
         from the broker but no proxies were available, rounded up to
         the nearest multiple of 8.
 
+    "client-restricted-denied-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a client with a restricted or
+        unknown NAT type has requested a proxy from the broker but no
+        proxies were available, rounded up to the nearest multiple of 8.
+
+    "client-unrestricted-denied-count" NUM NL
+        [At most once.]
+
+        A count of the number of times a client with an unrestricted NAT
+        type has requested a proxy from the broker but no proxies were
+        available, rounded up to the nearest multiple of 8.
+
     "client-snowflake-match-count" NUM NL
         [At most once.]
 
         A count of the number of times a client successfully received a
         proxy from the broker, rounded up to the nearest multiple of 8.
+
+    "snowflake-ips-nat-restricted" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of snowflake
+        proxies that have a restricted NAT type.
+
+    "snowflake-ips-nat-unrestricted" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of snowflake
+        proxies that have an unrestricted NAT type.
+
+    "snowflake-ips-nat-unknown" NUM NL
+        [At most once.]
+
+        A count of the total number of unique IP addresses of snowflake
+        proxies that have an unknown NAT type.
 
 2. Broker messaging specification and endpoints
 

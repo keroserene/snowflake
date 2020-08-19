@@ -165,6 +165,7 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	snowflake.id = id
 	snowflake.clients = 0
 	snowflake.proxyType = proxyType
+	snowflake.natType = natType
 	snowflake.offerChannel = make(chan *ClientOffer)
 	snowflake.answerChannel = make(chan []byte)
 	ctx.snowflakeLock.Lock()
@@ -201,7 +202,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		log.Println("Error processing proxy IP: ", err.Error())
 	} else {
 		ctx.metrics.lock.Lock()
-		ctx.metrics.UpdateCountryStats(remoteIP, proxyType)
+		ctx.metrics.UpdateCountryStats(remoteIP, proxyType, natType)
 		ctx.metrics.lock.Unlock()
 	}
 
@@ -275,6 +276,11 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if numSnowflakes <= 0 {
 		ctx.metrics.lock.Lock()
 		ctx.metrics.clientDeniedCount++
+		if offer.natType == NATUnrestricted {
+			ctx.metrics.clientUnrestrictedDeniedCount++
+		} else {
+			ctx.metrics.clientRestrictedDeniedCount++
+		}
 		ctx.metrics.lock.Unlock()
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
@@ -357,6 +363,7 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 
 	var webexts, browsers, standalones, unknowns int
+	var natRestricted, natUnrestricted, natUnknown int
 	ctx.snowflakeLock.Lock()
 	s := fmt.Sprintf("current snowflakes available: %d\n", len(ctx.idToSnowflake))
 	for _, snowflake := range ctx.idToSnowflake {
@@ -370,12 +377,26 @@ func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 			unknowns++
 		}
 
+		switch snowflake.natType {
+		case NATRestricted:
+			natRestricted++
+		case NATUnrestricted:
+			natUnrestricted++
+		default:
+			natUnknown++
+		}
+
 	}
 	ctx.snowflakeLock.Unlock()
 	s += fmt.Sprintf("\tstandalone proxies: %d", standalones)
 	s += fmt.Sprintf("\n\tbrowser proxies: %d", browsers)
 	s += fmt.Sprintf("\n\twebext proxies: %d", webexts)
 	s += fmt.Sprintf("\n\tunknown proxies: %d", unknowns)
+
+	s += fmt.Sprintf("\nNAT Types available:")
+	s += fmt.Sprintf("\n\trestricted: %d", natRestricted)
+	s += fmt.Sprintf("\n\tunrestricted: %d", natUnrestricted)
+	s += fmt.Sprintf("\n\tunknown: %d", natUnknown)
 	if _, err := w.Write([]byte(s)); err != nil {
 		log.Printf("writing proxy information returned error: %v ", err)
 	}

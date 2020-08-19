@@ -25,7 +25,12 @@ type CountryStats struct {
 	badge      map[string]bool
 	webext     map[string]bool
 	unknown    map[string]bool
-	counts     map[string]int
+
+	natRestricted   map[string]bool
+	natUnrestricted map[string]bool
+	natUnknown      map[string]bool
+
+	counts map[string]int
 }
 
 // Implements Observable
@@ -34,11 +39,13 @@ type Metrics struct {
 	tablev4 *GeoIPv4Table
 	tablev6 *GeoIPv6Table
 
-	countryStats            CountryStats
-	clientRoundtripEstimate time.Duration
-	proxyIdleCount          uint
-	clientDeniedCount       uint
-	clientProxyMatchCount   uint
+	countryStats                  CountryStats
+	clientRoundtripEstimate       time.Duration
+	proxyIdleCount                uint
+	clientDeniedCount             uint
+	clientRestrictedDeniedCount   uint
+	clientUnrestrictedDeniedCount uint
+	clientProxyMatchCount         uint
 
 	//synchronization for access to snowflake metrics
 	lock sync.Mutex
@@ -58,7 +65,7 @@ func (s CountryStats) Display() string {
 	return output
 }
 
-func (m *Metrics) UpdateCountryStats(addr string, proxyType string) {
+func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType string) {
 
 	var country string
 	var ok bool
@@ -111,6 +118,15 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string) {
 		m.countryStats.unknown[addr] = true
 	}
 
+	switch natType {
+	case NATRestricted:
+		m.countryStats.natRestricted[addr] = true
+	case NATUnrestricted:
+		m.countryStats.natUnrestricted[addr] = true
+	default:
+		m.countryStats.natUnknown[addr] = true
+	}
+
 }
 
 func (m *Metrics) LoadGeoipDatabases(geoipDB string, geoip6DB string) error {
@@ -139,11 +155,14 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 	m := new(Metrics)
 
 	m.countryStats = CountryStats{
-		counts:     make(map[string]int),
-		standalone: make(map[string]bool),
-		badge:      make(map[string]bool),
-		webext:     make(map[string]bool),
-		unknown:    make(map[string]bool),
+		counts:          make(map[string]int),
+		standalone:      make(map[string]bool),
+		badge:           make(map[string]bool),
+		webext:          make(map[string]bool),
+		unknown:         make(map[string]bool),
+		natRestricted:   make(map[string]bool),
+		natUnrestricted: make(map[string]bool),
+		natUnknown:      make(map[string]bool),
 	}
 
 	m.logger = metricsLogger
@@ -174,7 +193,12 @@ func (m *Metrics) printMetrics() {
 	m.logger.Println("snowflake-ips-webext", len(m.countryStats.webext))
 	m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
 	m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
+	m.logger.Println("client-restricted-denied-count", binCount(m.clientRestrictedDeniedCount))
+	m.logger.Println("client-unrestricted-denied-count", binCount(m.clientUnrestrictedDeniedCount))
 	m.logger.Println("client-snowflake-match-count", binCount(m.clientProxyMatchCount))
+	m.logger.Println("snowflake-ips-nat-restricted", len(m.countryStats.natRestricted))
+	m.logger.Println("snowflake-ips-nat-unrestricted", len(m.countryStats.natUnrestricted))
+	m.logger.Println("snowflake-ips-nat-unknown", len(m.countryStats.natUnknown))
 	m.lock.Unlock()
 }
 
@@ -182,12 +206,17 @@ func (m *Metrics) printMetrics() {
 func (m *Metrics) zeroMetrics() {
 	m.proxyIdleCount = 0
 	m.clientDeniedCount = 0
+	m.clientRestrictedDeniedCount = 0
+	m.clientUnrestrictedDeniedCount = 0
 	m.clientProxyMatchCount = 0
 	m.countryStats.counts = make(map[string]int)
 	m.countryStats.standalone = make(map[string]bool)
 	m.countryStats.badge = make(map[string]bool)
 	m.countryStats.webext = make(map[string]bool)
 	m.countryStats.unknown = make(map[string]bool)
+	m.countryStats.natRestricted = make(map[string]bool)
+	m.countryStats.natUnrestricted = make(map[string]bool)
+	m.countryStats.natUnknown = make(map[string]bool)
 }
 
 // Rounds up a count to the nearest multiple of 8.

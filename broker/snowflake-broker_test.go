@@ -437,7 +437,7 @@ func TestGeoip(t *testing.T) {
 		if err := ctx.metrics.LoadGeoipDatabases("invalid_filename", "invalid_filename6"); err != nil {
 			log.Printf("loading geo ip databases returned error: %v", err)
 		}
-		ctx.metrics.UpdateCountryStats("127.0.0.1", "")
+		ctx.metrics.UpdateCountryStats("127.0.0.1", "", NATUnknown)
 		So(ctx.metrics.tablev4, ShouldEqual, nil)
 
 	})
@@ -507,7 +507,7 @@ func TestMetrics(t *testing.T) {
 			p.offerChannel <- nil
 			<-done
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=4\nsnowflake-ips-total 4\nsnowflake-ips-standalone 1\nsnowflake-ips-badge 1\nsnowflake-ips-webext 1\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=4\nsnowflake-ips-total 4\nsnowflake-ips-standalone 1\nsnowflake-ips-badge 1\nsnowflake-ips-webext 1\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 1\n")
 
 		})
 
@@ -521,13 +521,13 @@ func TestMetrics(t *testing.T) {
 			clientOffers(ctx, w, r)
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 8\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldContainSubstring, "client-denied-count 8\nclient-restricted-denied-count 8\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0")
 
 			// Test reset
 			buf.Reset()
 			ctx.metrics.zeroMetrics()
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldContainSubstring, "snowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 0\n")
 		})
 		//Test addition of client matches
 		Convey("for client-proxy match", func() {
@@ -548,7 +548,7 @@ func TestMetrics(t *testing.T) {
 			<-done
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-snowflake-match-count 8\n")
+			So(buf.String(), ShouldContainSubstring, "client-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 8")
 		})
 		//Test rounding boundary
 		Convey("binning boundary", func() {
@@ -567,12 +567,12 @@ func TestMetrics(t *testing.T) {
 			clientOffers(ctx, w, r)
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 8\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldContainSubstring, "client-denied-count 8\nclient-restricted-denied-count 8\nclient-unrestricted-denied-count 0\n")
 
 			clientOffers(ctx, w, r)
 			buf.Reset()
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 16\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldContainSubstring, "client-denied-count 16\nclient-restricted-denied-count 16\nclient-unrestricted-denied-count 0\n")
 		})
 
 		//Test unique ip
@@ -605,7 +605,79 @@ func TestMetrics(t *testing.T) {
 			<-done
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=1\nsnowflake-ips-total 1\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-snowflake-match-count 0\n")
+			So(buf.String(), ShouldContainSubstring, "snowflake-ips CA=1\nsnowflake-ips-total 1")
+		})
+		//Test NAT types
+		Convey("proxy counts by NAT type", func() {
+			w := httptest.NewRecorder()
+			data := bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"unknown","NAT":"restricted"}`))
+			r, err := http.NewRequest("POST", "snowflake.broker/proxy", data)
+			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
+			So(err, ShouldBeNil)
+			go func(ctx *BrokerContext) {
+				proxyPolls(ctx, w, r)
+				done <- true
+			}(ctx)
+			p := <-ctx.proxyPolls //manually unblock poll
+			p.offerChannel <- nil
+			<-done
+
+			ctx.metrics.printMetrics()
+			So(buf.String(), ShouldContainSubstring, "snowflake-ips-nat-restricted 1\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 0")
+
+			data = bytes.NewReader([]byte(`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"unknown","NAT":"unrestricted"}`))
+			r, err = http.NewRequest("POST", "snowflake.broker/proxy", data)
+			if err != nil {
+				log.Printf("unable to get NewRequest with error: %v", err)
+			}
+			r.RemoteAddr = "129.97.208.24:8888" //CA geoip
+			go func(ctx *BrokerContext) {
+				proxyPolls(ctx, w, r)
+				done <- true
+			}(ctx)
+			p = <-ctx.proxyPolls //manually unblock poll
+			p.offerChannel <- nil
+			<-done
+
+			ctx.metrics.printMetrics()
+			So(buf.String(), ShouldContainSubstring, "snowflake-ips-nat-restricted 1\nsnowflake-ips-nat-unrestricted 1\nsnowflake-ips-nat-unknown 0")
+		})
+		//Test client failures by NAT type
+		Convey("client failures by NAT type", func() {
+			w := httptest.NewRecorder()
+			data := bytes.NewReader([]byte("test"))
+			r, err := http.NewRequest("POST", "snowflake.broker/client", data)
+			r.Header.Set("Snowflake-NAT-TYPE", "restricted")
+			So(err, ShouldBeNil)
+
+			clientOffers(ctx, w, r)
+
+			ctx.metrics.printMetrics()
+			So(buf.String(), ShouldContainSubstring, "client-denied-count 8\nclient-restricted-denied-count 8\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0")
+
+			buf.Reset()
+			ctx.metrics.zeroMetrics()
+
+			r, err = http.NewRequest("POST", "snowflake.broker/client", data)
+			r.Header.Set("Snowflake-NAT-TYPE", "unrestricted")
+			So(err, ShouldBeNil)
+
+			clientOffers(ctx, w, r)
+
+			ctx.metrics.printMetrics()
+			So(buf.String(), ShouldContainSubstring, "client-denied-count 8\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 8\nclient-snowflake-match-count 0")
+
+			buf.Reset()
+			ctx.metrics.zeroMetrics()
+
+			r, err = http.NewRequest("POST", "snowflake.broker/client", data)
+			r.Header.Set("Snowflake-NAT-TYPE", "unknown")
+			So(err, ShouldBeNil)
+
+			clientOffers(ctx, w, r)
+
+			ctx.metrics.printMetrics()
+			So(buf.String(), ShouldContainSubstring, "client-denied-count 8\nclient-restricted-denied-count 8\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0")
 		})
 	})
 }
