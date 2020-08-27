@@ -24,33 +24,37 @@ type Peers struct {
 
 	snowflakeChan chan *WebRTCPeer
 	activePeers   *list.List
-	capacity      int
 
 	melt chan struct{}
 }
 
 // Construct a fresh container of remote peers.
-func NewPeers(max int) *Peers {
-	p := &Peers{capacity: max}
+func NewPeers(tongue Tongue) (*Peers, error) {
+	p := &Peers{}
 	// Use buffered go channel to pass snowflakes onwards to the SOCKS handler.
-	p.snowflakeChan = make(chan *WebRTCPeer, max)
+	if tongue == nil {
+		return nil, errors.New("missing Tongue to catch Snowflakes with")
+	}
+	p.snowflakeChan = make(chan *WebRTCPeer, tongue.GetMax())
 	p.activePeers = list.New()
 	p.melt = make(chan struct{})
-	return p
+	p.Tongue = tongue
+	return p, nil
 }
 
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Collect() (*WebRTCPeer, error) {
-	cnt := p.Count()
-	s := fmt.Sprintf("Currently at [%d/%d]", cnt, p.capacity)
-	if cnt >= p.capacity {
-		return nil, fmt.Errorf("At capacity [%d/%d]", cnt, p.capacity)
-	}
-	log.Println("WebRTC: Collecting a new Snowflake.", s)
 	// Engage the Snowflake Catching interface, which must be available.
 	if nil == p.Tongue {
 		return nil, errors.New("missing Tongue to catch Snowflakes with")
 	}
+	cnt := p.Count()
+	capacity := p.Tongue.GetMax()
+	s := fmt.Sprintf("Currently at [%d/%d]", cnt, capacity)
+	if cnt >= capacity {
+		return nil, fmt.Errorf("At capacity [%d/%d]", cnt, capacity)
+	}
+	log.Println("WebRTC: Collecting a new Snowflake.", s)
 	// BUG: some broker conflict here.
 	connection, err := p.Tongue.Catch()
 	if nil != err {
