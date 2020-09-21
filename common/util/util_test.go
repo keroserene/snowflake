@@ -14,6 +14,8 @@ func TestUtil(t *testing.T) {
 
 		offer := offerStart + goodCandidate +
 			"a=candidate:3769337065 1 udp 2122260223 192.168.0.100 56688 typ host generation 0 network-id 1 network-cost 50\r\n" + // IsLocal IPv4
+			"a=candidate:3769337065 1 udp 2122260223 100.127.50.5 56688 typ host generation 0 network-id 1 network-cost 50\r\n" + // IsLocal IPv4
+			"a=candidate:3769337065 1 udp 2122260223 169.254.250.88 56688 typ host generation 0 network-id 1 network-cost 50\r\n" + // IsLocal IPv4
 			"a=candidate:3769337065 1 udp 2122260223 fdf8:f53b:82e4::53 56688 typ host generation 0 network-id 1 network-cost 50\r\n" + // IsLocal IPv6
 			"a=candidate:3769337065 1 udp 2122260223 0.0.0.0 56688 typ host generation 0 network-id 1 network-cost 50\r\n" + // IsUnspecified IPv4
 			"a=candidate:3769337065 1 udp 2122260223 :: 56688 typ host generation 0 network-id 1 network-cost 50\r\n" + // IsUnspecified IPv6

@@ -56,7 +56,11 @@ func IsLocal(ip net.IP) bool {
 		// Local IPv4 addresses are defined in https://tools.ietf.org/html/rfc1918
 		return ip4[0] == 10 ||
 			(ip4[0] == 172 && ip4[1]&0xf0 == 16) ||
-			(ip4[0] == 192 && ip4[1] == 168)
+			(ip4[0] == 192 && ip4[1] == 168) ||
+			// Carrier-Grade NAT as per https://tools.ietf.org/htm/rfc6598
+			(ip4[0] == 100 && ip4[1]&0xc0 == 64) ||
+			// Dynamic Configuration as per https://tools.ietf.org/htm/rfc3927
+			(ip4[0] == 169 && ip4[1] == 254)
 	}
 	// Local IPv6 addresses are defined in https://tools.ietf.org/html/rfc4193
 	return len(ip) == net.IPv6len && ip[0]&0xfe == 0xfc
