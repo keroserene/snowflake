@@ -24,6 +24,7 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
 	"github.com/gorilla/websocket"
+	"github.com/pion/sdp/v2"
 	"github.com/pion/webrtc/v2"
 )
 
@@ -65,15 +66,47 @@ var remoteIPPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?m)^c=IN IP6 ([0-9A-Fa-f:.]+)(?:\/\d+)?(:? |\r?\n)`),
 }
 
-// https://tools.ietf.org/html/rfc4566#section-5.7
-func remoteIPFromSDP(sdp string) net.IP {
-	for _, pattern := range remoteIPPatterns {
-		m := pattern.FindStringSubmatch(sdp)
-		if m != nil {
-			// Ignore parsing errors, ParseIP returns nil.
-			return net.ParseIP(m[1])
+// Checks whether an IP address is a remote address for the client
+func isRemoteAddress(ip net.IP) bool {
+	return !(util.IsLocal(ip) || ip.IsUnspecified() || ip.IsLoopback())
+}
+
+func remoteIPFromSDP(str string) net.IP {
+	// Look for remote IP in "a=candidate" attribute fields
+	// https://tools.ietf.org/html/rfc5245#section-15.1
+	var desc sdp.SessionDescription
+	err := desc.Unmarshal([]byte(str))
+	if err != nil {
+		log.Println("Error parsing SDP: ", err.Error())
+		return nil
+	}
+	for _, m := range desc.MediaDescriptions {
+		for _, a := range m.Attributes {
+			if a.IsICECandidate() {
+				ice, err := a.ToICECandidate()
+				if err == nil {
+					ip := net.ParseIP(ice.Address)
+					if ip != nil && isRemoteAddress(ip) {
+						return ip
+					}
+				}
+			}
 		}
 	}
+	// Finally look for remote IP in "c=" Connection Data field
+	// https://tools.ietf.org/html/rfc4566#section-5.7
+	for _, pattern := range remoteIPPatterns {
+		m := pattern.FindStringSubmatch(str)
+		if m != nil {
+			// Ignore parsing errors, ParseIP returns nil.
+			ip := net.ParseIP(m[1])
+			if ip != nil && isRemoteAddress(ip) {
+				return ip
+			}
+
+		}
+	}
+
 	return nil
 }
 

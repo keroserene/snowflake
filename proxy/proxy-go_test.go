@@ -64,6 +64,51 @@ m=audio 49170 RTP/AVP 0
 m=video 51372 RTP/AVP 99
 a=rtpmap:99 h263-1998/90000
 `, net.ParseIP("224.2.17.12")},
+		// local addresses only
+		{`v=0
+o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5
+s=SDP Seminar
+i=A Seminar on the session description protocol
+u=http://www.example.com/seminars/sdp.pdf
+e=j.doe@example.com (Jane Doe)
+c=IN IP4 10.47.16.5/127
+t=2873397496 2873404696
+a=recvonly
+m=audio 49170 RTP/AVP 0
+m=video 51372 RTP/AVP 99
+a=rtpmap:99 h263-1998/90000
+`, nil},
+		// Remote IP in candidate attribute only
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP4 0.0.0.0
+a=candidate:3769337065 1 udp 2122260223 1.2.3.4 56688 typ host generation 0 network-id 1 network-cost 50
+a=ice-ufrag:aMAZ
+a=ice-pwd:jcHb08Jjgrazp2dzjdrvPPvV
+a=ice-options:trickle
+a=fingerprint:sha-256 C8:88:EE:B9:E7:02:2E:21:37:ED:7A:D1:EB:2B:A3:15:A2:3B:5B:1C:3D:D4:D5:1F:06:CF:52:40:03:F8:DD:66
+a=setup:actpass
+a=mid:data
+a=sctpmap:5000 webrtc-datachannel 1024
+`, net.ParseIP("1.2.3.4")},
+		// Unspecified address
+		{`v=0
+o=jdoe 2890844526 2890842807 IN IP4 0.0.0.0
+s=SDP Seminar
+i=A Seminar on the session description protocol
+u=http://www.example.com/seminars/sdp.pdf
+e=j.doe@example.com (Jane Doe)
+t=2873397496 2873404696
+a=recvonly
+m=audio 49170 RTP/AVP 0
+m=video 51372 RTP/AVP 99
+a=rtpmap:99 h263-1998/90000
+`, nil},
 		// Missing c= line
 		{`v=0
 o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5
@@ -78,22 +123,64 @@ m=video 51372 RTP/AVP 99
 a=rtpmap:99 h263-1998/90000
 `, nil},
 		// Single line, IP address only
-		{`c=IN IP4 224.2.1.1
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP4 224.2.1.1
 `, net.ParseIP("224.2.1.1")},
 		// Same, with TTL
-		{`c=IN IP4 224.2.1.1/127
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP4 224.2.1.1/127
 `, net.ParseIP("224.2.1.1")},
 		// Same, with TTL and multicast addresses
-		{`c=IN IP4 224.2.1.1/127/3
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP4 224.2.1.1/127/3
 `, net.ParseIP("224.2.1.1")},
 		// IPv6, address only
-		{`c=IN IP6 FF15::101
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP6 FF15::101
 `, net.ParseIP("ff15::101")},
 		// Same, with multicast addresses
-		{`c=IN IP6 FF15::101/3
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP6 FF15::101/3
 `, net.ParseIP("ff15::101")},
 		// Multiple c= lines
-		{`c=IN IP4 1.2.3.4
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP4 1.2.3.4
 c=IN IP4 5.6.7.8
 `, net.ParseIP("1.2.3.4")},
 		// Modified from SDP sent by snowflake-client.
@@ -116,13 +203,34 @@ a=mid:data
 a=sctpmap:5000 webrtc-datachannel 1024
 `, net.ParseIP("1.2.3.4")},
 		// Improper character within IPv4
-		{`c=IN IP4 224.2z.1.1
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP4 224.2z.1.1
 `, nil},
 		// Improper character within IPv6
-		{`c=IN IP6 ff15:g::101
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP6 ff15:g::101
 `, nil},
 		// Bogus "IP7" addrtype
-		{`c=IN IP7 1.2.3.4
+		{`v=0
+o=- 4358805017720277108 2 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE data
+a=msid-semantic: WMS
+m=application 56688 DTLS/SCTP 5000
+c=IN IP7 1.2.3.4
 `, nil},
 	}
 
