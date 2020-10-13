@@ -337,7 +337,7 @@ func TestBrokerInteractions(t *testing.T) {
 	const sampleAnswer = `{"type":"answer","sdp":` + sampleSDP + `}`
 
 	Convey("Proxy connections to broker", t, func() {
-		broker := new(Broker)
+		broker := new(SignalingServer)
 		broker.url, _ = url.Parse("localhost")
 
 		//Mock peerConnection
@@ -417,7 +417,8 @@ func TestBrokerInteractions(t *testing.T) {
 			}
 			err = broker.sendAnswer("test", pc)
 			So(err, ShouldNotEqual, nil)
-			So(err.Error(), ShouldResemble, "broker returned 410")
+			So(err.Error(), ShouldResemble,
+				"error sending answer to broker: remote returned status code 410")
 
 			//Error if we can't parse broker message
 			broker.transport = &MockTransport{
