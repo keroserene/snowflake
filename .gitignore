@@ -8,5 +8,6 @@ broker/broker
 client/client
 server/server
 proxy/proxy
+probetest/probetest
 snowflake.log
 ignore/
