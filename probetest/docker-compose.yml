@@ -1,0 +1,11 @@
+ version: "3.8"
+
+ services:
+    snowflake-probetest:
+        build: .
+        container_name: snowflake-probetest
+        ports:
+         - "8443:8443"
+        volumes:
+        - /home/snowflake-broker/acme-cert-cache:/go/bin/acme-cert-cache
+        entrypoint: [ "probetest" , "-addr", ":8443" , "-acme-hostnames", $HOSTNAMES, "-acme-email", $EMAIL, "-acme-cert-cache", "/go/bin/acme-cert-cache"]
