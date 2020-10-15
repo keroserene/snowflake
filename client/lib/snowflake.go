@@ -181,7 +181,6 @@ func Handler(socks net.Conn, tongue Tongue) error {
 // transfer to the Tor SOCKS handler when needed.
 func connectLoop(snowflakes SnowflakeCollector) {
 	for {
-		// Check if ending is necessary.
 		_, err := snowflakes.Collect()
 		if err != nil {
 			log.Printf("WebRTC: %v  Retrying in %v...",

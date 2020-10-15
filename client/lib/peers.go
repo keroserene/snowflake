@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 )
 
 // Container which keeps track of multiple WebRTC remote peers.
@@ -25,7 +26,10 @@ type Peers struct {
 	snowflakeChan chan *WebRTCPeer
 	activePeers   *list.List
 
-	melt chan struct{}
+	melt   chan struct{}
+	melted bool
+
+	collection sync.WaitGroup
 }
 
 // Construct a fresh container of remote peers.
@@ -45,6 +49,11 @@ func NewPeers(tongue Tongue) (*Peers, error) {
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Collect() (*WebRTCPeer, error) {
 	// Engage the Snowflake Catching interface, which must be available.
+	p.collection.Add(1)
+	defer p.collection.Done()
+	if p.melted {
+		return nil, fmt.Errorf("Snowflakes have melted")
+	}
 	if nil == p.Tongue {
 		return nil, errors.New("missing Tongue to catch Snowflakes with")
 	}
@@ -110,8 +119,10 @@ func (p *Peers) purgeClosedPeers() {
 
 // Close all Peers contained here.
 func (p *Peers) End() {
-	close(p.snowflakeChan)
 	close(p.melt)
+	p.melted = true
+	p.collection.Wait()
+	close(p.snowflakeChan)
 	cnt := p.Count()
 	for e := p.activePeers.Front(); e != nil; {
 		next := e.Next()
