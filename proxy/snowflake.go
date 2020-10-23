@@ -300,7 +300,9 @@ func CopyLoop(c1 io.ReadWriteCloser, c2 io.ReadWriteCloser) {
 	var wg sync.WaitGroup
 	copyer := func(dst io.ReadWriteCloser, src io.ReadWriteCloser) {
 		defer wg.Done()
-		if _, err := io.Copy(dst, src); err != nil {
+		// Ignore io.ErrClosedPipe because it is likely caused by the
+		// termination of copyer in the other direction.
+		if _, err := io.Copy(dst, src); err != nil && err != io.ErrClosedPipe {
 			log.Printf("io.Copy inside CopyLoop generated an error: %v", err)
 		}
 		dst.Close()
