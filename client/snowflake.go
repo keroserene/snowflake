@@ -27,7 +27,7 @@ const (
 )
 
 // Accept local SOCKS connections and pass them to the handler.
-func socksAcceptLoop(ln *pt.SocksListener, tongue sf.Tongue) {
+func socksAcceptLoop(ln *pt.SocksListener, tongue sf.Tongue, shutdown chan struct{}) {
 	defer ln.Close()
 	for {
 		conn, err := ln.AcceptSocks()
@@ -48,11 +48,23 @@ func socksAcceptLoop(ln *pt.SocksListener, tongue sf.Tongue) {
 				return
 			}
 
-			err = sf.Handler(conn, tongue)
-			if err != nil {
-				log.Printf("handler error: %s", err)
+			handler := make(chan struct{})
+			go func() {
+				err = sf.Handler(conn, tongue)
+				if err != nil {
+					log.Printf("handler error: %s", err)
+				}
+				close(handler)
 				return
+
+			}()
+			select {
+			case <-shutdown:
+				log.Println("Received shutdown signal")
+			case <-handler:
+				log.Println("Handler ended")
 			}
+			return
 		}()
 	}
 }
@@ -160,6 +172,7 @@ func main() {
 		os.Exit(1)
 	}
 	listeners := make([]net.Listener, 0)
+	shutdown := make(chan struct{})
 	for _, methodName := range ptInfo.MethodNames {
 		switch methodName {
 		case "snowflake":
@@ -170,7 +183,7 @@ func main() {
 				break
 			}
 			log.Printf("Started SOCKS listener at %v.", ln.Addr())
-			go socksAcceptLoop(ln, dialer)
+			go socksAcceptLoop(ln, dialer, shutdown)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			listeners = append(listeners, ln)
 		default:
@@ -196,11 +209,13 @@ func main() {
 
 	// Wait for a signal.
 	<-sigChan
+	log.Println("stopping snowflake")
 
 	// Signal received, shut down.
 	for _, ln := range listeners {
 		ln.Close()
 	}
+	close(shutdown)
 	log.Println("snowflake is done.")
 }
 
