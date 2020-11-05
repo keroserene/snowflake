@@ -51,7 +51,12 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 		return nil, fmt.Errorf("accept: NewPeerConnection: %s", err)
 	}
 	pc.OnDataChannel(func(dc *webrtc.DataChannel) {
-		close(dataChan)
+		dc.OnOpen(func() {
+			close(dataChan)
+		})
+		dc.OnClose(func() {
+			dc.Close()
+		})
 	})
 
 	err = pc.SetRemoteDescription(*sdp)
