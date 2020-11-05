@@ -137,16 +137,15 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 	// Set a timeout on peerconnection. If the connection state has not
 	// advanced to PeerConnectionStateConnected in this time,
 	// destroy the peer connection and return the token.
-	select {
-	case <-dataChan:
+	go func() {
+		select {
+		case <-dataChan:
+		case <-time.After(dataChannelTimeout):
+		}
 		if err := pc.Close(); err != nil {
 			log.Printf("Error calling pc.Close: %v", err)
 		}
-	case <-time.After(dataChannelTimeout):
-		if err := pc.Close(); err != nil {
-			log.Printf("Error calling pc.Close: %v", err)
-		}
-	}
+	}()
 	return
 
 }
