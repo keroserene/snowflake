@@ -112,7 +112,10 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 	if err != nil {
 		return err
 	}
-	answer := exchangeSDP(broker, c.pc.LocalDescription())
+	answer, err := broker.Negotiate(c.pc.LocalDescription())
+	if err != nil {
+		return err
+	}
 	log.Printf("Received Answer.\n")
 	err = c.pc.SetRemoteDescription(*answer)
 	if nil != err {
@@ -214,22 +217,6 @@ func (c *WebRTCPeer) establishDataChannel() (*webrtc.DataChannel, error) {
 	case <-time.After(DataChannelTimeout):
 		dc.Close()
 		return nil, errors.New("timeout waiting for DataChannel.OnOpen")
-	}
-}
-
-// exchangeSDP sends the local SDP offer to the Broker, awaits the SDP answer,
-// and returns the answer.
-func exchangeSDP(broker *BrokerChannel, offer *webrtc.SessionDescription) *webrtc.SessionDescription {
-	// Keep trying the same offer until a valid answer arrives.
-	for {
-		// Send offer to broker (blocks).
-		answer, err := broker.Negotiate(offer)
-		if err == nil {
-			return answer
-		}
-		log.Printf("BrokerChannel Error: %s", err)
-		log.Printf("Failed to retrieve answer. Retrying in %v", ReconnectTimeout)
-		<-time.After(ReconnectTimeout)
 	}
 }
 
