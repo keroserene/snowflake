@@ -131,7 +131,7 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	body, err := messages.EncodeAnswerRequest(answer, "")
+	body, err := messages.EncodeAnswerRequest(answer, "stub-sid")
 	if err != nil {
 		log.Printf("Error making WebRTC connection: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
