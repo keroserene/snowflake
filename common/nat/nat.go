@@ -16,10 +16,11 @@ package nat
 import (
 	"errors"
 	"fmt"
-	"github.com/pion/stun"
 	"log"
 	"net"
 	"time"
+
+	"github.com/pion/stun"
 )
 
 var ErrTimedOut = errors.New("timed out waiting for response")
@@ -36,16 +37,7 @@ const (
 // and false if the NAT is unrestrictive (meaning it
 // will work with most other NATs),
 func CheckIfRestrictedNAT(server string) (bool, error) {
-	result, err := isRestrictedMapping(server)
-	if err != nil {
-		return false, err
-	}
-	if !result {
-		// if the mapping is unrestrictive, we still need to check whether
-		// the filtering is restrictive
-		result, err = isRestrictedFiltering(server)
-	}
-	return result, err
+	return isRestrictedMapping(server)
 }
 
 // Performs two tests from RFC 5780 to determine whether the mapping type
