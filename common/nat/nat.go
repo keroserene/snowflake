@@ -110,6 +110,9 @@ func isRestrictedMapping(addrStr string) (bool, error) {
 // Performs two tests from RFC 5780 to determine whether the filtering type
 // of the client's NAT is port-dependent.
 // Returns true if the filtering is port-dependent and false otherwise
+// Note: This function is no longer used because a client's NAT type is
+// determined only by their mapping type, but the functionality might
+// be useful in the future and remains here.
 func isRestrictedFiltering(addrStr string) (bool, error) {
 	var xorAddr stun.XORMappedAddress
 
