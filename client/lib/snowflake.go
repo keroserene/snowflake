@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/turbotunnel"
@@ -92,54 +91,6 @@ func newSession(snowflakes SnowflakeCollector) (net.PacketConn, *smux.Session, e
 	return pconn, sess, err
 }
 
-// sessionManager_ maintains a single global smux.Session that is shared among
-// incoming SOCKS connections.
-type sessionManager_ struct {
-	mutex sync.Mutex
-	sess  *smux.Session
-}
-
-// Get creates and returns a new global smux.Session if none exists yet. If one
-// already exists, it returns the existing one. It monitors the returned session
-// and if it ever fails, sets things up so the next call to Get will create a
-// new session.
-func (manager *sessionManager_) Get(snowflakes SnowflakeCollector) (*smux.Session, error) {
-	manager.mutex.Lock()
-	defer manager.mutex.Unlock()
-
-	if manager.sess == nil {
-		log.Printf("starting a new session")
-		pconn, sess, err := newSession(snowflakes)
-		if err != nil {
-			return nil, err
-		}
-		manager.sess = sess
-		go func() {
-			// If the session dies, set it to be recreated.
-			for {
-				<-time.After(5 * time.Second)
-				if sess.IsClosed() {
-					break
-				}
-			}
-			log.Printf("discarding finished session")
-			// Close the underlying to force any ongoing WebRTC
-			// connection to close as well, and relinquish the
-			// SnowflakeCollector.
-			pconn.Close()
-			manager.mutex.Lock()
-			manager.sess = nil
-			manager.mutex.Unlock()
-		}()
-	} else {
-		log.Printf("reusing the existing session")
-	}
-
-	return manager.sess, nil
-}
-
-var sessionManager = sessionManager_{}
-
 // Given an accepted SOCKS connection, establish a WebRTC connection to the
 // remote peer and exchange traffic.
 func Handler(socks net.Conn, tongue Tongue) error {
@@ -155,8 +106,9 @@ func Handler(socks net.Conn, tongue Tongue) error {
 	log.Printf("---- Handler: begin collecting snowflakes ---")
 	go connectLoop(snowflakes)
 
-	// Return the global smux.Session.
-	sess, err := sessionManager.Get(snowflakes)
+	// Create a new smux session
+	log.Printf("---- Handler: starting a new session ---")
+	pconn, sess, err := newSession(snowflakes)
 	if err != nil {
 		return err
 	}
@@ -174,6 +126,9 @@ func Handler(socks net.Conn, tongue Tongue) error {
 	log.Printf("---- Handler: closed stream %v ---", stream.ID())
 	snowflakes.End()
 	log.Printf("---- Handler: end collecting snowflakes ---")
+	pconn.Close()
+	sess.Close()
+	log.Printf("---- Handler: discarding finished session ---")
 	return nil
 }
 
