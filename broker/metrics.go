@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"sort"
 	"sync"
 	"time"
 )
@@ -51,10 +52,32 @@ type Metrics struct {
 	lock sync.Mutex
 }
 
+type record struct {
+	cc    string
+	count int
+}
+type records []record
+
+func (r records) Len() int      { return len(r) }
+func (r records) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
+func (r records) Less(i, j int) bool {
+	if r[i].count == r[j].count {
+		return r[i].cc > r[j].cc
+	}
+	return r[i].count < r[j].count
+}
+
 func (s CountryStats) Display() string {
 	output := ""
+
+	// Use the records struct to sort our counts map by value.
+	rs := records{}
 	for cc, count := range s.counts {
-		output += fmt.Sprintf("%s=%d,", cc, count)
+		rs = append(rs, record{cc: cc, count: count})
+	}
+	sort.Sort(sort.Reverse(rs))
+	for _, r := range rs {
+		output += fmt.Sprintf("%s=%d,", r.cc, r.count)
 	}
 
 	// cut off trailing ","

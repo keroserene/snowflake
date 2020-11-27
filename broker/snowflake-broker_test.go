@@ -679,5 +679,20 @@ func TestMetrics(t *testing.T) {
 			ctx.metrics.printMetrics()
 			So(buf.String(), ShouldContainSubstring, "client-denied-count 8\nclient-restricted-denied-count 8\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0")
 		})
+		Convey("for country stats order", func() {
+
+			stats := map[string]int{
+				"IT": 50,
+				"FR": 200,
+				"TZ": 100,
+				"CN": 250,
+				"RU": 150,
+				"CA": 1,
+				"BE": 1,
+				"PH": 1,
+			}
+			ctx.metrics.countryStats.counts = stats
+			So(ctx.metrics.countryStats.Display(), ShouldEqual, "CN=250,FR=200,RU=150,TZ=100,IT=50,BE=1,CA=1,PH=1")
+		})
 	})
 }
