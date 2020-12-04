@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,7 +28,7 @@ const (
 )
 
 // Accept local SOCKS connections and pass them to the handler.
-func socksAcceptLoop(ln *pt.SocksListener, tongue sf.Tongue, shutdown chan struct{}) {
+func socksAcceptLoop(ln *pt.SocksListener, tongue sf.Tongue, shutdown chan struct{}, wg sync.WaitGroup) {
 	defer ln.Close()
 	for {
 		conn, err := ln.AcceptSocks()
@@ -40,6 +41,8 @@ func socksAcceptLoop(ln *pt.SocksListener, tongue sf.Tongue, shutdown chan struc
 		}
 		log.Printf("SOCKS accepted: %v", conn.Req)
 		go func() {
+			wg.Add(1)
+			defer wg.Done()
 			defer conn.Close()
 
 			err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
@@ -173,6 +176,7 @@ func main() {
 	}
 	listeners := make([]net.Listener, 0)
 	shutdown := make(chan struct{})
+	var wg sync.WaitGroup
 	for _, methodName := range ptInfo.MethodNames {
 		switch methodName {
 		case "snowflake":
@@ -183,7 +187,7 @@ func main() {
 				break
 			}
 			log.Printf("Started SOCKS listener at %v.", ln.Addr())
-			go socksAcceptLoop(ln, dialer, shutdown)
+			go socksAcceptLoop(ln, dialer, shutdown, wg)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			listeners = append(listeners, ln)
 		default:
@@ -216,6 +220,7 @@ func main() {
 		ln.Close()
 	}
 	close(shutdown)
+	wg.Wait()
 	log.Println("snowflake is done.")
 }
 
