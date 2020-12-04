@@ -136,13 +136,13 @@ func Handler(socks net.Conn, tongue Tongue) error {
 // transfer to the Tor SOCKS handler when needed.
 func connectLoop(snowflakes SnowflakeCollector) {
 	for {
+		timer := time.After(ReconnectTimeout)
 		_, err := snowflakes.Collect()
 		if err != nil {
-			log.Printf("WebRTC: %v  Retrying in %v...",
-				err, ReconnectTimeout)
+			log.Printf("WebRTC: %v  Retrying...", err)
 		}
 		select {
-		case <-time.After(ReconnectTimeout):
+		case <-timer:
 			continue
 		case <-snowflakes.Melted():
 			log.Println("ConnectLoop: stopped.")
