@@ -338,6 +338,9 @@ func acceptSessions(ln *kcp.Listener) error {
 		}
 		// Permit coalescing the payloads of consecutive sends.
 		conn.SetStreamMode(true)
+		// Set the maximum send and receive window sizes to a high number
+		// Removes KCP bottlenecks: https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/issues/40026
+		conn.SetWindowSize(65535, 65535)
 		// Disable the dynamic congestion window (limit only by the
 		// maximum of local and remote static windows).
 		conn.SetNoDelay(
