@@ -20,7 +20,7 @@ import (
 	sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 )
 
 const (

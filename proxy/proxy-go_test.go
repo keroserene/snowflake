@@ -14,7 +14,7 @@ import (
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

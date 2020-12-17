@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/pion/sdp/v2"
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 )
 
 func SerializeSessionDescription(desc *webrtc.SessionDescription) (string, error) {

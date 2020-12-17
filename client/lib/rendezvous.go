@@ -21,7 +21,7 @@ import (
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 )
 
 const (
@@ -134,6 +134,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		if nil != err {
 			return nil, err
 		}
+		log.Printf("Received answer: %s", string(body))
 		return util.DeserializeSessionDescription(string(body))
 	case http.StatusServiceUnavailable:
 		return nil, errors.New(BrokerError503)

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 )
 
 // Remote WebRTC peer.
@@ -25,6 +25,7 @@ type WebRTCPeer struct {
 	writePipe   *io.PipeWriter
 	lastReceive time.Time
 
+	open   chan struct{} // Channel to notify when datachannel opens
 	closed bool
 
 	once sync.Once // Synchronization for PeerConnection destruction
@@ -107,11 +108,7 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 	log.Println(c.id, " connecting...")
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
-	var err error
-	c.pc, err = preparePeerConnection(config)
-	if err != nil {
-		return err
-	}
+	c.preparePeerConnection(config)
 	answer, err := broker.Negotiate(c.pc.LocalDescription())
 	if err != nil {
 		return err
@@ -122,73 +119,42 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 		log.Println("WebRTC: Unable to SetRemoteDescription:", err)
 		return err
 	}
-	c.transport, err = c.establishDataChannel()
-	if err != nil {
-		log.Printf("WebRTC: establishing data channel: %v", err)
-		// nolint: golint
-		return errors.New("WebRTC: Could not establish DataChannel")
+
+	// Wait for the datachannel to open or time out
+	select {
+	case <-c.open:
+	case <-time.After(DataChannelTimeout):
+		c.transport.Close()
+		return errors.New("timeout waiting for DataChannel.OnOpen")
 	}
+
 	go c.checkForStaleness()
 	return nil
 }
 
 // preparePeerConnection creates a new WebRTC PeerConnection and returns it
 // after ICE candidate gathering is complete..
-func preparePeerConnection(config *webrtc.Configuration) (*webrtc.PeerConnection, error) {
-	pc, err := webrtc.NewPeerConnection(*config)
+func (c *WebRTCPeer) preparePeerConnection(config *webrtc.Configuration) error {
+	var err error
+	c.pc, err = webrtc.NewPeerConnection(*config)
 	if err != nil {
 		log.Printf("NewPeerConnection ERROR: %s", err)
-		return nil, err
+		return err
 	}
-	// Prepare PeerConnection callbacks.
-	offerChannel := make(chan struct{})
-	// Allow candidates to accumulate until ICEGatheringStateComplete.
-	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
-		if candidate == nil {
-			log.Printf("WebRTC: Done gathering candidates")
-			close(offerChannel)
-		} else {
-			log.Printf("WebRTC: Got ICE candidate: %s", candidate.String())
-		}
-	})
-
-	offer, err := pc.CreateOffer(nil)
-	// TODO: Potentially timeout and retry if ICE isn't working.
-	if err != nil {
-		log.Println("Failed to prepare offer", err)
-		pc.Close()
-		return nil, err
-	}
-	log.Println("WebRTC: Created offer")
-	err = pc.SetLocalDescription(offer)
-	if err != nil {
-		log.Println("Failed to prepare offer", err)
-		pc.Close()
-		return nil, err
-	}
-	log.Println("WebRTC: Set local description")
-
-	<-offerChannel // Wait for ICE candidate gathering to complete.
-	log.Println("WebRTC: PeerConnection created.")
-	return pc, nil
-}
-
-// Create a WebRTC DataChannel locally. Blocks until the data channel is open,
-// or a timeout or error occurs.
-func (c *WebRTCPeer) establishDataChannel() (*webrtc.DataChannel, error) {
 	ordered := true
 	dataChannelOptions := &webrtc.DataChannelInit{
 		Ordered: &ordered,
 	}
+	// We must create the data channel before creating an offer
+	// https://github.com/pion/webrtc/wiki/Release-WebRTC@v3.0.0
 	dc, err := c.pc.CreateDataChannel(c.id, dataChannelOptions)
 	if err != nil {
 		log.Printf("CreateDataChannel ERROR: %s", err)
-		return nil, err
+		return err
 	}
-	openChannel := make(chan struct{})
 	dc.OnOpen(func() {
 		log.Println("WebRTC: DataChannel.OnOpen")
-		close(openChannel)
+		close(c.open)
 	})
 	dc.OnClose(func() {
 		log.Println("WebRTC: DataChannel.OnClose")
@@ -209,15 +175,31 @@ func (c *WebRTCPeer) establishDataChannel() (*webrtc.DataChannel, error) {
 		}
 		c.lastReceive = time.Now()
 	})
+	c.transport = dc
+	c.open = make(chan struct{})
 	log.Println("WebRTC: DataChannel created.")
 
-	select {
-	case <-openChannel:
-		return dc, nil
-	case <-time.After(DataChannelTimeout):
-		dc.Close()
-		return nil, errors.New("timeout waiting for DataChannel.OnOpen")
+	// Allow candidates to accumulate until ICEGatheringStateComplete.
+	done := webrtc.GatheringCompletePromise(c.pc)
+	offer, err := c.pc.CreateOffer(nil)
+	// TODO: Potentially timeout and retry if ICE isn't working.
+	if err != nil {
+		log.Println("Failed to prepare offer", err)
+		c.pc.Close()
+		return err
 	}
+	log.Println("WebRTC: Created offer")
+	err = c.pc.SetLocalDescription(offer)
+	if err != nil {
+		log.Println("Failed to prepare offer", err)
+		c.pc.Close()
+		return err
+	}
+	log.Println("WebRTC: Set local description")
+
+	<-done // Wait for ICE candidate gathering to complete.
+	log.Println("WebRTC: PeerConnection created.")
+	return nil
 }
 
 // Close all channels and transports

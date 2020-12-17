@@ -24,7 +24,7 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
 	"github.com/gorilla/websocket"
 	"github.com/pion/sdp/v2"
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 )
 
 const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
@@ -394,7 +394,10 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 
 		go handler(conn, conn.RemoteAddr())
 	})
-
+	// As of v3.0.0, pion-webrtc uses trickle ICE by default.
+	// We have to wait for candidate gathering to complete
+	// before we send the offer
+	done := webrtc.GatheringCompletePromise(pc)
 	err = pc.SetRemoteDescription(*sdp)
 	if err != nil {
 		if inerr := pc.Close(); inerr != nil {
@@ -423,7 +426,8 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 		}
 		return nil, err
 	}
-
+	// Wait for ICE candidate gathering to complete
+	<-done
 	return pc, nil
 }
 
@@ -437,22 +441,8 @@ func makeNewPeerConnection(config webrtc.Configuration,
 		return nil, fmt.Errorf("accept: NewPeerConnection: %s", err)
 	}
 
-	offer, err := pc.CreateOffer(nil)
-	// TODO: Potentially timeout and retry if ICE isn't working.
-	if err != nil {
-		log.Println("Failed to prepare offer", err)
-		pc.Close()
-		return nil, err
-	}
-	log.Println("WebRTC: Created offer")
-	err = pc.SetLocalDescription(offer)
-	if err != nil {
-		log.Println("Failed to prepare offer", err)
-		pc.Close()
-		return nil, err
-	}
-	log.Println("WebRTC: Set local description")
-
+	// Must create a data channel before creating an offer
+	// https://github.com/pion/webrtc/wiki/Release-WebRTC@v3.0.0
 	dc, err := pc.CreateDataChannel("test", &webrtc.DataChannelInit{})
 	if err != nil {
 		log.Printf("CreateDataChannel ERROR: %s", err)
@@ -466,6 +456,30 @@ func makeNewPeerConnection(config webrtc.Configuration,
 		log.Println("WebRTC: DataChannel.OnClose")
 		dc.Close()
 	})
+
+	offer, err := pc.CreateOffer(nil)
+	// TODO: Potentially timeout and retry if ICE isn't working.
+	if err != nil {
+		log.Println("Failed to prepare offer", err)
+		pc.Close()
+		return nil, err
+	}
+	log.Println("WebRTC: Created offer")
+
+	// As of v3.0.0, pion-webrtc uses trickle ICE by default.
+	// We have to wait for candidate gathering to complete
+	// before we send the offer
+	done := webrtc.GatheringCompletePromise(pc)
+	err = pc.SetLocalDescription(offer)
+	if err != nil {
+		log.Println("Failed to prepare offer", err)
+		pc.Close()
+		return nil, err
+	}
+	log.Println("WebRTC: Set local description")
+
+	// Wait for ICE candidate gathering to complete
+	<-done
 	return pc, nil
 }
 
@@ -606,6 +620,7 @@ func checkNATType(config webrtc.Configuration, probeURL string) {
 
 	offer := pc.LocalDescription()
 	sdp, err := util.SerializeSessionDescription(offer)
+	log.Printf("Offer: %s", sdp)
 	if err != nil {
 		log.Printf("Error encoding probe message: %s", err.Error())
 		return

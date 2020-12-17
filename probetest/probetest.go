@@ -24,7 +24,7 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -58,7 +58,10 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 			dc.Close()
 		})
 	})
-
+	// As of v3.0.0, pion-webrtc uses trickle ICE by default.
+	// We have to wait for candidate gathering to complete
+	// before we send the offer
+	done := webrtc.GatheringCompletePromise(pc)
 	err = pc.SetRemoteDescription(*sdp)
 	if err != nil {
 		if inerr := pc.Close(); inerr != nil {
@@ -82,7 +85,8 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 		}
 		return nil, err
 	}
-
+	// Wait for ICE candidate gathering to complete
+	<-done
 	return pc, nil
 }
 
