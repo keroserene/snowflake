@@ -29,7 +29,7 @@ func TestBroker(t *testing.T) {
 		Convey("Adds Snowflake", func() {
 			So(ctx.snowflakes.Len(), ShouldEqual, 0)
 			So(len(ctx.idToSnowflake), ShouldEqual, 0)
-			ctx.AddSnowflake("foo", "", NATUnknown)
+			ctx.AddSnowflake("foo", "", NATUnrestricted)
 			So(ctx.snowflakes.Len(), ShouldEqual, 1)
 			So(len(ctx.idToSnowflake), ShouldEqual, 1)
 		})
@@ -37,6 +37,7 @@ func TestBroker(t *testing.T) {
 		Convey("Broker goroutine matches clients with proxies", func() {
 			p := new(ProxyPoll)
 			p.id = "test"
+			p.natType = "unrestricted"
 			p.offerChannel = make(chan *ClientOffer)
 			go func(ctx *BrokerContext) {
 				ctx.proxyPolls <- p
@@ -55,7 +56,7 @@ func TestBroker(t *testing.T) {
 		Convey("Request an offer from the Snowflake Heap", func() {
 			done := make(chan *ClientOffer)
 			go func() {
-				offer := ctx.RequestOffer("test", "", NATUnknown)
+				offer := ctx.RequestOffer("test", "", NATUnrestricted)
 				done <- offer
 			}()
 			request := <-ctx.proxyPolls
@@ -79,7 +80,7 @@ func TestBroker(t *testing.T) {
 			Convey("with a proxy answer if available.", func() {
 				done := make(chan bool)
 				// Prepare a fake proxy to respond with.
-				snowflake := ctx.AddSnowflake("fake", "", NATUnknown)
+				snowflake := ctx.AddSnowflake("fake", "", NATUnrestricted)
 				go func() {
 					clientOffers(ctx, w, r)
 					done <- true
@@ -97,7 +98,7 @@ func TestBroker(t *testing.T) {
 					return
 				}
 				done := make(chan bool)
-				snowflake := ctx.AddSnowflake("fake", "", NATUnknown)
+				snowflake := ctx.AddSnowflake("fake", "", NATUnrestricted)
 				go func() {
 					clientOffers(ctx, w, r)
 					// Takes a few seconds here...
@@ -147,7 +148,7 @@ func TestBroker(t *testing.T) {
 		})
 
 		Convey("Responds to proxy answers...", func() {
-			s := ctx.AddSnowflake("test", "", NATUnknown)
+			s := ctx.AddSnowflake("test", "", NATUnrestricted)
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte(`{"Version":"1.0","Sid":"test","Answer":"test"}`))
 
@@ -260,7 +261,7 @@ func TestBroker(t *testing.T) {
 			// Manually do the Broker goroutine action here for full control.
 			p := <-ctx.proxyPolls
 			So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
-			s := ctx.AddSnowflake(p.id, "", NATUnknown)
+			s := ctx.AddSnowflake(p.id, "", NATUnrestricted)
 			go func() {
 				offer := <-s.offerChannel
 				p.offerChannel <- offer
@@ -437,7 +438,7 @@ func TestGeoip(t *testing.T) {
 		if err := ctx.metrics.LoadGeoipDatabases("invalid_filename", "invalid_filename6"); err != nil {
 			log.Printf("loading geo ip databases returned error: %v", err)
 		}
-		ctx.metrics.UpdateCountryStats("127.0.0.1", "", NATUnknown)
+		ctx.metrics.UpdateCountryStats("127.0.0.1", "", NATUnrestricted)
 		So(ctx.metrics.tablev4, ShouldEqual, nil)
 
 	})
@@ -537,7 +538,7 @@ func TestMetrics(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			// Prepare a fake proxy to respond with.
-			snowflake := ctx.AddSnowflake("fake", "", NATUnknown)
+			snowflake := ctx.AddSnowflake("fake", "", NATUnrestricted)
 			go func() {
 				clientOffers(ctx, w, r)
 				done <- true

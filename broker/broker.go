@@ -144,10 +144,10 @@ func (ctx *BrokerContext) Broker() {
 				ctx.snowflakeLock.Lock()
 				defer ctx.snowflakeLock.Unlock()
 				if snowflake.index != -1 {
-					if request.natType == NATRestricted {
-						heap.Remove(ctx.restrictedSnowflakes, snowflake.index)
-					} else {
+					if request.natType == NATUnrestricted {
 						heap.Remove(ctx.snowflakes, snowflake.index)
+					} else {
+						heap.Remove(ctx.restrictedSnowflakes, snowflake.index)
 					}
 					delete(ctx.idToSnowflake, snowflake.id)
 					close(request.offerChannel)
@@ -169,10 +169,10 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	snowflake.offerChannel = make(chan *ClientOffer)
 	snowflake.answerChannel = make(chan []byte)
 	ctx.snowflakeLock.Lock()
-	if natType == NATRestricted {
-		heap.Push(ctx.restrictedSnowflakes, snowflake)
-	} else {
+	if natType == NATUnrestricted {
 		heap.Push(ctx.snowflakes, snowflake)
+	} else {
+		heap.Push(ctx.restrictedSnowflakes, snowflake)
 	}
 	ctx.snowflakeLock.Unlock()
 	ctx.idToSnowflake[id] = snowflake
