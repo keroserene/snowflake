@@ -5,7 +5,8 @@ go 1.13
 require (
 	git.torproject.org/pluggable-transports/goptlib.git v1.1.0
 	github.com/gorilla/websocket v1.4.1
-	github.com/pion/sdp/v2 v2.3.4
+	github.com/pion/ice/v2 v2.0.14
+	github.com/pion/sdp/v3 v3.0.3
 	github.com/pion/stun v0.3.5
 	github.com/pion/webrtc/v3 v3.0.0
 	github.com/smartystreets/goconvey v1.6.4

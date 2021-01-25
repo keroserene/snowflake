@@ -5,7 +5,8 @@ import (
 	"errors"
 	"net"
 
-	"github.com/pion/sdp/v2"
+	"github.com/pion/ice/v2"
+	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -77,9 +78,9 @@ func StripLocalAddresses(str string) string {
 		attrs := make([]sdp.Attribute, 0)
 		for _, a := range m.Attributes {
 			if a.IsICECandidate() {
-				ice, err := a.ToICECandidate()
-				if err == nil && ice.Typ == "host" {
-					ip := net.ParseIP(ice.Address)
+				c, err := ice.UnmarshalCandidate(a.Value)
+				if err == nil && c.Type() == ice.CandidateTypeHost {
+					ip := net.ParseIP(c.Address())
 					if ip != nil && (IsLocal(ip) || ip.IsUnspecified() || ip.IsLoopback()) {
 						/* no append in this case */
 						continue

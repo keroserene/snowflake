@@ -23,7 +23,8 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
 	"github.com/gorilla/websocket"
-	"github.com/pion/sdp/v2"
+	"github.com/pion/ice/v2"
+	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -83,9 +84,9 @@ func remoteIPFromSDP(str string) net.IP {
 	for _, m := range desc.MediaDescriptions {
 		for _, a := range m.Attributes {
 			if a.IsICECandidate() {
-				ice, err := a.ToICECandidate()
+				c, err := ice.UnmarshalCandidate(a.Value)
 				if err == nil {
-					ip := net.ParseIP(ice.Address)
+					ip := net.ParseIP(c.Address())
 					if ip != nil && isRemoteAddress(ip) {
 						return ip
 					}
