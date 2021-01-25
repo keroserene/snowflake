@@ -118,6 +118,8 @@ type webRTCConn struct {
 
 	lock sync.Mutex // Synchronization for DataChannel destruction
 	once sync.Once  // Synchronization for PeerConnection destruction
+
+	bytesLogger BytesLogger
 }
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
@@ -125,6 +127,7 @@ func (c *webRTCConn) Read(b []byte) (int, error) {
 }
 
 func (c *webRTCConn) Write(b []byte) (int, error) {
+	c.bytesLogger.AddInbound(len(b))
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.dc != nil {
@@ -368,6 +371,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 
 		pr, pw := io.Pipe()
 		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
+		conn.bytesLogger = NewBytesSyncLogger()
 
 		dc.OnOpen(func() {
 			log.Println("OnOpen channel")
@@ -376,6 +380,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 			conn.lock.Lock()
 			defer conn.lock.Unlock()
 			log.Println("OnClose channel")
+			log.Println(conn.bytesLogger.ThroughputSummary())
 			conn.dc = nil
 			dc.Close()
 			pw.Close()
@@ -388,6 +393,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription,
 					log.Printf("close with error generated an error: %v", inerr)
 				}
 			}
+			conn.bytesLogger.AddOutbound(n)
 			if n != len(msg.Data) {
 				panic("short write")
 			}
