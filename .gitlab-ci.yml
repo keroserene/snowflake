@@ -68,6 +68,7 @@ android:
   image: registry.gitlab.com/fdroid/ci-images-client
   variables:
     GOPATH: "/go"
+    ANDROID_VERSION: 29
   cache:
     paths:
       - .gradle/wrapper
@@ -79,12 +80,12 @@ android:
         gnupg
         wget
     - cd /usr/local
-    - export gotarball="go1.13.12.linux-amd64.tar.gz"
+    - export gotarball="go1.15.10.linux-amd64.tar.gz"
     - wget -q https://dl.google.com/go/${gotarball}
     - wget -q https://dl.google.com/go/${gotarball}.asc
     - curl https://dl.google.com/linux/linux_signing_key.pub | gpg --import
     - gpg --verify ${gotarball}.asc
-    - echo "9cacc6653563771b458c13056265aa0c21b8a23ca9408278484e4efde4160618  ${gotarball}" | sha256sum -c
+    - echo "4aa1267517df32f2bf1cc3d55dfc27d0c6b2c2b0989449c96dd19273ccca051d  ${gotarball}" | sha256sum -c
     - tar -xzf ${gotarball}
     - export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"  # putting this in 'variables:' cause weird runner errors
     - cd $CI_PROJECT_DIR
@@ -99,6 +100,7 @@ android:
     - go install golang.org/x/mobile/cmd/gomobile
     - go install golang.org/x/mobile/cmd/gobind
     - echo y | $ANDROID_HOME/tools/bin/sdkmanager 'ndk-bundle' > /dev/null
+    - echo y | $ANDROID_HOME/tools/bin/sdkmanager "platforms;android-${ANDROID_VERSION}" > /dev/null
     - gomobile init
 
     - git -C $CI_PROJECT_DIR reset --hard
