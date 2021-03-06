@@ -33,7 +33,7 @@ This should start the client plugin, bootstrapping to 100% using WebRTC.
 
 Client:
 - [pion/webrtc](https://github.com/pion/webrtc)
-- Go 1.10+
+- Go 1.13+
 
 ---
 
