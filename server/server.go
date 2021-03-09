@@ -73,7 +73,7 @@ func proxy(local *net.TCPConn, conn net.Conn) {
 	wg.Add(2)
 
 	go func() {
-		if _, err := io.Copy(conn, local); err != nil {
+		if _, err := io.Copy(conn, local); err != nil && err != io.ErrClosedPipe {
 			log.Printf("error copying ORPort to WebSocket %v", err)
 		}
 		if err := local.CloseRead(); err != nil {
@@ -83,7 +83,7 @@ func proxy(local *net.TCPConn, conn net.Conn) {
 		wg.Done()
 	}()
 	go func() {
-		if _, err := io.Copy(local, conn); err != nil {
+		if _, err := io.Copy(local, conn); err != nil && err != io.ErrClosedPipe {
 			log.Printf("error copying WebSocket to ORPort %v", err)
 		}
 		if err := local.CloseWrite(); err != nil {
@@ -352,7 +352,7 @@ func acceptSessions(ln *kcp.Listener) error {
 		go func() {
 			defer conn.Close()
 			err := acceptStreams(conn)
-			if err != nil {
+			if err != nil && err != io.ErrClosedPipe {
 				log.Printf("acceptStreams: %v", err)
 			}
 		}()
