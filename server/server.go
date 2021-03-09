@@ -76,9 +76,7 @@ func proxy(local *net.TCPConn, conn net.Conn) {
 		if _, err := io.Copy(conn, local); err != nil && err != io.ErrClosedPipe {
 			log.Printf("error copying ORPort to WebSocket %v", err)
 		}
-		if err := local.CloseRead(); err != nil {
-			log.Printf("error closing read after copying ORPort to WebSocket %v", err)
-		}
+		local.CloseRead()
 		conn.Close()
 		wg.Done()
 	}()
@@ -86,9 +84,7 @@ func proxy(local *net.TCPConn, conn net.Conn) {
 		if _, err := io.Copy(local, conn); err != nil && err != io.ErrClosedPipe {
 			log.Printf("error copying WebSocket to ORPort %v", err)
 		}
-		if err := local.CloseWrite(); err != nil {
-			log.Printf("error closing write after copying WebSocket to ORPort %v", err)
-		}
+		local.CloseWrite()
 		conn.Close()
 		wg.Done()
 	}()
