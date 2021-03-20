@@ -3,12 +3,15 @@ package lib
 import (
 	"context"
 	"errors"
-	"io"
 	"log"
+	"math/rand"
 	"net"
+	"strings"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/turbotunnel"
+	"github.com/pion/webrtc/v3"
 	"github.com/xtaci/kcp-go/v5"
 	"github.com/xtaci/smux"
 )
@@ -24,6 +27,138 @@ type dummyAddr struct{}
 
 func (addr dummyAddr) Network() string { return "dummy" }
 func (addr dummyAddr) String() string  { return "dummy" }
+
+// Transport is a structure with methods that conform to the Go PT v2.1 API
+// https://github.com/Pluggable-Transports/Pluggable-Transports-spec/blob/master/releases/PTSpecV2.1/Pluggable%20Transport%20Specification%20v2.1%20-%20Go%20Transport%20API.pdf
+type Transport struct {
+	dialer *WebRTCDialer
+}
+
+// Create a new Snowflake transport client that can spawn multiple Snowflake connections.
+// brokerURL and frontDomain are the urls for the broker host and domain fronting host
+// iceAddresses are the STUN/TURN urls needed for WebRTC negotiation
+// keepLocalAddresses is a flag to enable sending local network addresses (for testing purposes)
+// max is the maximum number of snowflakes the client should gather for each SOCKS connection
+func NewSnowflakeClient(brokerURL, frontDomain string, iceAddresses []string, keepLocalAddresses bool, max int) (*Transport, error) {
+
+	log.Println("\n\n\n --- Starting Snowflake Client ---")
+
+	iceServers := parseIceServers(iceAddresses)
+	// chooses a random subset of servers from inputs
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(iceServers), func(i, j int) {
+		iceServers[i], iceServers[j] = iceServers[j], iceServers[i]
+	})
+	if len(iceServers) > 2 {
+		iceServers = iceServers[:(len(iceServers)+1)/2]
+	}
+	log.Printf("Using ICE servers:")
+	for _, server := range iceServers {
+		log.Printf("url: %v", strings.Join(server.URLs, " "))
+	}
+
+	// Use potentially domain-fronting broker to rendezvous.
+	broker, err := NewBrokerChannel(
+		brokerURL, frontDomain, CreateBrokerTransport(),
+		keepLocalAddresses)
+	if err != nil {
+		return nil, err
+	}
+	go updateNATType(iceServers, broker)
+
+	transport := &Transport{dialer: NewWebRTCDialer(broker, iceServers, max)}
+
+	return transport, nil
+}
+
+// Create a new Snowflake connection. Starts the collection of snowflakes and returns a
+// smux Stream.
+func (t *Transport) Dial() (net.Conn, error) {
+	// Prepare to collect remote WebRTC peers.
+	snowflakes, err := NewPeers(t.dialer)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use a real logger to periodically output how much traffic is happening.
+	snowflakes.BytesLogger = NewBytesSyncLogger()
+
+	log.Printf("---- SnowflakeConn: begin collecting snowflakes ---")
+	go connectLoop(snowflakes)
+
+	// Create a new smux session
+	log.Printf("---- SnowflakeConn: starting a new session ---")
+	pconn, sess, err := newSession(snowflakes)
+	if err != nil {
+		return nil, err
+	}
+
+	// On the smux session we overlay a stream.
+	stream, err := sess.OpenStream()
+	if err != nil {
+		return nil, err
+	}
+
+	// Begin exchanging data.
+	log.Printf("---- SnowflakeConn: begin stream %v ---", stream.ID())
+	return &SnowflakeConn{Stream: stream, sess: sess, pconn: pconn, snowflakes: snowflakes}, nil
+}
+
+type SnowflakeConn struct {
+	*smux.Stream
+	sess       *smux.Session
+	pconn      net.PacketConn
+	snowflakes *Peers
+}
+
+func (conn *SnowflakeConn) Close() error {
+	log.Printf("---- SnowflakeConn: closed stream %v ---", conn.ID())
+	conn.Stream.Close()
+	log.Printf("---- SnowflakeConn: end collecting snowflakes ---")
+	conn.snowflakes.End()
+	conn.pconn.Close()
+	log.Printf("---- SnowflakeConn: discarding finished session ---")
+	conn.sess.Close()
+	return nil //TODO: return errors if any of the above do
+}
+
+// loop through all provided STUN servers until we exhaust the list or find
+// one that is compatable with RFC 5780
+func updateNATType(servers []webrtc.ICEServer, broker *BrokerChannel) {
+
+	var restrictedNAT bool
+	var err error
+	for _, server := range servers {
+		addr := strings.TrimPrefix(server.URLs[0], "stun:")
+		restrictedNAT, err = nat.CheckIfRestrictedNAT(addr)
+		if err == nil {
+			if restrictedNAT {
+				broker.SetNATType(nat.NATRestricted)
+			} else {
+				broker.SetNATType(nat.NATUnrestricted)
+			}
+			break
+		}
+	}
+	if err != nil {
+		broker.SetNATType(nat.NATUnknown)
+	}
+}
+
+// Returns a slice of webrtc.ICEServer given a slice of addresses
+func parseIceServers(addresses []string) []webrtc.ICEServer {
+	var servers []webrtc.ICEServer
+	if len(addresses) == 0 {
+		return nil
+	}
+	for _, url := range addresses {
+		url = strings.TrimSpace(url)
+		servers = append(servers, webrtc.ICEServer{
+			URLs: []string{url},
+		})
+	}
+	return servers
+}
 
 // newSession returns a new smux.Session and the net.PacketConn it is running
 // over. The net.PacketConn successively connects through Snowflake proxies
@@ -94,47 +229,6 @@ func newSession(snowflakes SnowflakeCollector) (net.PacketConn, *smux.Session, e
 	return pconn, sess, err
 }
 
-// Given an accepted SOCKS connection, establish a WebRTC connection to the
-// remote peer and exchange traffic.
-func Handler(socks net.Conn, tongue Tongue) error {
-	// Prepare to collect remote WebRTC peers.
-	snowflakes, err := NewPeers(tongue)
-	if err != nil {
-		return err
-	}
-
-	// Use a real logger to periodically output how much traffic is happening.
-	snowflakes.BytesLogger = NewBytesSyncLogger()
-
-	log.Printf("---- Handler: begin collecting snowflakes ---")
-	go connectLoop(snowflakes)
-
-	// Create a new smux session
-	log.Printf("---- Handler: starting a new session ---")
-	pconn, sess, err := newSession(snowflakes)
-	if err != nil {
-		return err
-	}
-
-	// On the smux session we overlay a stream.
-	stream, err := sess.OpenStream()
-	if err != nil {
-		return err
-	}
-	defer stream.Close()
-
-	// Begin exchanging data.
-	log.Printf("---- Handler: begin stream %v ---", stream.ID())
-	copyLoop(socks, stream)
-	log.Printf("---- Handler: closed stream %v ---", stream.ID())
-	snowflakes.End()
-	log.Printf("---- Handler: end collecting snowflakes ---")
-	pconn.Close()
-	sess.Close()
-	log.Printf("---- Handler: discarding finished session ---")
-	return nil
-}
-
 // Maintain |SnowflakeCapacity| number of available WebRTC connections, to
 // transfer to the Tor SOCKS handler when needed.
 func connectLoop(snowflakes SnowflakeCollector) {
@@ -152,24 +246,4 @@ func connectLoop(snowflakes SnowflakeCollector) {
 			return
 		}
 	}
-}
-
-// Exchanges bytes between two ReadWriters.
-// (In this case, between a SOCKS connection and smux stream.)
-func copyLoop(socks, stream io.ReadWriter) {
-	done := make(chan struct{}, 2)
-	go func() {
-		if _, err := io.Copy(socks, stream); err != nil {
-			log.Printf("copying WebRTC to SOCKS resulted in error: %v", err)
-		}
-		done <- struct{}{}
-	}()
-	go func() {
-		if _, err := io.Copy(stream, socks); err != nil {
-			log.Printf("copying SOCKS to stream resulted in error: %v", err)
-		}
-		done <- struct{}{}
-	}()
-	<-done
-	log.Println("copy loop ended")
 }

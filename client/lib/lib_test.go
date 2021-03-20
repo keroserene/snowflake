@@ -156,19 +156,6 @@ func TestSnowflakeClient(t *testing.T) {
 
 	})
 
-	Convey("Snowflake", t, func() {
-
-		SkipConvey("Handler Grants correctly", func() {
-			socks := &FakeSocksConn{}
-			broker := &BrokerChannel{Host: "test"}
-			d := NewWebRTCDialer(broker, nil, 1)
-
-			So(socks.rejected, ShouldEqual, false)
-			Handler(socks, d)
-			So(socks.rejected, ShouldEqual, true)
-		})
-	})
-
 	Convey("Dialers", t, func() {
 		Convey("Can construct WebRTCDialer.", func() {
 			broker := &BrokerChannel{Host: "test"}
@@ -266,4 +253,46 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 	})
 
+}
+
+func TestICEServerParser(t *testing.T) {
+	Convey("Test parsing of ICE servers", t, func() {
+		for _, test := range []struct {
+			input  []string
+			urls   [][]string
+			length int
+		}{
+			{
+				[]string{"stun:stun.l.google.com:19302"},
+				[][]string{[]string{"stun:stun.l.google.com:19302"}},
+				1,
+			},
+			{
+				[]string{"stun:stun.l.google.com:19302", "stun.ekiga.net"},
+				[][]string{[]string{"stun:stun.l.google.com:19302"}, []string{"stun.ekiga.net"}},
+				2,
+			},
+			{
+				[]string{"stun:stun.l.google.com:19302", "stun.ekiga.net"},
+				[][]string{[]string{"stun:stun.l.google.com:19302"}, []string{"stun.ekiga.net"}},
+				2,
+			},
+		} {
+			servers := parseIceServers(test.input)
+
+			if test.urls == nil {
+				So(servers, ShouldBeNil)
+			} else {
+				So(servers, ShouldNotBeNil)
+			}
+
+			So(len(servers), ShouldEqual, test.length)
+
+			for _, server := range servers {
+				So(test.urls, ShouldContain, server.URLs)
+			}
+
+		}
+
+	})
 }
