@@ -13,13 +13,20 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	once sync.Once
+	once        sync.Once
+	promMetrics *PromMetrics
 )
 
-const metricsResolution = 60 * 60 * 24 * time.Second //86400 seconds
+const (
+	PrometheusNamespace = "snowflake"
+	metricsResolution   = 60 * 60 * 24 * time.Second //86400 seconds
+)
 
 type CountryStats struct {
 	standalone map[string]bool
@@ -140,6 +147,11 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType stri
 	} else {
 		m.countryStats.unknown[addr] = true
 	}
+	promMetrics.ProxyTotal.With(prometheus.Labels{
+		"nat":  natType,
+		"type": proxyType,
+		"cc":   country,
+	}).Inc()
 
 	switch natType {
 	case NATRestricted:
@@ -245,4 +257,44 @@ func (m *Metrics) zeroMetrics() {
 // Rounds up a count to the nearest multiple of 8.
 func binCount(count uint) uint {
 	return uint((math.Ceil(float64(count) / 8)) * 8)
+}
+
+type PromMetrics struct {
+	ProxyTotal      *prometheus.CounterVec
+	ProxyPollTotal  *prometheus.CounterVec
+	ClientPollTotal *prometheus.CounterVec
+}
+
+//Initialize metrics for prometheus exporter
+func InitPrometheus() {
+
+	promMetrics = &PromMetrics{}
+
+	promMetrics.ProxyTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: PrometheusNamespace,
+			Name:      "proxy_total",
+			Help:      "The number of unique snowflake IPs",
+		},
+		[]string{"type", "nat", "cc"},
+	)
+
+	promMetrics.ProxyPollTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: PrometheusNamespace,
+			Name:      "proxy_poll_total",
+			Help:      "The number of snowflake proxy polls",
+		},
+		[]string{"nat", "status"},
+	)
+
+	promMetrics.ClientPollTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: PrometheusNamespace,
+			Name:      "client_poll_total",
+			Help:      "The number of snowflake client polls",
+		},
+		[]string{"nat", "status"},
+	)
+
 }

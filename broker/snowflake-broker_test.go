@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,7 +22,11 @@ func NullLogger() *log.Logger {
 	return logger
 }
 
+var promOnce sync.Once
+
 func TestBroker(t *testing.T) {
+
+	promOnce.Do(InitPrometheus)
 
 	Convey("Context", t, func() {
 		ctx := NewBrokerContext(NullLogger())
@@ -298,6 +303,8 @@ func TestBroker(t *testing.T) {
 }
 
 func TestSnowflakeHeap(t *testing.T) {
+	promOnce.Do(InitPrometheus)
+
 	Convey("SnowflakeHeap", t, func() {
 		h := new(SnowflakeHeap)
 		heap.Init(h)
@@ -341,6 +348,8 @@ func TestSnowflakeHeap(t *testing.T) {
 }
 
 func TestGeoip(t *testing.T) {
+	promOnce.Do(InitPrometheus)
+
 	Convey("Geoip", t, func() {
 		tv4 := new(GeoIPv4Table)
 		err := GeoIPLoadFile(tv4, "test_geoip")
@@ -445,6 +454,7 @@ func TestGeoip(t *testing.T) {
 }
 
 func TestMetrics(t *testing.T) {
+	promOnce.Do(InitPrometheus)
 
 	Convey("Test metrics...", t, func() {
 		done := make(chan bool)

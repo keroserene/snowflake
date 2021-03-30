@@ -11,6 +11,7 @@ require (
 	github.com/pion/stun v0.3.5
 	github.com/pion/transport v0.12.3 // indirect
 	github.com/pion/webrtc/v3 v3.0.15
+	github.com/prometheus/client_golang v1.10.0
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/xtaci/kcp-go/v5 v5.5.12
 	github.com/xtaci/smux v1.5.12

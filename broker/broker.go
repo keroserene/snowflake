@@ -24,6 +24,8 @@ import (
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -212,6 +214,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if nil == offer {
 		ctx.metrics.lock.Lock()
 		ctx.metrics.proxyIdleCount++
+		promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "idle"}).Inc()
 		ctx.metrics.lock.Unlock()
 
 		b, err = messages.EncodePollResponse("", false, "")
@@ -223,6 +226,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.Write(b)
 		return
 	}
+	promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "matched"}).Inc()
 	b, err = messages.EncodePollResponse(string(offer.sdp), true, offer.natType)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -276,6 +280,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if numSnowflakes <= 0 {
 		ctx.metrics.lock.Lock()
 		ctx.metrics.clientDeniedCount++
+		promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "denied"}).Inc()
 		if offer.natType == NATUnrestricted {
 			ctx.metrics.clientUnrestrictedDeniedCount++
 		} else {
@@ -297,6 +302,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	case answer := <-snowflake.answerChannel:
 		ctx.metrics.lock.Lock()
 		ctx.metrics.clientProxyMatchCount++
+		promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "matched"}).Inc()
 		ctx.metrics.lock.Unlock()
 		if _, err := w.Write(answer); err != nil {
 			log.Printf("unable to write answer with error: %v", err)
@@ -497,6 +503,9 @@ func main() {
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
 	http.Handle("/metrics", MetricsHandler{metricsFilename, metricsHandler})
+	http.Handle("/prometheus", promhttp.Handler())
+
+	InitPrometheus()
 
 	server := http.Server{
 		Addr: addr,
