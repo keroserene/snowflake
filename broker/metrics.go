@@ -261,9 +261,10 @@ func binCount(count uint) uint {
 }
 
 type PromMetrics struct {
-	ProxyTotal      *prometheus.CounterVec
-	ProxyPollTotal  *RoundedCounterVec
-	ClientPollTotal *RoundedCounterVec
+	ProxyTotal       *prometheus.CounterVec
+	ProxyPollTotal   *RoundedCounterVec
+	ClientPollTotal  *RoundedCounterVec
+	AvailableProxies *prometheus.GaugeVec
 }
 
 //Initialize metrics for prometheus exporter
@@ -278,6 +279,15 @@ func initPrometheus() *PromMetrics {
 			Help:      "The number of unique snowflake IPs",
 		},
 		[]string{"type", "nat", "cc"},
+	)
+
+	promMetrics.AvailableProxies = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: prometheusNamespace,
+			Name:      "available_proxies",
+			Help:      "The number of currently available snowflake proxies",
+		},
+		[]string{"type", "nat"},
 	)
 
 	promMetrics.ProxyPollTotal = NewRoundedCounterVec(

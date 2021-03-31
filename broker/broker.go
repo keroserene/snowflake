@@ -151,6 +151,7 @@ func (ctx *BrokerContext) Broker() {
 					} else {
 						heap.Remove(ctx.restrictedSnowflakes, snowflake.index)
 					}
+					promMetrics.AvailableProxies.With(prometheus.Labels{"nat": request.natType, "type": request.proxyType}).Dec()
 					delete(ctx.idToSnowflake, snowflake.id)
 					close(request.offerChannel)
 				}
@@ -176,6 +177,7 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	} else {
 		heap.Push(ctx.restrictedSnowflakes, snowflake)
 	}
+	promMetrics.AvailableProxies.With(prometheus.Labels{"nat": natType, "type": proxyType}).Inc()
 	ctx.snowflakeLock.Unlock()
 	ctx.idToSnowflake[id] = snowflake
 	return snowflake
@@ -319,6 +321,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx.snowflakeLock.Lock()
+	promMetrics.AvailableProxies.With(prometheus.Labels{"nat": snowflake.natType, "type": snowflake.proxyType}).Dec()
 	delete(ctx.idToSnowflake, snowflake.id)
 	ctx.snowflakeLock.Unlock()
 }
