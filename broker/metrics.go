@@ -20,11 +20,11 @@ import (
 
 var (
 	once        sync.Once
-	promMetrics *PromMetrics
+	promMetrics = initPrometheus()
 )
 
 const (
-	PrometheusNamespace = "snowflake"
+	prometheusNamespace = "snowflake"
 	metricsResolution   = 60 * 60 * 24 * time.Second //86400 seconds
 )
 
@@ -147,6 +147,7 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType stri
 	} else {
 		m.countryStats.unknown[addr] = true
 	}
+
 	promMetrics.ProxyTotal.With(prometheus.Labels{
 		"nat":  natType,
 		"type": proxyType,
@@ -261,40 +262,47 @@ func binCount(count uint) uint {
 
 type PromMetrics struct {
 	ProxyTotal      *prometheus.CounterVec
-	ProxyPollTotal  *prometheus.CounterVec
-	ClientPollTotal *prometheus.CounterVec
+	ProxyPollTotal  *RoundedCounterVec
+	ClientPollTotal *RoundedCounterVec
 }
 
 //Initialize metrics for prometheus exporter
-func InitPrometheus() {
+func initPrometheus() *PromMetrics {
 
-	promMetrics = &PromMetrics{}
+	promMetrics := &PromMetrics{}
 
 	promMetrics.ProxyTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: PrometheusNamespace,
+			Namespace: prometheusNamespace,
 			Name:      "proxy_total",
 			Help:      "The number of unique snowflake IPs",
 		},
 		[]string{"type", "nat", "cc"},
 	)
 
-	promMetrics.ProxyPollTotal = promauto.NewCounterVec(
+	promMetrics.ProxyPollTotal = NewRoundedCounterVec(
 		prometheus.CounterOpts{
-			Namespace: PrometheusNamespace,
-			Name:      "proxy_poll_total",
-			Help:      "The number of snowflake proxy polls",
+			Namespace: prometheusNamespace,
+			Name:      "rounded_proxy_poll_total",
+			Help:      "The number of snowflake proxy polls, rounded up to a multiple of 8",
 		},
 		[]string{"nat", "status"},
 	)
 
-	promMetrics.ClientPollTotal = promauto.NewCounterVec(
+	promMetrics.ClientPollTotal = NewRoundedCounterVec(
 		prometheus.CounterOpts{
-			Namespace: PrometheusNamespace,
-			Name:      "client_poll_total",
-			Help:      "The number of snowflake client polls",
+			Namespace: prometheusNamespace,
+			Name:      "rounded_client_poll_total",
+			Help:      "The number of snowflake client polls, rounded up to a multiple of 8",
 		},
 		[]string{"nat", "status"},
 	)
+
+	// We need to register this new metric type because there is no constructor
+	// for it in promauto.
+	prometheus.DefaultRegisterer.MustRegister(promMetrics.ClientPollTotal)
+	prometheus.DefaultRegisterer.MustRegister(promMetrics.ProxyPollTotal)
+
+	return promMetrics
 
 }

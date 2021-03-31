@@ -12,10 +12,12 @@ require (
 	github.com/pion/transport v0.12.3 // indirect
 	github.com/pion/webrtc/v3 v3.0.15
 	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_model v0.2.0
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/xtaci/kcp-go/v5 v5.5.12
 	github.com/xtaci/smux v1.5.12
 	golang.org/x/crypto v0.0.0-20210317152858-513c2a44f670
 	golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4
 	golang.org/x/sys v0.0.0-20210317225723-c4fcb01b228e // indirect
+	google.golang.org/protobuf v1.23.0
 )
