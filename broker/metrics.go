@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
@@ -261,6 +260,7 @@ func binCount(count uint) uint {
 }
 
 type PromMetrics struct {
+	registry         *prometheus.Registry
 	ProxyTotal       *prometheus.CounterVec
 	ProxyPollTotal   *RoundedCounterVec
 	ClientPollTotal  *RoundedCounterVec
@@ -272,7 +272,9 @@ func initPrometheus() *PromMetrics {
 
 	promMetrics := &PromMetrics{}
 
-	promMetrics.ProxyTotal = promauto.NewCounterVec(
+	promMetrics.registry = prometheus.NewRegistry()
+
+	promMetrics.ProxyTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: prometheusNamespace,
 			Name:      "proxy_total",
@@ -281,7 +283,7 @@ func initPrometheus() *PromMetrics {
 		[]string{"type", "nat", "cc"},
 	)
 
-	promMetrics.AvailableProxies = promauto.NewGaugeVec(
+	promMetrics.AvailableProxies = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: prometheusNamespace,
 			Name:      "available_proxies",
@@ -308,10 +310,9 @@ func initPrometheus() *PromMetrics {
 		[]string{"nat", "status"},
 	)
 
-	// We need to register this new metric type because there is no constructor
-	// for it in promauto.
-	prometheus.DefaultRegisterer.MustRegister(promMetrics.ClientPollTotal)
-	prometheus.DefaultRegisterer.MustRegister(promMetrics.ProxyPollTotal)
+	// We need to register our metrics so they can be exported.
+	promMetrics.registry.MustRegister(promMetrics.ClientPollTotal, promMetrics.ProxyPollTotal,
+		promMetrics.ProxyTotal, promMetrics.AvailableProxies)
 
 	return promMetrics
 

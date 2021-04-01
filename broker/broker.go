@@ -506,9 +506,7 @@ func main() {
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
 	http.Handle("/metrics", MetricsHandler{metricsFilename, metricsHandler})
-	http.Handle("/prometheus", promhttp.Handler())
-
-	InitPrometheus()
+	http.Handle("/prometheus", promhttp.HandlerFor(promMetrics.registry, promhttp.HandlerOpts{}))
 
 	server := http.Server{
 		Addr: addr,
