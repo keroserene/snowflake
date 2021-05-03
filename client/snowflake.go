@@ -56,8 +56,8 @@ func socksAcceptLoop(ln *pt.SocksListener, transport *sf.Transport, shutdown cha
 			break
 		}
 		log.Printf("SOCKS accepted: %v", conn.Req)
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			defer conn.Close()
 
