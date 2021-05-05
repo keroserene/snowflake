@@ -176,7 +176,7 @@ func TestSnowflakeClient(t *testing.T) {
 	Convey("Rendezvous", t, func() {
 		transport := &MockTransport{
 			http.StatusOK,
-			[]byte(`{"type":"answer","sdp":"fake"}`),
+			[]byte(`{"answer": "{\"type\":\"answer\",\"sdp\":\"fake\"}" }`),
 		}
 		fakeOffer, err := util.DeserializeSessionDescription(`{"type":"offer","sdp":"test"}`)
 		if err != nil {
@@ -209,26 +209,25 @@ func TestSnowflakeClient(t *testing.T) {
 			So(answer.SDP, ShouldResemble, "fake")
 		})
 
-		Convey("BrokerChannel.Negotiate fails with 503", func() {
+		Convey("BrokerChannel.Negotiate fails", func() {
 			b, err := NewBrokerChannel("test.broker", "",
-				&MockTransport{http.StatusServiceUnavailable, []byte("\n")},
+				&MockTransport{http.StatusOK, []byte(`{"error": "no snowflake proxies currently available"}`)},
 				false)
 			So(err, ShouldBeNil)
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldNotBeNil)
 			So(answer, ShouldBeNil)
-			So(err.Error(), ShouldResemble, BrokerError503)
 		})
 
-		Convey("BrokerChannel.Negotiate fails with 400", func() {
+		Convey("BrokerChannel.Negotiate fails with unexpected error", func() {
 			b, err := NewBrokerChannel("test.broker", "",
-				&MockTransport{http.StatusBadRequest, []byte("\n")},
+				&MockTransport{http.StatusInternalServerError, []byte("\n")},
 				false)
 			So(err, ShouldBeNil)
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldNotBeNil)
 			So(answer, ShouldBeNil)
-			So(err.Error(), ShouldResemble, BrokerError400)
+			So(err.Error(), ShouldResemble, BrokerErrorUnexpected)
 		})
 
 		Convey("BrokerChannel.Negotiate fails with large read", func() {
@@ -242,15 +241,6 @@ func TestSnowflakeClient(t *testing.T) {
 			So(err.Error(), ShouldResemble, "unexpected EOF")
 		})
 
-		Convey("BrokerChannel.Negotiate fails with unexpected error", func() {
-			b, err := NewBrokerChannel("test.broker", "",
-				&MockTransport{123, []byte("")}, false)
-			So(err, ShouldBeNil)
-			answer, err := b.Negotiate(fakeOffer)
-			So(err, ShouldNotBeNil)
-			So(answer, ShouldBeNil)
-			So(err.Error(), ShouldResemble, BrokerErrorUnexpected)
-		})
 	})
 
 }

@@ -13,7 +13,7 @@ type Snowflake struct {
 	proxyType     string
 	natType       string
 	offerChannel  chan *ClientOffer
-	answerChannel chan []byte
+	answerChannel chan string
 	clients       int
 	index         int
 }

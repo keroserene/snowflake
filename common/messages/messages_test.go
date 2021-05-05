@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -250,5 +251,120 @@ func TestEncodeProxyAnswerResponse(t *testing.T) {
 		success, err = DecodeAnswerResponse(b)
 		So(success, ShouldEqual, false)
 		So(err, ShouldEqual, nil)
+	})
+}
+
+func TestDecodeClientPollRequest(t *testing.T) {
+	Convey("Context", t, func() {
+		for _, test := range []struct {
+			natType string
+			offer   string
+			data    string
+			err     error
+		}{
+			{
+				//version 1.0 client message
+				"unknown",
+				"fake",
+				`{"nat":"unknown","offer":"fake"}`,
+				nil,
+			},
+			{
+				//version 1.0 client message
+				"unknown",
+				"fake",
+				`{"offer":"fake"}`,
+				nil,
+			},
+			{
+				//unknown version
+				"",
+				"",
+				`{"version":"2.0"}`,
+				fmt.Errorf(""),
+			},
+			{
+				//no offer
+				"",
+				"",
+				`{"nat":"unknown"}`,
+				fmt.Errorf(""),
+			},
+		} {
+			req, err := DecodeClientPollRequest([]byte(test.data))
+			if test.err == nil {
+				So(req.NAT, ShouldResemble, test.natType)
+				So(req.Offer, ShouldResemble, test.offer)
+			}
+			So(err, ShouldHaveSameTypeAs, test.err)
+		}
+
+	})
+}
+
+func TestEncodeClientPollRequests(t *testing.T) {
+	Convey("Context", t, func() {
+		req1 := &ClientPollRequest{
+			NAT:   "unknown",
+			Offer: "fake",
+		}
+		b, err := req1.EncodePollRequest()
+		So(err, ShouldEqual, nil)
+		fmt.Println(string(b))
+		parts := bytes.SplitN(b, []byte("\n"), 2)
+		So(string(parts[0]), ShouldEqual, "1.0")
+		b = parts[1]
+		req2, err := DecodeClientPollRequest(b)
+		So(err, ShouldEqual, nil)
+		So(req2, ShouldResemble, req1)
+	})
+}
+
+func TestDecodeClientPollResponse(t *testing.T) {
+	Convey("Context", t, func() {
+		for _, test := range []struct {
+			answer string
+			msg    string
+			data   string
+		}{
+			{
+				"fake answer",
+				"",
+				`{"answer":"fake answer"}`,
+			},
+			{
+				"",
+				"no snowflakes",
+				`{"error":"no snowflakes"}`,
+			},
+		} {
+			resp, err := DecodeClientPollResponse([]byte(test.data))
+			So(err, ShouldBeNil)
+			So(resp.Answer, ShouldResemble, test.answer)
+			So(resp.Error, ShouldResemble, test.msg)
+		}
+
+	})
+}
+
+func TestEncodeClientPollResponse(t *testing.T) {
+	Convey("Context", t, func() {
+		resp1 := &ClientPollResponse{
+			Answer: "fake answer",
+		}
+		b, err := resp1.EncodePollResponse()
+		So(err, ShouldEqual, nil)
+		resp2, err := DecodeClientPollResponse(b)
+		So(err, ShouldEqual, nil)
+		So(resp1, ShouldResemble, resp2)
+
+		resp1 = &ClientPollResponse{
+			Error: "failed",
+		}
+		b, err = resp1.EncodePollResponse()
+		So(err, ShouldEqual, nil)
+		resp2, err = DecodeClientPollResponse(b)
+		So(err, ShouldEqual, nil)
+		So(resp1, ShouldResemble, resp2)
 	})
 }

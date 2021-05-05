@@ -19,14 +19,13 @@ import (
 	"sync"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	"github.com/pion/webrtc/v3"
 )
 
 const (
-	BrokerError503        string = "No snowflake proxies currently available."
-	BrokerError400        string = "You sent an invalid offer in the request."
 	BrokerErrorUnexpected string = "Unexpected error, no answer."
 	readLimit                    = 100000 //Maximum number of bytes to be read from an HTTP response
 )
@@ -107,7 +106,20 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	if err != nil {
 		return nil, err
 	}
-	data := bytes.NewReader([]byte(offerSDP))
+
+	// Encode client poll request
+	bc.lock.Lock()
+	req := &messages.ClientPollRequest{
+		Offer: offerSDP,
+		NAT:   bc.NATType,
+	}
+	body, err := req.EncodePollRequest()
+	bc.lock.Unlock()
+	if err != nil {
+		return nil, err
+	}
+
+	data := bytes.NewReader([]byte(body))
 	// Suffix with broker's client registration handler.
 	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
 	request, err := http.NewRequest("POST", clientURL.String(), data)
@@ -117,10 +129,6 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	if "" != bc.Host { // Set true host if necessary.
 		request.Host = bc.Host
 	}
-	// include NAT-TYPE
-	bc.lock.Lock()
-	request.Header.Set("Snowflake-NAT-TYPE", bc.NATType)
-	bc.lock.Unlock()
 	resp, err := bc.transport.RoundTrip(request)
 	if nil != err {
 		return nil, err
@@ -135,11 +143,15 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 			return nil, err
 		}
 		log.Printf("Received answer: %s", string(body))
-		return util.DeserializeSessionDescription(string(body))
-	case http.StatusServiceUnavailable:
-		return nil, errors.New(BrokerError503)
-	case http.StatusBadRequest:
-		return nil, errors.New(BrokerError400)
+
+		resp, err := messages.DecodeClientPollResponse(body)
+		if err != nil {
+			return nil, err
+		}
+		if resp.Error != "" {
+			return nil, errors.New(resp.Error)
+		}
+		return util.DeserializeSessionDescription(resp.Answer)
 	default:
 		return nil, errors.New(BrokerErrorUnexpected)
 	}

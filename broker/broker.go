@@ -6,6 +6,7 @@ SessionDescriptions in order to negotiate a WebRTC connection.
 package main
 
 import (
+	"bytes"
 	"container/heap"
 	"crypto/tls"
 	"flag"
@@ -37,6 +38,16 @@ const (
 	NATUnknown      = "unknown"
 	NATRestricted   = "restricted"
 	NATUnrestricted = "unrestricted"
+)
+
+// We support two client message formats. The legacy format is for backwards
+// combatability and relies heavily on HTTP headers and status codes to convey
+// information.
+type clientVersion int
+
+const (
+	v0 clientVersion = iota //legacy version
+	v1
 )
 
 type BrokerContext struct {
@@ -90,7 +101,7 @@ type MetricsHandler struct {
 
 func (sh SnowflakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID, Snowflake-NAT-Type")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Session-ID")
 	// Return early if it's CORS preflight.
 	if "OPTIONS" == r.Method {
 		return
@@ -170,7 +181,7 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	snowflake.proxyType = proxyType
 	snowflake.natType = natType
 	snowflake.offerChannel = make(chan *ClientOffer)
-	snowflake.answerChannel = make(chan []byte)
+	snowflake.answerChannel = make(chan string)
 	ctx.snowflakeLock.Lock()
 	if natType == NATUnrestricted {
 		heap.Push(ctx.snowflakes, snowflake)
@@ -245,6 +256,20 @@ type ClientOffer struct {
 	sdp     []byte
 }
 
+// Sends an encoded response to the client and an
+// HTTP server error if the response encoding fails
+func sendClientResponse(resp *messages.ClientPollResponse, w http.ResponseWriter) {
+	data, err := resp.EncodePollResponse()
+	if err != nil {
+		log.Printf("error encoding answer")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		if _, err := w.Write([]byte(data)); err != nil {
+			log.Printf("unable to write answer with error: %v", err)
+		}
+	}
+}
+
 /*
 Expects a WebRTC SDP offer in the Request to give to an assigned
 snowflake proxy, which responds with the SDP answer to be sent in
@@ -252,19 +277,55 @@ the HTTP response back to the client.
 */
 func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	var err error
+	var version clientVersion
 
 	startTime := time.Now()
-	offer := &ClientOffer{}
-	offer.sdp, err = ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
-	if nil != err {
-		log.Println("Invalid data.")
-		w.WriteHeader(http.StatusBadRequest)
+	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
+	if err != nil {
+		log.Printf("Error reading client request: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	if len(body) > 0 && body[0] == '{' {
+		version = v0
+	} else {
+		parts := bytes.SplitN(body, []byte("\n"), 2)
+		if len(parts) < 2 {
+			// no version number found
+			err := fmt.Errorf("unsupported message version")
+			sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, w)
+			return
+		}
+		body = parts[1]
+		if string(parts[0]) == "1.0" {
+			version = v1
 
-	offer.natType = r.Header.Get("Snowflake-NAT-Type")
-	if offer.natType == "" {
-		offer.natType = NATUnknown
+		} else {
+			err := fmt.Errorf("unsupported message version")
+			sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, w)
+			return
+		}
+	}
+
+	var offer *ClientOffer
+	switch version {
+	case v0:
+		offer = &ClientOffer{
+			natType: r.Header.Get("Snowflake-NAT-Type"),
+			sdp:     body,
+		}
+	case v1:
+		req, err := messages.DecodeClientPollRequest(body)
+		if err != nil {
+			sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, w)
+			return
+		}
+		offer = &ClientOffer{
+			natType: req.NAT,
+			sdp:     []byte(req.Offer),
+		}
+	default:
+		panic("unknown version")
 	}
 
 	// Only hand out known restricted snowflakes to unrestricted clients
@@ -289,7 +350,15 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 			ctx.metrics.clientRestrictedDeniedCount++
 		}
 		ctx.metrics.lock.Unlock()
-		w.WriteHeader(http.StatusServiceUnavailable)
+		switch version {
+		case v0:
+			w.WriteHeader(http.StatusServiceUnavailable)
+		case v1:
+			resp := &messages.ClientPollResponse{Error: "no snowflake proxies currently available"}
+			sendClientResponse(resp, w)
+		default:
+			panic("unknown version")
+		}
 		return
 	}
 	// Otherwise, find the most available snowflake proxy, and pass the offer to it.
@@ -306,17 +375,36 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		ctx.metrics.clientProxyMatchCount++
 		ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "matched"}).Inc()
 		ctx.metrics.lock.Unlock()
-		if _, err := w.Write(answer); err != nil {
-			log.Printf("unable to write answer with error: %v", err)
+		switch version {
+		case v0:
+			if _, err := w.Write([]byte(answer)); err != nil {
+				log.Printf("unable to write answer with error: %v", err)
+			}
+		case v1:
+			resp := &messages.ClientPollResponse{Answer: answer}
+			sendClientResponse(resp, w)
+		default:
+			panic("unknown version")
 		}
 		// Initial tracking of elapsed time.
 		ctx.metrics.clientRoundtripEstimate = time.Since(startTime) /
 			time.Millisecond
 	case <-time.After(time.Second * ClientTimeout):
 		log.Println("Client: Timed out.")
-		w.WriteHeader(http.StatusGatewayTimeout)
-		if _, err := w.Write([]byte("timed out waiting for answer!")); err != nil {
-			log.Printf("unable to write timeout error, failed with error: %v", err)
+		switch version {
+		case v0:
+			w.WriteHeader(http.StatusGatewayTimeout)
+			if _, err := w.Write(
+				[]byte("timed out waiting for answer!")); err != nil {
+				log.Printf("unable to write timeout error, failed with error: %v",
+					err)
+			}
+		case v1:
+			resp := &messages.ClientPollResponse{
+				Error: "timed out waiting for answer!"}
+			sendClientResponse(resp, w)
+		default:
+			panic("unknown version")
 		}
 	}
 
@@ -364,7 +452,7 @@ func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 
 	if success {
-		snowflake.answerChannel <- []byte(answer)
+		snowflake.answerChannel <- answer
 	}
 
 }
