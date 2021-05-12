@@ -140,5 +140,6 @@ func (inner *clientMapInner) Pop() interface{} {
 	inner.byAge = inner.byAge[:n-1]
 	// Remove from byAddr map.
 	delete(inner.byAddr, record.Addr)
+	close(record.SendQueue)
 	return record
 }
