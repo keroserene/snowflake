@@ -17,11 +17,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	once        sync.Once
-	promMetrics = initPrometheus()
-)
-
 const (
 	prometheusNamespace = "snowflake"
 	metricsResolution   = 60 * 60 * 24 * time.Second //86400 seconds
@@ -54,8 +49,11 @@ type Metrics struct {
 	clientUnrestrictedDeniedCount uint
 	clientProxyMatchCount         uint
 
-	//synchronization for access to snowflake metrics
+	// synchronization for access to snowflake metrics
 	lock sync.Mutex
+
+	promMetrics *PromMetrics
+	once        sync.Once
 }
 
 type record struct {
@@ -147,7 +145,7 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType stri
 		m.countryStats.unknown[addr] = true
 	}
 
-	promMetrics.ProxyTotal.With(prometheus.Labels{
+	m.promMetrics.ProxyTotal.With(prometheus.Labels{
 		"nat":  natType,
 		"type": proxyType,
 		"cc":   country,
@@ -201,9 +199,10 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 	}
 
 	m.logger = metricsLogger
+	m.promMetrics = initPrometheus()
 
 	// Write to log file every hour with updated metrics
-	go once.Do(m.logMetrics)
+	go m.once.Do(m.logMetrics)
 
 	return m, nil
 }
@@ -267,9 +266,8 @@ type PromMetrics struct {
 	AvailableProxies *prometheus.GaugeVec
 }
 
-//Initialize metrics for prometheus exporter
+// Initialize metrics for prometheus exporter
 func initPrometheus() *PromMetrics {
-
 	promMetrics := &PromMetrics{}
 
 	promMetrics.registry = prometheus.NewRegistry()
@@ -311,9 +309,10 @@ func initPrometheus() *PromMetrics {
 	)
 
 	// We need to register our metrics so they can be exported.
-	promMetrics.registry.MustRegister(promMetrics.ClientPollTotal, promMetrics.ProxyPollTotal,
-		promMetrics.ProxyTotal, promMetrics.AvailableProxies)
+	promMetrics.registry.MustRegister(
+		promMetrics.ClientPollTotal, promMetrics.ProxyPollTotal,
+		promMetrics.ProxyTotal, promMetrics.AvailableProxies,
+	)
 
 	return promMetrics
-
 }

@@ -151,7 +151,7 @@ func (ctx *BrokerContext) Broker() {
 					} else {
 						heap.Remove(ctx.restrictedSnowflakes, snowflake.index)
 					}
-					promMetrics.AvailableProxies.With(prometheus.Labels{"nat": request.natType, "type": request.proxyType}).Dec()
+					ctx.metrics.promMetrics.AvailableProxies.With(prometheus.Labels{"nat": request.natType, "type": request.proxyType}).Dec()
 					delete(ctx.idToSnowflake, snowflake.id)
 					close(request.offerChannel)
 				}
@@ -177,7 +177,7 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	} else {
 		heap.Push(ctx.restrictedSnowflakes, snowflake)
 	}
-	promMetrics.AvailableProxies.With(prometheus.Labels{"nat": natType, "type": proxyType}).Inc()
+	ctx.metrics.promMetrics.AvailableProxies.With(prometheus.Labels{"nat": natType, "type": proxyType}).Inc()
 	ctx.snowflakeLock.Unlock()
 	ctx.idToSnowflake[id] = snowflake
 	return snowflake
@@ -216,7 +216,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if nil == offer {
 		ctx.metrics.lock.Lock()
 		ctx.metrics.proxyIdleCount++
-		promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "idle"}).Inc()
+		ctx.metrics.promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "idle"}).Inc()
 		ctx.metrics.lock.Unlock()
 
 		b, err = messages.EncodePollResponse("", false, "")
@@ -228,7 +228,7 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		w.Write(b)
 		return
 	}
-	promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "matched"}).Inc()
+	ctx.metrics.promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "matched"}).Inc()
 	b, err = messages.EncodePollResponse(string(offer.sdp), true, offer.natType)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -282,7 +282,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	if numSnowflakes <= 0 {
 		ctx.metrics.lock.Lock()
 		ctx.metrics.clientDeniedCount++
-		promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "denied"}).Inc()
+		ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "denied"}).Inc()
 		if offer.natType == NATUnrestricted {
 			ctx.metrics.clientUnrestrictedDeniedCount++
 		} else {
@@ -304,7 +304,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	case answer := <-snowflake.answerChannel:
 		ctx.metrics.lock.Lock()
 		ctx.metrics.clientProxyMatchCount++
-		promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "matched"}).Inc()
+		ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "matched"}).Inc()
 		ctx.metrics.lock.Unlock()
 		if _, err := w.Write(answer); err != nil {
 			log.Printf("unable to write answer with error: %v", err)
@@ -321,7 +321,7 @@ func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx.snowflakeLock.Lock()
-	promMetrics.AvailableProxies.With(prometheus.Labels{"nat": snowflake.natType, "type": snowflake.proxyType}).Dec()
+	ctx.metrics.promMetrics.AvailableProxies.With(prometheus.Labels{"nat": snowflake.natType, "type": snowflake.proxyType}).Dec()
 	delete(ctx.idToSnowflake, snowflake.id)
 	ctx.snowflakeLock.Unlock()
 }
@@ -506,7 +506,7 @@ func main() {
 	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
 	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
 	http.Handle("/metrics", MetricsHandler{metricsFilename, metricsHandler})
-	http.Handle("/prometheus", promhttp.HandlerFor(promMetrics.registry, promhttp.HandlerOpts{}))
+	http.Handle("/prometheus", promhttp.HandlerFor(ctx.metrics.promMetrics.registry, promhttp.HandlerOpts{}))
 
 	server := http.Server{
 		Addr: addr,
