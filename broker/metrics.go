@@ -53,7 +53,6 @@ type Metrics struct {
 	lock sync.Mutex
 
 	promMetrics *PromMetrics
-	once        sync.Once
 }
 
 type record struct {
@@ -202,7 +201,7 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 	m.promMetrics = initPrometheus()
 
 	// Write to log file every hour with updated metrics
-	go m.once.Do(m.logMetrics)
+	go m.logMetrics()
 
 	return m, nil
 }
