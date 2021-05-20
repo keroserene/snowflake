@@ -6,15 +6,13 @@ SessionDescriptions in order to negotiate a WebRTC connection.
 package main
 
 import (
-	"bytes"
 	"container/heap"
 	"crypto/tls"
+	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -31,23 +29,7 @@ import (
 )
 
 const (
-	ClientTimeout = 10
-	ProxyTimeout  = 10
-	readLimit     = 100000 //Maximum number of bytes to be read from an HTTP request
-
-	NATUnknown      = "unknown"
-	NATRestricted   = "restricted"
-	NATUnrestricted = "unrestricted"
-)
-
-// We support two client message formats. The legacy format is for backwards
-// combatability and relies heavily on HTTP headers and status codes to convey
-// information.
-type clientVersion int
-
-const (
-	v0 clientVersion = iota //legacy version
-	v1
+	readLimit = 100000 // Maximum number of bytes to be read from an HTTP request
 )
 
 type BrokerContext struct {
@@ -89,8 +71,8 @@ func NewBrokerContext(metricsLogger *log.Logger) *BrokerContext {
 
 // Implements the http.Handler interface
 type SnowflakeHandler struct {
-	*BrokerContext
-	handle func(*BrokerContext, http.ResponseWriter, *http.Request)
+	*IPC
+	handle func(*IPC, http.ResponseWriter, *http.Request)
 }
 
 // Implements the http.Handler interface
@@ -106,7 +88,7 @@ func (sh SnowflakeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if "OPTIONS" == r.Method {
 		return
 	}
-	sh.handle(sh.BrokerContext, w, r)
+	sh.handle(sh.IPC, w, r)
 }
 
 func (mh MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +181,7 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 /*
 For snowflake proxies to request a client from the Broker.
 */
-func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
+func proxyPolls(i *IPC, w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
 	if err != nil {
 		log.Println("Invalid data.")
@@ -207,47 +189,28 @@ func proxyPolls(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sid, proxyType, natType, clients, err := messages.DecodePollRequest(body)
-	if err != nil {
+	arg := messages.Arg{
+		Body:       body,
+		RemoteAddr: r.RemoteAddr,
+		NatType:    "",
+	}
+
+	var response []byte
+	err = i.ProxyPolls(arg, &response)
+	switch {
+	case err == nil:
+	case errors.Is(err, messages.ErrBadRequest):
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	// Log geoip stats
-	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		log.Println("Error processing proxy IP: ", err.Error())
-	} else {
-		ctx.metrics.lock.Lock()
-		ctx.metrics.UpdateCountryStats(remoteIP, proxyType, natType)
-		ctx.metrics.lock.Unlock()
-	}
-
-	// Wait for a client to avail an offer to the snowflake, or timeout if nil.
-	offer := ctx.RequestOffer(sid, proxyType, natType, clients)
-	var b []byte
-	if nil == offer {
-		ctx.metrics.lock.Lock()
-		ctx.metrics.proxyIdleCount++
-		ctx.metrics.promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "idle"}).Inc()
-		ctx.metrics.lock.Unlock()
-
-		b, err = messages.EncodePollResponse("", false, "")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(b)
-		return
-	}
-	ctx.metrics.promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "matched"}).Inc()
-	b, err = messages.EncodePollResponse(string(offer.sdp), true, offer.natType)
-	if err != nil {
+	case errors.Is(err, messages.ErrInternal):
+		fallthrough
+	default:
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if _, err := w.Write(b); err != nil {
+
+	if _, err := w.Write(response); err != nil {
 		log.Printf("proxyPolls unable to write offer with error: %v", err)
 	}
 }
@@ -258,162 +221,44 @@ type ClientOffer struct {
 	sdp     []byte
 }
 
-// Sends an encoded response to the client and an
-// HTTP server error if the response encoding fails
-func sendClientResponse(resp *messages.ClientPollResponse, w http.ResponseWriter) {
-	data, err := resp.EncodePollResponse()
-	if err != nil {
-		log.Printf("error encoding answer")
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		if _, err := w.Write([]byte(data)); err != nil {
-			log.Printf("unable to write answer with error: %v", err)
-		}
-	}
-}
-
 /*
 Expects a WebRTC SDP offer in the Request to give to an assigned
 snowflake proxy, which responds with the SDP answer to be sent in
 the HTTP response back to the client.
 */
-func clientOffers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
-	var err error
-	var version clientVersion
-
-	startTime := time.Now()
+func clientOffers(i *IPC, w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
 	if err != nil {
 		log.Printf("Error reading client request: %s", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	arg := messages.Arg{
+		Body:       body,
+		RemoteAddr: "",
+		NatType:    r.Header.Get("Snowflake-NAT-Type"),
+	}
+
+	var response []byte
+	err = i.ClientOffers(arg, &response)
+	switch {
+	case err == nil:
+	case errors.Is(err, messages.ErrUnavailable):
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	case errors.Is(err, messages.ErrTimeout):
+		w.WriteHeader(http.StatusGatewayTimeout)
+		return
+	default:
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if len(body) > 0 && body[0] == '{' {
-		version = v0
-	} else {
-		parts := bytes.SplitN(body, []byte("\n"), 2)
-		if len(parts) < 2 {
-			// no version number found
-			err := fmt.Errorf("unsupported message version")
-			sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, w)
-			return
-		}
-		body = parts[1]
-		if string(parts[0]) == "1.0" {
-			version = v1
 
-		} else {
-			err := fmt.Errorf("unsupported message version")
-			sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, w)
-			return
-		}
+	if _, err := w.Write(response); err != nil {
+		log.Printf("clientOffers unable to write answer with error: %v", err)
 	}
-
-	var offer *ClientOffer
-	switch version {
-	case v0:
-		offer = &ClientOffer{
-			natType: r.Header.Get("Snowflake-NAT-Type"),
-			sdp:     body,
-		}
-	case v1:
-		req, err := messages.DecodeClientPollRequest(body)
-		if err != nil {
-			sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, w)
-			return
-		}
-		offer = &ClientOffer{
-			natType: req.NAT,
-			sdp:     []byte(req.Offer),
-		}
-	default:
-		panic("unknown version")
-	}
-
-	// Only hand out known restricted snowflakes to unrestricted clients
-	var snowflakeHeap *SnowflakeHeap
-	if offer.natType == NATUnrestricted {
-		snowflakeHeap = ctx.restrictedSnowflakes
-	} else {
-		snowflakeHeap = ctx.snowflakes
-	}
-
-	// Immediately fail if there are no snowflakes available.
-	ctx.snowflakeLock.Lock()
-	numSnowflakes := snowflakeHeap.Len()
-	ctx.snowflakeLock.Unlock()
-	if numSnowflakes <= 0 {
-		ctx.metrics.lock.Lock()
-		ctx.metrics.clientDeniedCount++
-		ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "denied"}).Inc()
-		if offer.natType == NATUnrestricted {
-			ctx.metrics.clientUnrestrictedDeniedCount++
-		} else {
-			ctx.metrics.clientRestrictedDeniedCount++
-		}
-		ctx.metrics.lock.Unlock()
-		switch version {
-		case v0:
-			w.WriteHeader(http.StatusServiceUnavailable)
-		case v1:
-			resp := &messages.ClientPollResponse{Error: "no snowflake proxies currently available"}
-			sendClientResponse(resp, w)
-		default:
-			panic("unknown version")
-		}
-		return
-	}
-	// Otherwise, find the most available snowflake proxy, and pass the offer to it.
-	// Delete must be deferred in order to correctly process answer request later.
-	ctx.snowflakeLock.Lock()
-	snowflake := heap.Pop(snowflakeHeap).(*Snowflake)
-	ctx.snowflakeLock.Unlock()
-	snowflake.offerChannel <- offer
-
-	// Wait for the answer to be returned on the channel or timeout.
-	select {
-	case answer := <-snowflake.answerChannel:
-		ctx.metrics.lock.Lock()
-		ctx.metrics.clientProxyMatchCount++
-		ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "matched"}).Inc()
-		ctx.metrics.lock.Unlock()
-		switch version {
-		case v0:
-			if _, err := w.Write([]byte(answer)); err != nil {
-				log.Printf("unable to write answer with error: %v", err)
-			}
-		case v1:
-			resp := &messages.ClientPollResponse{Answer: answer}
-			sendClientResponse(resp, w)
-		default:
-			panic("unknown version")
-		}
-		// Initial tracking of elapsed time.
-		ctx.metrics.clientRoundtripEstimate = time.Since(startTime) /
-			time.Millisecond
-	case <-time.After(time.Second * ClientTimeout):
-		log.Println("Client: Timed out.")
-		switch version {
-		case v0:
-			w.WriteHeader(http.StatusGatewayTimeout)
-			if _, err := w.Write(
-				[]byte("timed out waiting for answer!")); err != nil {
-				log.Printf("unable to write timeout error, failed with error: %v",
-					err)
-			}
-		case v1:
-			resp := &messages.ClientPollResponse{
-				Error: "timed out waiting for answer!"}
-			sendClientResponse(resp, w)
-		default:
-			panic("unknown version")
-		}
-	}
-
-	ctx.snowflakeLock.Lock()
-	ctx.metrics.promMetrics.AvailableProxies.With(prometheus.Labels{"nat": snowflake.natType, "type": snowflake.proxyType}).Dec()
-	delete(ctx.idToSnowflake, snowflake.id)
-	ctx.snowflakeLock.Unlock()
 }
 
 /*
@@ -421,82 +266,51 @@ Expects snowflake proxes which have previously successfully received
 an offer from proxyHandler to respond with an answer in an HTTP POST,
 which the broker will pass back to the original client.
 */
-func proxyAnswers(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
-
+func proxyAnswers(i *IPC, w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
-	if nil != err || nil == body || len(body) <= 0 {
+	if err != nil {
 		log.Println("Invalid data.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	answer, id, err := messages.DecodeAnswerRequest(body)
-	if err != nil || answer == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	arg := messages.Arg{
+		Body:       body,
+		RemoteAddr: "",
+		NatType:    "",
 	}
 
-	var success = true
-	ctx.snowflakeLock.Lock()
-	snowflake, ok := ctx.idToSnowflake[id]
-	ctx.snowflakeLock.Unlock()
-	if !ok || nil == snowflake {
-		// The snowflake took too long to respond with an answer, so its client
-		// disappeared / the snowflake is no longer recognized by the Broker.
-		success = false
-	}
-	b, err := messages.EncodeAnswerResponse(success)
-	if err != nil {
-		log.Printf("Error encoding answer: %s", err.Error())
+	var response []byte
+	err = i.ProxyAnswers(arg, &response)
+	switch {
+	case err == nil:
+	case errors.Is(err, messages.ErrBadRequest):
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	case errors.Is(err, messages.ErrInternal):
+		fallthrough
+	default:
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.Write(b)
 
-	if success {
-		snowflake.answerChannel <- answer
+	if _, err := w.Write(response); err != nil {
+		log.Printf("proxyAnswers unable to write answer response with error: %v", err)
 	}
-
 }
 
-func debugHandler(ctx *BrokerContext, w http.ResponseWriter, r *http.Request) {
+func debugHandler(i *IPC, w http.ResponseWriter, r *http.Request) {
+	var response string
 
-	var webexts, browsers, standalones, unknowns int
-	var natRestricted, natUnrestricted, natUnknown int
-	ctx.snowflakeLock.Lock()
-	s := fmt.Sprintf("current snowflakes available: %d\n", len(ctx.idToSnowflake))
-	for _, snowflake := range ctx.idToSnowflake {
-		if snowflake.proxyType == "badge" {
-			browsers++
-		} else if snowflake.proxyType == "webext" {
-			webexts++
-		} else if snowflake.proxyType == "standalone" {
-			standalones++
-		} else {
-			unknowns++
-		}
-
-		switch snowflake.natType {
-		case NATRestricted:
-			natRestricted++
-		case NATUnrestricted:
-			natUnrestricted++
-		default:
-			natUnknown++
-		}
-
+	err := i.Debug(new(interface{}), &response)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	ctx.snowflakeLock.Unlock()
-	s += fmt.Sprintf("\tstandalone proxies: %d", standalones)
-	s += fmt.Sprintf("\n\tbrowser proxies: %d", browsers)
-	s += fmt.Sprintf("\n\twebext proxies: %d", webexts)
-	s += fmt.Sprintf("\n\tunknown proxies: %d", unknowns)
 
-	s += fmt.Sprintf("\nNAT Types available:")
-	s += fmt.Sprintf("\n\trestricted: %d", natRestricted)
-	s += fmt.Sprintf("\n\tunrestricted: %d", natUnrestricted)
-	s += fmt.Sprintf("\n\tunknown: %d", natUnknown)
-	if _, err := w.Write([]byte(s)); err != nil {
+	if _, err := w.Write([]byte(response)); err != nil {
 		log.Printf("writing proxy information returned error: %v ", err)
 	}
 }
@@ -589,12 +403,14 @@ func main() {
 
 	go ctx.Broker()
 
+	i := &IPC{ctx}
+
 	http.HandleFunc("/robots.txt", robotsTxtHandler)
 
-	http.Handle("/proxy", SnowflakeHandler{ctx, proxyPolls})
-	http.Handle("/client", SnowflakeHandler{ctx, clientOffers})
-	http.Handle("/answer", SnowflakeHandler{ctx, proxyAnswers})
-	http.Handle("/debug", SnowflakeHandler{ctx, debugHandler})
+	http.Handle("/proxy", SnowflakeHandler{i, proxyPolls})
+	http.Handle("/client", SnowflakeHandler{i, clientOffers})
+	http.Handle("/answer", SnowflakeHandler{i, proxyAnswers})
+	http.Handle("/debug", SnowflakeHandler{i, debugHandler})
 	http.Handle("/metrics", MetricsHandler{metricsFilename, metricsHandler})
 	http.Handle("/prometheus", promhttp.HandlerFor(ctx.metrics.promMetrics.registry, promhttp.HandlerOpts{}))
 
