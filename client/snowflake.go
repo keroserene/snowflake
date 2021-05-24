@@ -69,17 +69,15 @@ func socksAcceptLoop(ln *pt.SocksListener, transport *sf.Transport, shutdown cha
 
 			handler := make(chan struct{})
 			go func() {
-				// pass an empty address because the broker chooses the bridge
+				defer close(handler)
 				sconn, err := transport.Dial()
 				if err != nil {
 					log.Printf("dial error: %s", err)
+					return
 				}
+				defer sconn.Close()
 				// copy between the created Snowflake conn and the SOCKS conn
 				copyLoop(conn, sconn)
-				sconn.Close()
-				close(handler)
-				return
-
 			}()
 			select {
 			case <-shutdown:
