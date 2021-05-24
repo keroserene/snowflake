@@ -74,11 +74,21 @@ func NewSnowflakeClient(brokerURL, frontDomain string, iceAddresses []string, ke
 // Create a new Snowflake connection. Starts the collection of snowflakes and returns a
 // smux Stream.
 func (t *Transport) Dial() (net.Conn, error) {
+	// Cleanup functions to run before returning, in case of an error.
+	var cleanup []func()
+	defer func() {
+		// Run cleanup in reverse order, as defer does.
+		for i := len(cleanup) - 1; i >= 0; i-- {
+			cleanup[i]()
+		}
+	}()
+
 	// Prepare to collect remote WebRTC peers.
 	snowflakes, err := NewPeers(t.dialer)
 	if err != nil {
 		return nil, err
 	}
+	cleanup = append(cleanup, func() { snowflakes.End() })
 
 	// Use a real logger to periodically output how much traffic is happening.
 	snowflakes.BytesLogger = NewBytesSyncLogger()
@@ -92,15 +102,22 @@ func (t *Transport) Dial() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	cleanup = append(cleanup, func() {
+		pconn.Close()
+		sess.Close()
+	})
 
 	// On the smux session we overlay a stream.
 	stream, err := sess.OpenStream()
 	if err != nil {
 		return nil, err
 	}
-
 	// Begin exchanging data.
 	log.Printf("---- SnowflakeConn: begin stream %v ---", stream.ID())
+	cleanup = append(cleanup, func() { stream.Close() })
+
+	// All good, clear the cleanup list.
+	cleanup = nil
 	return &SnowflakeConn{Stream: stream, sess: sess, pconn: pconn, snowflakes: snowflakes}, nil
 }
 
