@@ -1,0 +1,46 @@
+.TH SNOWFLAKE-CLIENT "1" "June 2021" "snowflake-client" "User Commands"
+.SH NAME
+snowflake-client \- WebRTC pluggable transport client for Tor
+.SH DESCRIPTION
+Snowflake helps users circumvent censorship by making a WebRTC
+connection to volunteer proxies. These proxies relay Tor traffic to a
+Snowflake bridge and then through the Tor network.
+.SS "Usage of snowflake-client:"
+.HP
+\fB\-front\fR string
+.IP
+front domain
+.HP
+\fB\-ice\fR string
+.IP
+comma\-separated list of ICE servers
+.HP
+\fB\-keep\-local\-addresses\fR
+.IP
+keep local LAN address ICE candidates
+.HP
+\fB\-log\fR string
+.IP
+name of log file
+.HP
+\fB\-log\-to\-state\-dir\fR
+.IP
+resolve the log file relative to tor's pt state dir
+.HP
+\fB\-logToStateDir\fR
+.IP
+use \fB\-log\-to\-state\-dir\fR instead
+.HP
+\fB\-max\fR int
+.IP
+capacity for number of multiplexed WebRTC peers (default 1)
+.HP
+\fB\-unsafe\-logging\fR
+.IP
+prevent logs from being scrubbed
+.HP
+\fB\-url\fR string
+.IP
+URL of signaling broker
+.SH "SEE ALSO"
+https://snowflake.torproject.org

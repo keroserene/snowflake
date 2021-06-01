@@ -1,0 +1,38 @@
+.TH SNOWFLAKE-PROXY "1" "June 2021" "swnoflake-proxy" "User Commands"
+.SH NAME
+snowflake-proxy \- WebRTC pluggable transport proxy for Tor
+.SH DESCRIPTION
+Snowflake helps users circumvent censorship by making a WebRTC
+connection to volunteer proxies. These proxies relay Tor traffic to a
+Snowflake bridge and then through the Tor network.
+.SS "Usage of snowflake-proxy:"
+.HP
+\fB\-broker\fR string
+.IP
+broker URL (default "https://snowflake\-broker.bamsoftware.com/")
+.HP
+\fB\-capacity\fR uint
+.IP
+maximum concurrent clients (default 10)
+.HP
+\fB\-keep\-local\-addresses\fR
+.IP
+keep local LAN address ICE candidates
+.HP
+\fB\-log\fR string
+.IP
+log filename
+.HP
+\fB\-relay\fR string
+.IP
+websocket relay URL (default "wss://snowflake.bamsoftware.com/")
+.HP
+\fB\-stun\fR string
+.IP
+stun URL (default "stun:stun.stunprotocol.org:3478")
+.HP
+\fB\-unsafe\-logging\fR
+.IP
+prevent logs from being scrubbed
+.SH "SEE ALSO"
+https://snowflake.torproject.org
