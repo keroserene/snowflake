@@ -21,14 +21,10 @@ const (
 	NATUnrestricted = "unrestricted"
 )
 
-// We support two client message formats. The legacy format is for backwards
-// combatability and relies heavily on HTTP headers and status codes to convey
-// information.
 type clientVersion int
 
 const (
-	v0 clientVersion = iota //legacy version
-	v1
+	v1 clientVersion = iota
 )
 
 type IPC struct {
@@ -141,32 +137,22 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 	startTime := time.Now()
 	body := arg.Body
 
-	if len(body) > 0 && body[0] == '{' {
-		version = v0
+	parts := bytes.SplitN(body, []byte("\n"), 2)
+	if len(parts) < 2 {
+		// no version number found
+		err := fmt.Errorf("unsupported message version")
+		return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
+	}
+	body = parts[1]
+	if string(parts[0]) == "1.0" {
+		version = v1
 	} else {
-		parts := bytes.SplitN(body, []byte("\n"), 2)
-		if len(parts) < 2 {
-			// no version number found
-			err := fmt.Errorf("unsupported message version")
-			return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
-		}
-		body = parts[1]
-		if string(parts[0]) == "1.0" {
-			version = v1
-
-		} else {
-			err := fmt.Errorf("unsupported message version")
-			return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
-		}
+		err := fmt.Errorf("unsupported message version")
+		return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
 	}
 
 	var offer *ClientOffer
 	switch version {
-	case v0:
-		offer = &ClientOffer{
-			natType: arg.NatType,
-			sdp:     body,
-		}
 	case v1:
 		req, err := messages.DecodeClientPollRequest(body)
 		if err != nil {
@@ -203,8 +189,6 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		}
 		i.ctx.metrics.lock.Unlock()
 		switch version {
-		case v0:
-			return messages.ErrUnavailable
 		case v1:
 			resp := &messages.ClientPollResponse{Error: "no snowflake proxies currently available"}
 			return sendClientResponse(resp, response)
@@ -230,8 +214,6 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		i.ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "matched"}).Inc()
 		i.ctx.metrics.lock.Unlock()
 		switch version {
-		case v0:
-			*response = []byte(answer)
 		case v1:
 			resp := &messages.ClientPollResponse{Answer: answer}
 			err = sendClientResponse(resp, response)
@@ -243,8 +225,6 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 	case <-time.After(time.Second * ClientTimeout):
 		log.Println("Client: Timed out.")
 		switch version {
-		case v0:
-			err = messages.ErrTimeout
 		case v1:
 			resp := &messages.ClientPollResponse{
 				Error: "timed out waiting for answer!"}

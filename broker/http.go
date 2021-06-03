@@ -102,7 +102,6 @@ func proxyPolls(i *IPC, w http.ResponseWriter, r *http.Request) {
 	arg := messages.Arg{
 		Body:       body,
 		RemoteAddr: r.RemoteAddr,
-		NatType:    "",
 	}
 
 	var response []byte
@@ -138,26 +137,55 @@ func clientOffers(i *IPC, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle the legacy version
+	isLegacy := false
+	if len(body) > 0 && body[0] == '{' {
+		isLegacy = true
+		req := messages.ClientPollRequest{
+			Offer: string(body),
+			NAT:   r.Header.Get("Snowflake-NAT-Type"),
+		}
+		body, err = req.EncodePollRequest()
+		if err != nil {
+			log.Printf("Error shimming the legacy request: %s", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
 	arg := messages.Arg{
 		Body:       body,
 		RemoteAddr: "",
-		NatType:    r.Header.Get("Snowflake-NAT-Type"),
 	}
 
 	var response []byte
 	err = i.ClientOffers(arg, &response)
-	switch {
-	case err == nil:
-	case errors.Is(err, messages.ErrUnavailable):
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	case errors.Is(err, messages.ErrTimeout):
-		w.WriteHeader(http.StatusGatewayTimeout)
-		return
-	default:
+	if err != nil {
+		// Assert err == messages.ErrInternal
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	if isLegacy {
+		resp, err := messages.DecodeClientPollResponse(response)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		switch resp.Error {
+		case "":
+			response = []byte(resp.Answer)
+		case "no snowflake proxies currently available":
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		case "timed out waiting for answer!":
+			w.WriteHeader(http.StatusGatewayTimeout)
+			return
+		default:
+			panic("unknown error")
+		}
 	}
 
 	if _, err := w.Write(response); err != nil {
@@ -181,7 +209,6 @@ func proxyAnswers(i *IPC, w http.ResponseWriter, r *http.Request) {
 	arg := messages.Arg{
 		Body:       body,
 		RemoteAddr: "",
-		NatType:    "",
 	}
 
 	var response []byte
