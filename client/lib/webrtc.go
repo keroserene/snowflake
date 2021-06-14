@@ -21,8 +21,10 @@ type WebRTCPeer struct {
 	pc        *webrtc.PeerConnection
 	transport *webrtc.DataChannel
 
-	recvPipe    *io.PipeReader
-	writePipe   *io.PipeWriter
+	recvPipe  *io.PipeReader
+	writePipe *io.PipeWriter
+
+	mu          sync.Mutex // protects the following:
 	lastReceive time.Time
 
 	open   chan struct{} // Channel to notify when datachannel opens
@@ -89,12 +91,17 @@ func (c *WebRTCPeer) Close() error {
 // Should also update the DataChannel in underlying go-webrtc's to make Closes
 // more immediate / responsive.
 func (c *WebRTCPeer) checkForStaleness() {
+	c.mu.Lock()
 	c.lastReceive = time.Now()
+	c.mu.Unlock()
 	for {
 		if c.closed {
 			return
 		}
-		if time.Since(c.lastReceive) > SnowflakeTimeout {
+		c.mu.Lock()
+		lastReceive := c.lastReceive
+		c.mu.Unlock()
+		if time.Since(lastReceive) > SnowflakeTimeout {
 			log.Printf("WebRTC: No messages received for %v -- closing stale connection.",
 				SnowflakeTimeout)
 			c.Close()
@@ -173,7 +180,9 @@ func (c *WebRTCPeer) preparePeerConnection(config *webrtc.Configuration) error {
 				log.Printf("c.writePipe.CloseWithError returned error: %v", inerr)
 			}
 		}
+		c.mu.Lock()
 		c.lastReceive = time.Now()
+		c.mu.Unlock()
 	})
 	c.transport = dc
 	c.open = make(chan struct{})
