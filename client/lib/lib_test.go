@@ -33,7 +33,7 @@ type FakeDialer struct {
 
 func (w FakeDialer) Catch() (*WebRTCPeer, error) {
 	fmt.Println("Caught a dummy snowflake.")
-	return &WebRTCPeer{}, nil
+	return &WebRTCPeer{closed: make(chan struct{})}, nil
 }
 
 func (w FakeDialer) GetMax() int {
@@ -97,7 +97,7 @@ func TestSnowflakeClient(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(p.Count(), ShouldEqual, c)
 
-			// But popping and closing allows it to continue.
+			// But popping allows it to continue.
 			s := p.Pop()
 			s.Close()
 			So(s, ShouldNotBeNil)
@@ -127,7 +127,7 @@ func TestSnowflakeClient(t *testing.T) {
 			cnt := 5
 			p, _ := NewPeers(FakeDialer{max: cnt})
 			for i := 0; i < cnt; i++ {
-				p.activePeers.PushBack(&WebRTCPeer{})
+				p.activePeers.PushBack(&WebRTCPeer{closed: make(chan struct{})})
 			}
 			So(p.Count(), ShouldEqual, cnt)
 			p.End()

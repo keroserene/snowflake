@@ -83,7 +83,7 @@ func (p *Peers) Pop() *WebRTCPeer {
 		if !ok {
 			return nil
 		}
-		if snowflake.closed {
+		if snowflake.Closed() {
 			continue
 		}
 		// Set to use the same rate-limited traffic logger to keep consistency.
@@ -110,7 +110,7 @@ func (p *Peers) purgeClosedPeers() {
 		next := e.Next()
 		conn := e.Value.(*WebRTCPeer)
 		// Purge those marked for deletion.
-		if conn.closed {
+		if conn.Closed() {
 			p.activePeers.Remove(e)
 		}
 		e = next

@@ -28,7 +28,7 @@ type WebRTCPeer struct {
 	lastReceive time.Time
 
 	open   chan struct{} // Channel to notify when datachannel opens
-	closed bool
+	closed chan struct{}
 
 	once sync.Once // Synchronization for PeerConnection destruction
 
@@ -46,6 +46,7 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 		}
 		connection.id = "snowflake-" + hex.EncodeToString(buf[:])
 	}
+	connection.closed = make(chan struct{})
 
 	// Override with something that's not NullLogger to have real logging.
 	connection.BytesLogger = &BytesNullLogger{}
@@ -78,9 +79,19 @@ func (c *WebRTCPeer) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+//Returns a boolean indicated whether the peer is closed
+func (c *WebRTCPeer) Closed() bool {
+	select {
+	case <-c.closed:
+		return true
+	default:
+	}
+	return false
+}
+
 func (c *WebRTCPeer) Close() error {
 	c.once.Do(func() {
-		c.closed = true
+		close(c.closed)
 		c.cleanup()
 		log.Printf("WebRTC: Closing")
 	})
@@ -95,9 +106,6 @@ func (c *WebRTCPeer) checkForStaleness() {
 	c.lastReceive = time.Now()
 	c.mu.Unlock()
 	for {
-		if c.closed {
-			return
-		}
 		c.mu.Lock()
 		lastReceive := c.lastReceive
 		c.mu.Unlock()
@@ -107,7 +115,11 @@ func (c *WebRTCPeer) checkForStaleness() {
 			c.Close()
 			return
 		}
-		<-time.After(time.Second)
+		select {
+		case <-c.closed:
+			return
+		case <-time.After(time.Second):
+		}
 	}
 }
 
