@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"testing"
+	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -154,6 +155,25 @@ func TestSnowflakeClient(t *testing.T) {
 			So(r, ShouldEqual, wc4)
 		})
 
+		Convey("Terminate Connect() loop", func() {
+			p, _ := NewPeers(FakeDialer{max: 4})
+			go func() {
+				for {
+					p.Collect()
+					select {
+					case <-p.Melted():
+						return
+					default:
+					}
+				}
+			}()
+			<-time.After(10 * time.Second)
+
+			p.End()
+			<-p.Melted()
+			So(p.Count(), ShouldEqual, 0)
+		})
+
 	})
 
 	Convey("Dialers", t, func() {
@@ -243,6 +263,17 @@ func TestSnowflakeClient(t *testing.T) {
 
 	})
 
+}
+
+func TestWebRTCPeer(t *testing.T) {
+	Convey("WebRTCPeer", t, func(c C) {
+		p := &WebRTCPeer{closed: make(chan struct{})}
+		Convey("checks for staleness", func() {
+			go p.checkForStaleness()
+			<-time.After(2 * SnowflakeTimeout)
+			So(p.Closed(), ShouldEqual, true)
+		})
+	})
 }
 
 func TestICEServerParser(t *testing.T) {
