@@ -26,8 +26,7 @@ type Peers struct {
 	snowflakeChan chan *WebRTCPeer
 	activePeers   *list.List
 
-	melt   chan struct{}
-	melted bool
+	melt chan struct{}
 
 	collection sync.WaitGroup
 }
@@ -51,8 +50,10 @@ func (p *Peers) Collect() (*WebRTCPeer, error) {
 	// Engage the Snowflake Catching interface, which must be available.
 	p.collection.Add(1)
 	defer p.collection.Done()
-	if p.melted {
+	select {
+	case <-p.melt:
 		return nil, fmt.Errorf("Snowflakes have melted")
+	default:
 	}
 	if nil == p.Tongue {
 		return nil, errors.New("missing Tongue to catch Snowflakes with")
@@ -120,7 +121,6 @@ func (p *Peers) purgeClosedPeers() {
 // Close all Peers contained here.
 func (p *Peers) End() {
 	close(p.melt)
-	p.melted = true
 	p.collection.Wait()
 	close(p.snowflakeChan)
 	cnt := p.Count()
