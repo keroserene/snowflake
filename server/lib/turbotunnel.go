@@ -1,12 +1,13 @@
 package lib
 
 import (
+	"net"
 	"sync"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/turbotunnel"
 )
 
-// clientIDMap is a fixed-capacity mapping from ClientIDs to address strings.
+// clientIDMap is a fixed-capacity mapping from ClientIDs to a net.Addr.
 // Adding a new entry using the Set method causes the oldest existing entry to
 // be forgotten.
 //
@@ -23,7 +24,7 @@ type clientIDMap struct {
 	// entries is a circular buffer of (ClientID, addr) pairs.
 	entries []struct {
 		clientID turbotunnel.ClientID
-		addr     string
+		addr     net.Addr
 	}
 	// oldest is the index of the oldest member of the entries buffer, the
 	// one that will be overwritten at the next call to Set.
@@ -38,7 +39,7 @@ func newClientIDMap(capacity int) *clientIDMap {
 	return &clientIDMap{
 		entries: make([]struct {
 			clientID turbotunnel.ClientID
-			addr     string
+			addr     net.Addr
 		}, capacity),
 		oldest:  0,
 		current: make(map[turbotunnel.ClientID]int),
@@ -48,7 +49,7 @@ func newClientIDMap(capacity int) *clientIDMap {
 // Set adds a mapping from clientID to addr, replacing any previous mapping for
 // clientID. It may also cause the clientIDMap to forget at most one other
 // mapping, the oldest one.
-func (m *clientIDMap) Set(clientID turbotunnel.ClientID, addr string) {
+func (m *clientIDMap) Set(clientID turbotunnel.ClientID, addr net.Addr) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if len(m.entries) == 0 {
@@ -73,13 +74,13 @@ func (m *clientIDMap) Set(clientID turbotunnel.ClientID, addr string) {
 
 // Get returns a previously stored mapping. The second return value indicates
 // whether clientID was actually present in the map. If it is false, then the
-// returned address string will be "".
-func (m *clientIDMap) Get(clientID turbotunnel.ClientID) (string, bool) {
+// returned address will be nil.
+func (m *clientIDMap) Get(clientID turbotunnel.ClientID) (net.Addr, bool) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if i, ok := m.current[clientID]; ok {
 		return m.entries[i].addr, true
 	} else {
-		return "", false
+		return nil, false
 	}
 }

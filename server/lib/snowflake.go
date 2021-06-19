@@ -181,7 +181,7 @@ func (l *SnowflakeListener) acceptStreams(conn *kcp.UDPSession) error {
 			}
 			return err
 		}
-		l.QueueConn(&SnowflakeClientConn{Conn: stream, address: clientAddr(addr)})
+		l.QueueConn(&SnowflakeClientConn{Conn: stream, address: addr})
 	}
 }
 

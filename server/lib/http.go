@@ -138,7 +138,7 @@ func turbotunnelMode(conn net.Conn, addr net.Addr, pconn *turbotunnel.QueuePacke
 	// recent WebSocket connection that has had to do with a session, at the
 	// time the session is established, is the IP address that should be
 	// credited for the entire KCP session.
-	clientIDAddrMap.Set(clientID, addr.String())
+	clientIDAddrMap.Set(clientID, addr)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
