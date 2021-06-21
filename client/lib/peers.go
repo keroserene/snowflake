@@ -28,7 +28,7 @@ type Peers struct {
 
 	melt chan struct{}
 
-	collection sync.WaitGroup
+	collectLock sync.Mutex
 }
 
 // Construct a fresh container of remote peers.
@@ -48,8 +48,8 @@ func NewPeers(tongue Tongue) (*Peers, error) {
 // As part of |SnowflakeCollector| interface.
 func (p *Peers) Collect() (*WebRTCPeer, error) {
 	// Engage the Snowflake Catching interface, which must be available.
-	p.collection.Add(1)
-	defer p.collection.Done()
+	p.collectLock.Lock()
+	defer p.collectLock.Unlock()
 	select {
 	case <-p.melt:
 		return nil, fmt.Errorf("Snowflakes have melted")
@@ -121,7 +121,8 @@ func (p *Peers) purgeClosedPeers() {
 // Close all Peers contained here.
 func (p *Peers) End() {
 	close(p.melt)
-	p.collection.Wait()
+	p.collectLock.Lock()
+	defer p.collectLock.Unlock()
 	close(p.snowflakeChan)
 	cnt := p.Count()
 	for e := p.activePeers.Front(); e != nil; {
