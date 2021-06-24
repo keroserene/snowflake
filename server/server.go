@@ -41,7 +41,7 @@ additional HTTP listener on port 80 to work with ACME.
 	flag.PrintDefaults()
 }
 
-// Copy from one stream to another.
+//proxy copies data bidirectionally from one connection to another.
 func proxy(local *net.TCPConn, conn net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -66,6 +66,20 @@ func proxy(local *net.TCPConn, conn net.Conn) {
 	wg.Wait()
 }
 
+//handleConn bidirectionally connects a client snowflake connection with an ORPort.
+func handleConn(conn net.Conn) error {
+	addr := conn.RemoteAddr().String()
+	statsChannel <- addr != ""
+	or, err := pt.DialOr(&ptInfo, addr, ptMethodName)
+	if err != nil {
+		return fmt.Errorf("failed to connect to ORPort: %s", err)
+	}
+	defer or.Close()
+	proxy(or, conn)
+	return nil
+}
+
+//acceptLoop accepts incoming client snowflake connection and passes them to a handler function.
 func acceptLoop(ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
@@ -76,17 +90,13 @@ func acceptLoop(ln net.Listener) {
 			log.Printf("Snowflake accept error: %s", err)
 			break
 		}
-		defer conn.Close()
-
-		addr := conn.RemoteAddr().String()
-		statsChannel <- addr != ""
-		or, err := pt.DialOr(&ptInfo, addr, ptMethodName)
-		if err != nil {
-			log.Printf("failed to connect to ORPort: %s", err)
-			continue
-		}
-		defer or.Close()
-		go proxy(or, conn)
+		go func() {
+			defer conn.Close()
+			err := handleConn(conn)
+			if err != nil {
+				log.Printf("handleConn: %v", err)
+			}
+		}()
 	}
 }
 
