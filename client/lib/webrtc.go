@@ -101,7 +101,7 @@ func (c *WebRTCPeer) Close() error {
 // Prevent long-lived broken remotes.
 // Should also update the DataChannel in underlying go-webrtc's to make Closes
 // more immediate / responsive.
-func (c *WebRTCPeer) checkForStaleness() {
+func (c *WebRTCPeer) checkForStaleness(timeout time.Duration) {
 	c.mu.Lock()
 	c.lastReceive = time.Now()
 	c.mu.Unlock()
@@ -109,9 +109,9 @@ func (c *WebRTCPeer) checkForStaleness() {
 		c.mu.Lock()
 		lastReceive := c.lastReceive
 		c.mu.Unlock()
-		if time.Since(lastReceive) > SnowflakeTimeout {
+		if time.Since(lastReceive) > timeout {
 			log.Printf("WebRTC: No messages received for %v -- closing stale connection.",
-				SnowflakeTimeout)
+				timeout)
 			c.Close()
 			return
 		}
@@ -147,7 +147,7 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 		return errors.New("timeout waiting for DataChannel.OnOpen")
 	}
 
-	go c.checkForStaleness()
+	go c.checkForStaleness(SnowflakeTimeout)
 	return nil
 }
 

@@ -269,8 +269,8 @@ func TestWebRTCPeer(t *testing.T) {
 	Convey("WebRTCPeer", t, func(c C) {
 		p := &WebRTCPeer{closed: make(chan struct{})}
 		Convey("checks for staleness", func() {
-			go p.checkForStaleness()
-			<-time.After(2 * SnowflakeTimeout)
+			go p.checkForStaleness(time.Second)
+			<-time.After(2 * time.Second)
 			So(p.Closed(), ShouldEqual, true)
 		})
 	})
