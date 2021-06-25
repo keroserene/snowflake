@@ -17,8 +17,9 @@ const version = "1.2"
 {
   Sid: [generated session id of proxy],
   Version: 1.2,
-  Type: ["badge"|"webext"|"standalone"]
-  NAT: ["unknown"|"restricted"|"unrestricted"]
+  Type: ["badge"|"webext"|"standalone"],
+  NAT: ["unknown"|"restricted"|"unrestricted"],
+  Clients: [number of current clients, rounded down to multiples of 8]
 }
 
 == ProxyPollResponse ==
@@ -79,43 +80,48 @@ type ProxyPollRequest struct {
 	Version string
 	Type    string
 	NAT     string
+	Clients int
 }
 
-func EncodePollRequest(sid string, proxyType string, natType string) ([]byte, error) {
+func EncodePollRequest(sid string, proxyType string, natType string, clients int) ([]byte, error) {
 	return json.Marshal(ProxyPollRequest{
 		Sid:     sid,
 		Version: version,
 		Type:    proxyType,
 		NAT:     natType,
+		Clients: clients,
 	})
 }
 
 // Decodes a poll message from a snowflake proxy and returns the
-// sid and proxy type of the proxy on success and an error if it failed
-func DecodePollRequest(data []byte) (string, string, string, error) {
+// sid, proxy type, nat type and clients of the proxy on success
+// and an error if it failed
+func DecodePollRequest(data []byte) (sid string, proxyType string, natType string, clients int, err error) {
 	var message ProxyPollRequest
 
-	err := json.Unmarshal(data, &message)
+	err = json.Unmarshal(data, &message)
 	if err != nil {
-		return "", "", "", err
+		return
 	}
 
 	majorVersion := strings.Split(message.Version, ".")[0]
 	if majorVersion != "1" {
-		return "", "", "", fmt.Errorf("using unknown version")
+		err = fmt.Errorf("using unknown version")
+		return
 	}
 
 	// Version 1.x requires an Sid
 	if message.Sid == "" {
-		return "", "", "", fmt.Errorf("no supplied session id")
+		err = fmt.Errorf("no supplied session id")
+		return
 	}
 
-	natType := message.NAT
+	natType = message.NAT
 	if natType == "" {
 		natType = "unknown"
 	}
 
-	return message.Sid, message.Type, natType, nil
+	return message.Sid, message.Type, natType, message.Clients, nil
 }
 
 type ProxyPollResponse struct {

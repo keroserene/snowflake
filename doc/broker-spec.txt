@@ -141,7 +141,9 @@ POST /proxy HTTP
 {
   Sid: [generated session id of proxy],
   Version: 1.1,
-  Type: ["badge"|"webext"|"standalone"|"mobile"]
+  Type: ["badge"|"webext"|"standalone"|"mobile"],
+  NAT: ["unknown"|"restricted"|"unrestricted"],
+  Clients: [number of current clients, rounded down to multiples of 8]
 }
 ```
 

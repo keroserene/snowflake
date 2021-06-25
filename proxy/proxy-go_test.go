@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -337,8 +336,9 @@ func TestBrokerInteractions(t *testing.T) {
 	const sampleAnswer = `{"type":"answer","sdp":` + sampleSDP + `}`
 
 	Convey("Proxy connections to broker", t, func() {
-		broker := new(SignalingServer)
-		broker.url, _ = url.Parse("localhost")
+		broker, err := newSignalingServer("localhost", false)
+		So(err, ShouldEqual, nil)
+		tokens = newTokens(0)
 
 		//Mock peerConnection
 		config = webrtc.Configuration{
@@ -468,17 +468,6 @@ func TestUtilityFuncs(t *testing.T) {
 			So(len(bytes), ShouldEqual, 0)
 			So(err, ShouldEqual, io.ErrClosedPipe)
 		})
-	})
-	Convey("Tokens", t, func() {
-		tokens = make(chan bool, 2)
-		for i := uint(0); i < 2; i++ {
-			tokens <- true
-		}
-		So(len(tokens), ShouldEqual, 2)
-		getToken()
-		So(len(tokens), ShouldEqual, 1)
-		retToken()
-		So(len(tokens), ShouldEqual, 2)
 	})
 	Convey("SessionID Generation", t, func() {
 		sid1 := genSessionID()

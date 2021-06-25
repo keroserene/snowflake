@@ -15,6 +15,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 			sid       string
 			proxyType string
 			natType   string
+			clients   int
 			data      string
 			err       error
 		}{
@@ -23,6 +24,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"ymbcCMto7KHNGYlp",
 				"",
 				"unknown",
+				0,
 				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`,
 				nil,
 			},
@@ -31,6 +33,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"ymbcCMto7KHNGYlp",
 				"standalone",
 				"unknown",
+				0,
 				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.1","Type":"standalone"}`,
 				nil,
 			},
@@ -39,7 +42,17 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"ymbcCMto7KHNGYlp",
 				"standalone",
 				"restricted",
+				0,
 				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted"}`,
+				nil,
+			},
+			{
+				//Version 1.2 proxy message with clients
+				"ymbcCMto7KHNGYlp",
+				"standalone",
+				"restricted",
+				24,
+				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted","Clients":24}`,
 				nil,
 			},
 			{
@@ -47,6 +60,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"",
 				"",
 				"",
+				0,
 				"",
 				&json.SyntaxError{},
 			},
@@ -54,6 +68,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"",
 				"",
 				"",
+				0,
 				`{"Sid":"ymbcCMto7KHNGYlp"}`,
 				fmt.Errorf(""),
 			},
@@ -61,6 +76,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"",
 				"",
 				"",
+				0,
 				"{}",
 				fmt.Errorf(""),
 			},
@@ -68,6 +84,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"",
 				"",
 				"",
+				0,
 				`{"Version":"1.0"}`,
 				fmt.Errorf(""),
 			},
@@ -75,14 +92,16 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				"",
 				"",
 				"",
+				0,
 				`{"Version":"2.0"}`,
 				fmt.Errorf(""),
 			},
 		} {
-			sid, proxyType, natType, err := DecodePollRequest([]byte(test.data))
+			sid, proxyType, natType, clients, err := DecodePollRequest([]byte(test.data))
 			So(sid, ShouldResemble, test.sid)
 			So(proxyType, ShouldResemble, test.proxyType)
 			So(natType, ShouldResemble, test.natType)
+			So(clients, ShouldEqual, test.clients)
 			So(err, ShouldHaveSameTypeAs, test.err)
 		}
 
@@ -91,12 +110,13 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 
 func TestEncodeProxyPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
-		b, err := EncodePollRequest("ymbcCMto7KHNGYlp", "standalone", "unknown")
+		b, err := EncodePollRequest("ymbcCMto7KHNGYlp", "standalone", "unknown", 16)
 		So(err, ShouldEqual, nil)
-		sid, proxyType, natType, err := DecodePollRequest(b)
+		sid, proxyType, natType, clients, err := DecodePollRequest(b)
 		So(sid, ShouldEqual, "ymbcCMto7KHNGYlp")
 		So(proxyType, ShouldEqual, "standalone")
 		So(natType, ShouldEqual, "unknown")
+		So(clients, ShouldEqual, 16)
 		So(err, ShouldEqual, nil)
 	})
 }
