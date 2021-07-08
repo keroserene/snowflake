@@ -12,4 +12,7 @@ type Arg struct {
 var (
 	ErrBadRequest = errors.New("bad request")
 	ErrInternal   = errors.New("internal error")
+
+	StrTimedOut  = "timed out waiting for answer!"
+	StrNoProxies = "no snowflake proxies currently available"
 )

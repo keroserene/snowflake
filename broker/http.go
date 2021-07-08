@@ -177,10 +177,10 @@ func clientOffers(i *IPC, w http.ResponseWriter, r *http.Request) {
 		switch resp.Error {
 		case "":
 			response = []byte(resp.Answer)
-		case "no snowflake proxies currently available":
+		case messages.StrNoProxies:
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
-		case "timed out waiting for answer!":
+		case messages.StrTimedOut:
 			w.WriteHeader(http.StatusGatewayTimeout)
 			return
 		default:

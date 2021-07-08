@@ -190,7 +190,7 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		i.ctx.metrics.lock.Unlock()
 		switch version {
 		case v1:
-			resp := &messages.ClientPollResponse{Error: "no snowflake proxies currently available"}
+			resp := &messages.ClientPollResponse{Error: messages.StrNoProxies}
 			return sendClientResponse(resp, response)
 		default:
 			panic("unknown version")
@@ -226,8 +226,7 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		log.Println("Client: Timed out.")
 		switch version {
 		case v1:
-			resp := &messages.ClientPollResponse{
-				Error: "timed out waiting for answer!"}
+			resp := &messages.ClientPollResponse{Error: messages.StrTimedOut}
 			err = sendClientResponse(resp, response)
 		default:
 			panic("unknown version")
