@@ -138,6 +138,10 @@ func clientOffers(i *IPC, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle the legacy version
+	//
+	// We support two client message formats. The legacy format is for backwards
+	// combatability and relies heavily on HTTP headers and status codes to convey
+	// information.
 	isLegacy := false
 	if len(body) > 0 && body[0] == '{' {
 		isLegacy = true
@@ -161,7 +165,6 @@ func clientOffers(i *IPC, w http.ResponseWriter, r *http.Request) {
 	var response []byte
 	err = i.ClientOffers(arg, &response)
 	if err != nil {
-		// Assert err == messages.ErrInternal
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
