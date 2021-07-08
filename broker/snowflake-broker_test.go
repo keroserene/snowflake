@@ -173,10 +173,10 @@ func TestBroker(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("with a client offer if available.", func() {
-				go func(ctx *BrokerContext) {
+				go func(i *IPC) {
 					proxyPolls(i, w, r)
 					done <- true
-				}(ctx)
+				}(i)
 				// Pass a fake client offer to this proxy
 				p := <-ctx.proxyPolls
 				So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
@@ -187,10 +187,10 @@ func TestBroker(t *testing.T) {
 			})
 
 			Convey("return empty 200 OK when no client offer is available.", func() {
-				go func(ctx *BrokerContext) {
+				go func(i *IPC) {
 					proxyPolls(i, w, r)
 					done <- true
-				}(ctx)
+				}(i)
 				p := <-ctx.proxyPolls
 				So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
 				// nil means timeout
@@ -202,6 +202,7 @@ func TestBroker(t *testing.T) {
 		})
 
 		Convey("Responds to proxy answers...", func() {
+			done := make(chan bool)
 			s := ctx.AddSnowflake("test", "", NATUnrestricted, 0)
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte(`{"Version":"1.0","Sid":"test","Answer":"test"}`))
@@ -209,10 +210,12 @@ func TestBroker(t *testing.T) {
 			Convey("by passing to the client if valid.", func() {
 				r, err := http.NewRequest("POST", "snowflake.broker/answer", data)
 				So(err, ShouldBeNil)
-				go func(ctx *BrokerContext) {
+				go func(i *IPC) {
 					proxyAnswers(i, w, r)
-				}(ctx)
+					done <- true
+				}(i)
 				answer := <-s.answerChannel
+				<-done
 				So(w.Code, ShouldEqual, http.StatusOK)
 				So(answer, ShouldResemble, "test")
 			})
@@ -265,10 +268,10 @@ func TestBroker(t *testing.T) {
 			rp, err := http.NewRequest("POST", "snowflake.broker/proxy", datap)
 			So(err, ShouldBeNil)
 
-			go func(ctx *BrokerContext) {
+			go func(i *IPC) {
 				proxyPolls(i, wp, rp)
 				proxy_done <- true
-			}(ctx)
+			}(i)
 
 			// Client offer
 			wc := httptest.NewRecorder()
@@ -289,10 +292,10 @@ func TestBroker(t *testing.T) {
 			datap = bytes.NewReader([]byte(`{"Version":"1.0","Sid":"ymbcCMto7KHNGYlp","Answer":"test"}`))
 			rp, err = http.NewRequest("POST", "snowflake.broker/answer", datap)
 			So(err, ShouldBeNil)
-			go func(ctx *BrokerContext) {
+			go func(i *IPC) {
 				proxyAnswers(i, wp, rp)
 				proxy_done <- true
-			}(ctx)
+			}(i)
 
 			<-proxy_done
 			<-client_done
@@ -682,10 +685,10 @@ func TestMetrics(t *testing.T) {
 			r, err := http.NewRequest("POST", "snowflake.broker/proxy", data)
 			r.RemoteAddr = "129.97.208.23:8888" //CA geoip
 			So(err, ShouldBeNil)
-			go func(ctx *BrokerContext) {
+			go func(i *IPC) {
 				proxyPolls(i, w, r)
 				done <- true
-			}(ctx)
+			}(i)
 			p := <-ctx.proxyPolls //manually unblock poll
 			p.offerChannel <- nil
 			<-done
