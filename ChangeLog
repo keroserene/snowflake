@@ -1,3 +1,14 @@
+Changes in version v1.1.0 - 2021-07-13
+
+- Refactors of the Snowflake broker code
+- Refactors of the Snowflake proxy code
+- Issue 40048: assign proxies based on self-reported client load
+- Issue 40052: fixed a memory leak in the server accept loop
+- Version bump of kcp and smux libraries
+- Bug fix to pass the correct client address to the Snowflake bridge metrics
+counter
+- Bug fixes to prevent race conditions in the Snowflake client 
+
 Changes in version v1.0.0 - 2021-06-07
 
 - Initial release.
