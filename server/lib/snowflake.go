@@ -16,6 +16,11 @@ import (
 	"golang.org/x/net/http2"
 )
 
+const (
+	WindowSize = 65535
+	StreamSize = 1048576 //1MB
+)
+
 // Transport is a structure with methods that conform to the Go PT v2.1 API
 // https://github.com/Pluggable-Transports/Pluggable-Transports-spec/blob/master/releases/PTSpecV2.1/Pluggable%20Transport%20Specification%20v2.1%20-%20Go%20Transport%20API.pdf
 type Transport struct {
@@ -168,6 +173,7 @@ func (l *SnowflakeListener) acceptStreams(conn *kcp.UDPSession) error {
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.Version = 2
 	smuxConfig.KeepAliveTimeout = 10 * time.Minute
+	smuxConfig.MaxStreamBuffer = StreamSize
 	sess, err := smux.Server(conn, smuxConfig)
 	if err != nil {
 		return err
@@ -201,7 +207,7 @@ func (l *SnowflakeListener) acceptSessions(ln *kcp.Listener) error {
 		conn.SetStreamMode(true)
 		// Set the maximum send and receive window sizes to a high number
 		// Removes KCP bottlenecks: https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/issues/40026
-		conn.SetWindowSize(65535, 65535)
+		conn.SetWindowSize(WindowSize, WindowSize)
 		// Disable the dynamic congestion window (limit only by the
 		// maximum of local and remote static windows).
 		conn.SetNoDelay(

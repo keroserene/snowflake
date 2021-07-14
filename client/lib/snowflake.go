@@ -21,6 +21,9 @@ const (
 	SnowflakeTimeout = 20 * time.Second
 	// How long to wait for the OnOpen callback on a DataChannel.
 	DataChannelTimeout = 10 * time.Second
+
+	WindowSize = 65535
+	StreamSize = 1048576 //1MB
 )
 
 type dummyAddr struct{}
@@ -224,7 +227,7 @@ func newSession(snowflakes SnowflakeCollector) (net.PacketConn, *smux.Session, e
 	conn.SetStreamMode(true)
 	// Set the maximum send and receive window sizes to a high number
 	// Removes KCP bottlenecks: https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/issues/40026
-	conn.SetWindowSize(65535, 65535)
+	conn.SetWindowSize(WindowSize, WindowSize)
 	// Disable the dynamic congestion window (limit only by the
 	// maximum of local and remote static windows).
 	conn.SetNoDelay(
@@ -237,6 +240,8 @@ func newSession(snowflakes SnowflakeCollector) (net.PacketConn, *smux.Session, e
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.Version = 2
 	smuxConfig.KeepAliveTimeout = 10 * time.Minute
+	smuxConfig.MaxStreamBuffer = StreamSize
+
 	sess, err := smux.Client(conn, smuxConfig)
 	if err != nil {
 		conn.Close()
