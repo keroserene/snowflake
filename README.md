@@ -43,7 +43,7 @@ You can contribute to Snowflake by running a Snowflake proxy. We have the option
 
 #### Using the Snowflake Library with Other Applications
 
-Snowflake can be used as a Go API, and adheres to the [v2.1 pluggable transports specification](). For more information on using the Snowflake Go library, see the [Snowflake library documentation](doc/using-the-snowflake-library).
+Snowflake can be used as a Go API, and adheres to the [v2.1 pluggable transports specification](). For more information on using the Snowflake Go library, see the [Snowflake library documentation](doc/using-the-snowflake-library.md).
 
 ### Test Environment
 
