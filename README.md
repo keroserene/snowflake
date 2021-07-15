@@ -8,65 +8,46 @@ Pluggable Transport using WebRTC, inspired by Flashproxy.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
+- [Structure of this Repository](#structure-of-this-repository)
 - [Usage](#usage)
-  - [Dependencies](#dependencies)
-  - [More Info](#more-info)
-  - [Building](#building)
-  - [Test Environment](#test-environment)
+  - [Using Snowflake with Tor](#using-snowflake-with-tor)
+  - [Running a Snowflake Proxy](#running-a-snowflake-proxy)
+  - [Using the Snowflake Library with Other Applications](#using-the-snowflake-library-with-other-applications)
+- [Test Environment](#test-environment)
 - [FAQ](#faq)
-- [Appendix](#appendix)
-    - [-- Testing with Standalone Proxy --](#---testing-with-standalone-proxy---)
+- [More info and links](#more-info-and-links)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+### Structure of this Repository
+
+- `broker/` contains code for the Snowflake broker
+- `doc/` contains Snowflake documentation and manpages
+- `client/` contains the Tor pluggable transport client and client library code
+- `common/` contains generic libraries used by multiple pieces of Snowflake
+- `proxy/` contains code for the Go standalone Snowflake proxy
+- `probetest/` contains code for a NAT probetesting service
+- `server/` contains the Tor pluggable transport server and server library code
+
 ### Usage
 
-```
-cd client/
-go get
-go build
-tor -f torrc
-```
-This should start the client plugin, bootstrapping to 100% using WebRTC.
+Snowflake is currently deployed as a pluggable transport for Tor.
 
-#### Dependencies
+#### Using Snowflake with Tor
 
-Client:
-- [pion/webrtc](https://github.com/pion/webrtc)
-- Go 1.13+
+To use the Snowflake client with Tor, you will need to add the appropriate `Bridge` and `ClientTransportPlugin` lines to your [torrc](https://2019.www.torproject.org/docs/tor-manual.html.en) file. See the [client README](client) for more information on building and running the Snowflake client.
 
----
+#### Running a Snowflake Proxy
 
-#### More Info
+You can contribute to Snowflake by running a Snowflake proxy. We have the option to run a proxy in your browser or as a standalone Go program. See our [community documentation](https://community.torproject.org/relay/setup/snowflake/) for more details. 
 
-Tor can plug in the Snowflake client via a correctly configured `torrc`.
-For example:
+#### Using the Snowflake Library with Other Applications
 
-```
-ClientTransportPlugin snowflake exec ./client \
--url https://snowflake-broker.azureedge.net/ \
--front ajax.aspnetcdn.com \
--ice stun:stun.l.google.com:19302
--max 3
-```
+Snowflake can be used as a Go API, and adheres to the [v2.1 pluggable transports specification](). For more information on using the Snowflake Go library, see the [Snowflake library documentation](doc/using-the-snowflake-library).
 
-The flags `-url` and `-front` allow the Snowflake client to speak to the Broker,
-in order to get connected with some volunteer's browser proxy. `-ice` is a
-comma-separated list of ICE servers, which are required for NAT traversal.
-
-For logging, run `tail -F snowflake.log` in a second terminal.
-
-You can modify the `torrc` to use your own broker:
-
-```
-ClientTransportPlugin snowflake exec ./client --meek
-```
-
-
-#### Test Environment
+### Test Environment
 
 There is a Docker-based test environment at https://github.com/cohosh/snowbox.
-
 
 ### FAQ
 
@@ -103,17 +84,6 @@ manual port forwarding!
 It utilizes the "ICE" negotiation via WebRTC, and also involves a great
 abundance of ephemeral and short-lived (and special!) volunteer proxies...
 
-### Appendix
+### More info and links
 
-##### -- Testing with Standalone Proxy --
-
-```
-cd proxy
-go build
-./proxy
-```
-
-More documentation on the way.
-
-Also available at:
-[torproject.org/pluggable-transports/snowflake](https://gitweb.torproject.org/pluggable-transports/snowflake.git/)
+We have more documentation in the [Snowflake wiki](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/wikis/home) and at https://snowflake.torproject.org/.

@@ -1,3 +1,12 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Running your own](#running-your-own)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 This is code for a remote probe test component of Snowflake.
 
 ### Overview
