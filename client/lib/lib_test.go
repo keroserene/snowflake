@@ -246,7 +246,7 @@ func TestSnowflakeClient(t *testing.T) {
 
 		Convey("BrokerChannel.Negotiate fails with large read", func() {
 			b, err := NewBrokerChannel("test.broker", "",
-				&MockTransport{http.StatusOK, make([]byte, 100001, 100001)},
+				&MockTransport{http.StatusOK, make([]byte, readLimit+1)},
 				false)
 			So(err, ShouldBeNil)
 			answer, err := b.Negotiate(fakeOffer)
