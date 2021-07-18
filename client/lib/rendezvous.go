@@ -9,13 +9,9 @@
 package lib
 
 import (
-	"bytes"
 	"errors"
-	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"sync"
 	"time"
 
@@ -30,11 +26,21 @@ const (
 	readLimit                    = 100000 //Maximum number of bytes to be read from an HTTP response
 )
 
-// Signalling Channel to the Broker.
+// rendezvousMethod represents a way of communicating with the broker: sending
+// an encoded client poll request (SDP offer) and receiving an encoded client
+// poll response (SDP answer) in return. rendezvousMethod is used by
+// BrokerChannel, which is in charge of encoding and decoding, and all other
+// tasks that are independent of the rendezvous method.
+type rendezvousMethod interface {
+	Exchange([]byte) ([]byte, error)
+}
+
+// BrokerChannel contains a rendezvousMethod, as well as data that is not
+// specific to any rendezvousMethod. BrokerChannel has the responsibility of
+// encoding and decoding SDP offers and answers; rendezvousMethod is responsible
+// for the exchange of encoded information.
 type BrokerChannel struct {
-	url                *url.URL
-	front              string            // Optional front domain to replace url.Host in requests.
-	transport          http.RoundTripper // Used to make all requests.
+	rendezvous         rendezvousMethod
 	keepLocalAddresses bool
 	NATType            string
 	lock               sync.Mutex
@@ -54,31 +60,21 @@ func CreateBrokerTransport() http.RoundTripper {
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
 func NewBrokerChannel(broker string, front string, transport http.RoundTripper, keepLocalAddresses bool) (*BrokerChannel, error) {
-	targetURL, err := url.Parse(broker)
-	if err != nil {
-		return nil, err
-	}
 	log.Println("Rendezvous using Broker at:", broker)
 	if front != "" {
 		log.Println("Domain fronting using:", front)
 	}
-	bc := new(BrokerChannel)
-	bc.url = targetURL
-	bc.front = front
-	bc.transport = transport
-	bc.keepLocalAddresses = keepLocalAddresses
-	bc.NATType = nat.NATUnknown
-	return bc, nil
-}
 
-func limitedRead(r io.Reader, limit int64) ([]byte, error) {
-	p, err := ioutil.ReadAll(&io.LimitedReader{R: r, N: limit + 1})
+	rendezvous, err := newHTTPRendezvous(broker, front, transport)
 	if err != nil {
-		return p, err
-	} else if int64(len(p)) == limit+1 {
-		return p[0:limit], io.ErrUnexpectedEOF
+		return nil, err
 	}
-	return p, err
+
+	return &BrokerChannel{
+		rendezvous:         rendezvous,
+		keepLocalAddresses: keepLocalAddresses,
+		NATType:            nat.NATUnknown,
+	}, nil
 }
 
 // Roundtrip HTTP POST using WebRTC SessionDescriptions.
@@ -87,8 +83,6 @@ func limitedRead(r io.Reader, limit int64) ([]byte, error) {
 // with an SDP answer from a designated remote WebRTC peer.
 func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
-	log.Println("Negotiating via BrokerChannel...\nTarget URL: ",
-		bc.url.Host, "\nFront URL:  ", bc.front)
 	// Ideally, we could specify an `RTCIceTransportPolicy` that would handle
 	// this for us.  However, "public" was removed from the draft spec.
 	// See https://developer.mozilla.org/en-US/docs/Web/API/RTCConfiguration#RTCIceTransportPolicy_enum
@@ -103,57 +97,34 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		return nil, err
 	}
 
-	// Encode client poll request
+	// Encode the client poll request.
 	bc.lock.Lock()
 	req := &messages.ClientPollRequest{
 		Offer: offerSDP,
 		NAT:   bc.NATType,
 	}
-	body, err := req.EncodePollRequest()
+	encReq, err := req.EncodePollRequest()
 	bc.lock.Unlock()
 	if err != nil {
 		return nil, err
 	}
 
-	data := bytes.NewReader([]byte(body))
-	// Suffix with broker's client registration handler.
-	clientURL := bc.url.ResolveReference(&url.URL{Path: "client"})
-	request, err := http.NewRequest("POST", clientURL.String(), data)
-	if nil != err {
+	// Do the exchange using our rendezvousMethod.
+	encResp, err := bc.rendezvous.Exchange(encReq)
+	if err != nil {
 		return nil, err
 	}
-	if bc.front != "" {
-		// Do domain fronting. Replace the domain in the URL's with the
-		// front, and store the original domain the HTTP Host header.
-		request.Host = request.URL.Host
-		request.URL.Host = bc.front
-	}
-	resp, err := bc.transport.RoundTrip(request)
-	if nil != err {
+	log.Printf("Received answer: %s", string(encResp))
+
+	// Decode the client poll response.
+	resp, err := messages.DecodeClientPollResponse(encResp)
+	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	log.Printf("BrokerChannel Response:\n%s\n\n", resp.Status)
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		body, err := limitedRead(resp.Body, readLimit)
-		if nil != err {
-			return nil, err
-		}
-		log.Printf("Received answer: %s", string(body))
-
-		resp, err := messages.DecodeClientPollResponse(body)
-		if err != nil {
-			return nil, err
-		}
-		if resp.Error != "" {
-			return nil, errors.New(resp.Error)
-		}
-		return util.DeserializeSessionDescription(resp.Answer)
-	default:
-		return nil, errors.New(BrokerErrorUnexpected)
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
 	}
+	return util.DeserializeSessionDescription(resp.Answer)
 }
 
 func (bc *BrokerChannel) SetNATType(NATType string) {

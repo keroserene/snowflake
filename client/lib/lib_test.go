@@ -1,32 +1,13 @@
 package lib
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"testing"
 	"time"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
-
-type MockTransport struct {
-	statusOverride int
-	body           []byte
-}
-
-// Just returns a response with fake SDP answer.
-func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	s := ioutil.NopCloser(bytes.NewReader(m.body))
-	r := &http.Response{
-		StatusCode: m.statusOverride,
-		Body:       s,
-	}
-	return r, nil
-}
 
 type FakeDialer struct {
 	max int
@@ -172,11 +153,10 @@ func TestSnowflakeClient(t *testing.T) {
 
 	Convey("Dialers", t, func() {
 		Convey("Can construct WebRTCDialer.", func() {
-			broker := &BrokerChannel{front: "test"}
+			broker := &BrokerChannel{}
 			d := NewWebRTCDialer(broker, nil, 1)
 			So(d, ShouldNotBeNil)
 			So(d.BrokerChannel, ShouldNotBeNil)
-			So(d.BrokerChannel.front, ShouldEqual, "test")
 		})
 		SkipConvey("WebRTCDialer can Catch a snowflake.", func() {
 			broker := &BrokerChannel{}
@@ -185,77 +165,6 @@ func TestSnowflakeClient(t *testing.T) {
 			So(conn, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
-	})
-
-	Convey("Rendezvous", t, func() {
-		transport := &MockTransport{
-			http.StatusOK,
-			[]byte(`{"answer": "{\"type\":\"answer\",\"sdp\":\"fake\"}" }`),
-		}
-		fakeOffer, err := util.DeserializeSessionDescription(`{"type":"offer","sdp":"test"}`)
-		if err != nil {
-			panic(err)
-		}
-
-		Convey("Construct BrokerChannel with no front domain", func() {
-			b, err := NewBrokerChannel("http://test.broker", "", transport, false)
-			So(b.url, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			So(b.url.Host, ShouldResemble, "test.broker")
-			So(b.front, ShouldResemble, "")
-			So(b.transport, ShouldNotBeNil)
-		})
-
-		Convey("Construct BrokerChannel *with* front domain", func() {
-			b, err := NewBrokerChannel("http://test.broker", "front", transport, false)
-			So(b.url, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			So(b.url.Host, ShouldResemble, "test.broker")
-			So(b.front, ShouldResemble, "front")
-			So(b.transport, ShouldNotBeNil)
-		})
-
-		Convey("BrokerChannel.Negotiate responds with answer", func() {
-			b, err := NewBrokerChannel("http://test.broker", "", transport, false)
-			So(err, ShouldBeNil)
-			answer, err := b.Negotiate(fakeOffer)
-			So(err, ShouldBeNil)
-			So(answer, ShouldNotBeNil)
-			So(answer.SDP, ShouldResemble, "fake")
-		})
-
-		Convey("BrokerChannel.Negotiate fails", func() {
-			b, err := NewBrokerChannel("http://test.broker", "",
-				&MockTransport{http.StatusOK, []byte(`{"error": "no snowflake proxies currently available"}`)},
-				false)
-			So(err, ShouldBeNil)
-			answer, err := b.Negotiate(fakeOffer)
-			So(err, ShouldNotBeNil)
-			So(answer, ShouldBeNil)
-		})
-
-		Convey("BrokerChannel.Negotiate fails with unexpected error", func() {
-			b, err := NewBrokerChannel("http://test.broker", "",
-				&MockTransport{http.StatusInternalServerError, []byte("\n")},
-				false)
-			So(err, ShouldBeNil)
-			answer, err := b.Negotiate(fakeOffer)
-			So(err, ShouldNotBeNil)
-			So(answer, ShouldBeNil)
-			So(err.Error(), ShouldResemble, BrokerErrorUnexpected)
-		})
-
-		Convey("BrokerChannel.Negotiate fails with large read", func() {
-			b, err := NewBrokerChannel("http://test.broker", "",
-				&MockTransport{http.StatusOK, make([]byte, readLimit+1)},
-				false)
-			So(err, ShouldBeNil)
-			answer, err := b.Negotiate(fakeOffer)
-			So(err, ShouldNotBeNil)
-			So(answer, ShouldBeNil)
-			So(err.Error(), ShouldResemble, "unexpected EOF")
-		})
-
 	})
 
 }
