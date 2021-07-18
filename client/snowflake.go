@@ -94,6 +94,7 @@ func main() {
 	iceServersCommas := flag.String("ice", "", "comma-separated list of ICE servers")
 	brokerURL := flag.String("url", "", "URL of signaling broker")
 	frontDomain := flag.String("front", "", "front domain")
+	ampCacheURL := flag.String("ampcache", "", "URL of AMP cache to use as a proxy for signaling")
 	logFilename := flag.String("log", "", "name of log file")
 	logToStateDir := flag.Bool("log-to-state-dir", false, "resolve the log file relative to tor's pt state dir")
 	keepLocalAddresses := flag.Bool("keep-local-addresses", false, "keep local LAN address ICE candidates")
@@ -140,7 +141,7 @@ func main() {
 
 	iceAddresses := strings.Split(strings.TrimSpace(*iceServersCommas), ",")
 
-	transport, err := sf.NewSnowflakeClient(*brokerURL, *frontDomain, iceAddresses,
+	transport, err := sf.NewSnowflakeClient(*brokerURL, *ampCacheURL, *frontDomain, iceAddresses,
 		*keepLocalAddresses || *oldKeepLocalAddresses, *max)
 	if err != nil {
 		log.Fatal("Failed to start snowflake transport: ", err)

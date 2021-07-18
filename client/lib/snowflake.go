@@ -39,7 +39,8 @@ type Transport struct {
 // iceAddresses are the STUN/TURN urls needed for WebRTC negotiation
 // keepLocalAddresses is a flag to enable sending local network addresses (for testing purposes)
 // max is the maximum number of snowflakes the client should gather for each SOCKS connection
-func NewSnowflakeClient(brokerURL, frontDomain string, iceAddresses []string, keepLocalAddresses bool, max int) (*Transport, error) {
+func NewSnowflakeClient(brokerURL, ampCacheURL, frontDomain string,
+	iceAddresses []string, keepLocalAddresses bool, max int) (*Transport, error) {
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
@@ -57,9 +58,9 @@ func NewSnowflakeClient(brokerURL, frontDomain string, iceAddresses []string, ke
 		log.Printf("url: %v", strings.Join(server.URLs, " "))
 	}
 
-	// Use potentially domain-fronting broker to rendezvous.
+	// Rendezvous with broker using the given parameters.
 	broker, err := NewBrokerChannel(
-		brokerURL, frontDomain, CreateBrokerTransport(),
+		brokerURL, ampCacheURL, frontDomain, CreateBrokerTransport(),
 		keepLocalAddresses)
 	if err != nil {
 		return nil, err

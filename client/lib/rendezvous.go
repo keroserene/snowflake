@@ -59,13 +59,22 @@ func CreateBrokerTransport() http.RoundTripper {
 // Construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannel(broker string, front string, transport http.RoundTripper, keepLocalAddresses bool) (*BrokerChannel, error) {
+func NewBrokerChannel(broker, ampCache, front string, transport http.RoundTripper, keepLocalAddresses bool) (*BrokerChannel, error) {
 	log.Println("Rendezvous using Broker at:", broker)
+	if ampCache != "" {
+		log.Println("Through AMP cache at:", ampCache)
+	}
 	if front != "" {
 		log.Println("Domain fronting using:", front)
 	}
 
-	rendezvous, err := newHTTPRendezvous(broker, front, transport)
+	var rendezvous rendezvousMethod
+	var err error
+	if ampCache != "" {
+		rendezvous, err = newAMPCacheRendezvous(broker, ampCache, front, transport)
+	} else {
+		rendezvous, err = newHTTPRendezvous(broker, front, transport)
+	}
 	if err != nil {
 		return nil, err
 	}
