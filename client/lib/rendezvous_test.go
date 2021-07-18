@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"testing"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/amp"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
 	. "github.com/smartystreets/goconvey/convey"
@@ -64,6 +65,8 @@ func makeEncPollResp(answer, errorStr string) []byte {
 	return encPollResp
 }
 
+var fakeEncPollReq = makeEncPollReq(`{"type":"offer","sdp":"test"}`)
+
 func TestHTTPRendezvous(t *testing.T) {
 	Convey("HTTP rendezvous", t, func() {
 		Convey("Construct httpRendezvous with no front domain", func() {
@@ -85,8 +88,6 @@ func TestHTTPRendezvous(t *testing.T) {
 			So(rend.front, ShouldResemble, "front")
 			So(rend.transport, ShouldEqual, transport)
 		})
-
-		fakeEncPollReq := makeEncPollReq(`{"type":"offer","sdp":"test"}`)
 
 		Convey("httpRendezvous.Exchange responds with answer", func() {
 			fakeEncPollResp := makeEncPollResp(
@@ -140,6 +141,133 @@ func TestHTTPRendezvous(t *testing.T) {
 			So(err, ShouldBeNil)
 			_, err = rend.Exchange(fakeEncPollReq)
 			So(err, ShouldEqual, io.ErrUnexpectedEOF)
+		})
+	})
+}
+
+func ampArmorEncode(p []byte) []byte {
+	var buf bytes.Buffer
+	enc, err := amp.NewArmorEncoder(&buf)
+	if err != nil {
+		panic(err)
+	}
+	_, err = enc.Write(p)
+	if err != nil {
+		panic(err)
+	}
+	err = enc.Close()
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func TestAMPCacheRendezvous(t *testing.T) {
+	Convey("AMP cache rendezvous", t, func() {
+		Convey("Construct ampCacheRendezvous with no cache and no front domain", func() {
+			transport := &mockTransport{http.StatusOK, []byte{}}
+			rend, err := newAMPCacheRendezvous("http://test.broker", "", "", transport)
+			So(err, ShouldBeNil)
+			So(rend.brokerURL, ShouldNotBeNil)
+			So(rend.brokerURL.String(), ShouldResemble, "http://test.broker")
+			So(rend.cacheURL, ShouldBeNil)
+			So(rend.front, ShouldResemble, "")
+			So(rend.transport, ShouldEqual, transport)
+		})
+
+		Convey("Construct ampCacheRendezvous with cache and no front domain", func() {
+			transport := &mockTransport{http.StatusOK, []byte{}}
+			rend, err := newAMPCacheRendezvous("http://test.broker", "https://amp.cache/", "", transport)
+			So(err, ShouldBeNil)
+			So(rend.brokerURL, ShouldNotBeNil)
+			So(rend.brokerURL.String(), ShouldResemble, "http://test.broker")
+			So(rend.cacheURL, ShouldNotBeNil)
+			So(rend.cacheURL.String(), ShouldResemble, "https://amp.cache/")
+			So(rend.front, ShouldResemble, "")
+			So(rend.transport, ShouldEqual, transport)
+		})
+
+		Convey("Construct ampCacheRendezvous with no cache and front domain", func() {
+			transport := &mockTransport{http.StatusOK, []byte{}}
+			rend, err := newAMPCacheRendezvous("http://test.broker", "", "front", transport)
+			So(err, ShouldBeNil)
+			So(rend.brokerURL, ShouldNotBeNil)
+			So(rend.brokerURL.String(), ShouldResemble, "http://test.broker")
+			So(rend.cacheURL, ShouldBeNil)
+			So(rend.front, ShouldResemble, "front")
+			So(rend.transport, ShouldEqual, transport)
+		})
+
+		Convey("Construct ampCacheRendezvous with cache and front domain", func() {
+			transport := &mockTransport{http.StatusOK, []byte{}}
+			rend, err := newAMPCacheRendezvous("http://test.broker", "https://amp.cache/", "front", transport)
+			So(err, ShouldBeNil)
+			So(rend.brokerURL, ShouldNotBeNil)
+			So(rend.brokerURL.String(), ShouldResemble, "http://test.broker")
+			So(rend.cacheURL, ShouldNotBeNil)
+			So(rend.cacheURL.String(), ShouldResemble, "https://amp.cache/")
+			So(rend.front, ShouldResemble, "front")
+			So(rend.transport, ShouldEqual, transport)
+		})
+
+		Convey("ampCacheRendezvous.Exchange responds with answer", func() {
+			fakeEncPollResp := makeEncPollResp(
+				`{"answer": "{\"type\":\"answer\",\"sdp\":\"fake\"}" }`,
+				"",
+			)
+			rend, err := newAMPCacheRendezvous("http://test.broker", "", "",
+				&mockTransport{http.StatusOK, ampArmorEncode(fakeEncPollResp)})
+			So(err, ShouldBeNil)
+			answer, err := rend.Exchange(fakeEncPollReq)
+			So(err, ShouldBeNil)
+			So(answer, ShouldResemble, fakeEncPollResp)
+		})
+
+		Convey("ampCacheRendezvous.Exchange responds with no answer", func() {
+			fakeEncPollResp := makeEncPollResp(
+				"",
+				`{"error": "no snowflake proxies currently available"}`,
+			)
+			rend, err := newAMPCacheRendezvous("http://test.broker", "", "",
+				&mockTransport{http.StatusOK, ampArmorEncode(fakeEncPollResp)})
+			So(err, ShouldBeNil)
+			answer, err := rend.Exchange(fakeEncPollReq)
+			So(err, ShouldBeNil)
+			So(answer, ShouldResemble, fakeEncPollResp)
+		})
+
+		Convey("ampCacheRendezvous.Exchange fails with unexpected HTTP status code", func() {
+			rend, err := newAMPCacheRendezvous("http://test.broker", "", "",
+				&mockTransport{http.StatusInternalServerError, []byte{}})
+			So(err, ShouldBeNil)
+			answer, err := rend.Exchange(fakeEncPollReq)
+			So(err, ShouldNotBeNil)
+			So(answer, ShouldBeNil)
+			So(err.Error(), ShouldResemble, BrokerErrorUnexpected)
+		})
+
+		Convey("ampCacheRendezvous.Exchange fails with error", func() {
+			transportErr := errors.New("error")
+			rend, err := newAMPCacheRendezvous("http://test.broker", "", "",
+				&errorTransport{err: transportErr})
+			So(err, ShouldBeNil)
+			answer, err := rend.Exchange(fakeEncPollReq)
+			So(err, ShouldEqual, transportErr)
+			So(answer, ShouldBeNil)
+		})
+
+		Convey("ampCacheRendezvous.Exchange fails with large read", func() {
+			// readLimit should apply to the raw HTTP body, not the
+			// encoded bytes. Encode readLimit bytes—the encoded
+			// size will be larger—and try to read the body. It
+			// should fail.
+			rend, err := newAMPCacheRendezvous("http://test.broker", "", "",
+				&mockTransport{http.StatusOK, ampArmorEncode(make([]byte, readLimit))})
+			So(err, ShouldBeNil)
+			_, err = rend.Exchange(fakeEncPollReq)
+			// We may get io.ErrUnexpectedEOF here, or something
+			// like "missing </pre> tag".
+			So(err, ShouldNotBeNil)
 		})
 	})
 }
