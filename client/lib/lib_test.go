@@ -198,24 +198,25 @@ func TestSnowflakeClient(t *testing.T) {
 		}
 
 		Convey("Construct BrokerChannel with no front domain", func() {
-			b, err := NewBrokerChannel("test.broker", "", transport, false)
+			b, err := NewBrokerChannel("http://test.broker", "", transport, false)
 			So(b.url, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(b.url.Path, ShouldResemble, "test.broker")
+			So(b.Host, ShouldResemble, "")
+			So(b.url.Host, ShouldResemble, "test.broker")
 			So(b.transport, ShouldNotBeNil)
 		})
 
 		Convey("Construct BrokerChannel *with* front domain", func() {
-			b, err := NewBrokerChannel("test.broker", "front", transport, false)
+			b, err := NewBrokerChannel("http://test.broker", "front", transport, false)
 			So(b.url, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(b.url.Path, ShouldResemble, "test.broker")
+			So(b.Host, ShouldResemble, "test.broker")
 			So(b.url.Host, ShouldResemble, "front")
 			So(b.transport, ShouldNotBeNil)
 		})
 
 		Convey("BrokerChannel.Negotiate responds with answer", func() {
-			b, err := NewBrokerChannel("test.broker", "", transport, false)
+			b, err := NewBrokerChannel("http://test.broker", "", transport, false)
 			So(err, ShouldBeNil)
 			answer, err := b.Negotiate(fakeOffer)
 			So(err, ShouldBeNil)
@@ -224,7 +225,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("BrokerChannel.Negotiate fails", func() {
-			b, err := NewBrokerChannel("test.broker", "",
+			b, err := NewBrokerChannel("http://test.broker", "",
 				&MockTransport{http.StatusOK, []byte(`{"error": "no snowflake proxies currently available"}`)},
 				false)
 			So(err, ShouldBeNil)
@@ -234,7 +235,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("BrokerChannel.Negotiate fails with unexpected error", func() {
-			b, err := NewBrokerChannel("test.broker", "",
+			b, err := NewBrokerChannel("http://test.broker", "",
 				&MockTransport{http.StatusInternalServerError, []byte("\n")},
 				false)
 			So(err, ShouldBeNil)
@@ -245,7 +246,7 @@ func TestSnowflakeClient(t *testing.T) {
 		})
 
 		Convey("BrokerChannel.Negotiate fails with large read", func() {
-			b, err := NewBrokerChannel("test.broker", "",
+			b, err := NewBrokerChannel("http://test.broker", "",
 				&MockTransport{http.StatusOK, make([]byte, readLimit+1)},
 				false)
 			So(err, ShouldBeNil)
