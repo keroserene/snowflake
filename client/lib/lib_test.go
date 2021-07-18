@@ -52,12 +52,6 @@ func (f FakeSocksConn) Reject() error {
 }
 func (f FakeSocksConn) Grant(addr *net.TCPAddr) error { return nil }
 
-type FakePeers struct{ toRelease *WebRTCPeer }
-
-func (f FakePeers) Collect() (*WebRTCPeer, error) { return &WebRTCPeer{}, nil }
-func (f FakePeers) Pop() *WebRTCPeer              { return nil }
-func (f FakePeers) Melted() <-chan struct{}       { return nil }
-
 func TestSnowflakeClient(t *testing.T) {
 
 	Convey("Peers", t, func() {
