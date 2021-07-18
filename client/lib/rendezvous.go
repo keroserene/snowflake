@@ -32,10 +32,8 @@ const (
 
 // Signalling Channel to the Broker.
 type BrokerChannel struct {
-	// The Host header to put in the HTTP request (optional and may be
-	// different from the host name in URL).
-	Host               string
 	url                *url.URL
+	front              string            // Optional front domain to replace url.Host in requests.
 	transport          http.RoundTripper // Used to make all requests.
 	keepLocalAddresses bool
 	NATType            string
@@ -61,14 +59,12 @@ func NewBrokerChannel(broker string, front string, transport http.RoundTripper, 
 		return nil, err
 	}
 	log.Println("Rendezvous using Broker at:", broker)
+	if front != "" {
+		log.Println("Domain fronting using:", front)
+	}
 	bc := new(BrokerChannel)
 	bc.url = targetURL
-	if front != "" { // Optional front domain.
-		log.Println("Domain fronting using:", front)
-		bc.Host = bc.url.Host
-		bc.url.Host = front
-	}
-
+	bc.front = front
 	bc.transport = transport
 	bc.keepLocalAddresses = keepLocalAddresses
 	bc.NATType = nat.NATUnknown
@@ -92,7 +88,7 @@ func limitedRead(r io.Reader, limit int64) ([]byte, error) {
 func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	*webrtc.SessionDescription, error) {
 	log.Println("Negotiating via BrokerChannel...\nTarget URL: ",
-		bc.Host, "\nFront URL:  ", bc.url.Host)
+		bc.url.Host, "\nFront URL:  ", bc.front)
 	// Ideally, we could specify an `RTCIceTransportPolicy` that would handle
 	// this for us.  However, "public" was removed from the draft spec.
 	// See https://developer.mozilla.org/en-US/docs/Web/API/RTCConfiguration#RTCIceTransportPolicy_enum
@@ -126,8 +122,11 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	if nil != err {
 		return nil, err
 	}
-	if "" != bc.Host { // Set true host if necessary.
-		request.Host = bc.Host
+	if bc.front != "" {
+		// Do domain fronting. Replace the domain in the URL's with the
+		// front, and store the original domain the HTTP Host header.
+		request.Host = request.URL.Host
+		request.URL.Host = bc.front
 	}
 	resp, err := bc.transport.RoundTrip(request)
 	if nil != err {

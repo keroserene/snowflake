@@ -172,14 +172,14 @@ func TestSnowflakeClient(t *testing.T) {
 
 	Convey("Dialers", t, func() {
 		Convey("Can construct WebRTCDialer.", func() {
-			broker := &BrokerChannel{Host: "test"}
+			broker := &BrokerChannel{front: "test"}
 			d := NewWebRTCDialer(broker, nil, 1)
 			So(d, ShouldNotBeNil)
 			So(d.BrokerChannel, ShouldNotBeNil)
-			So(d.BrokerChannel.Host, ShouldEqual, "test")
+			So(d.BrokerChannel.front, ShouldEqual, "test")
 		})
 		SkipConvey("WebRTCDialer can Catch a snowflake.", func() {
-			broker := &BrokerChannel{Host: "test"}
+			broker := &BrokerChannel{}
 			d := NewWebRTCDialer(broker, nil, 1)
 			conn, err := d.Catch()
 			So(conn, ShouldBeNil)
@@ -201,8 +201,8 @@ func TestSnowflakeClient(t *testing.T) {
 			b, err := NewBrokerChannel("http://test.broker", "", transport, false)
 			So(b.url, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(b.Host, ShouldResemble, "")
 			So(b.url.Host, ShouldResemble, "test.broker")
+			So(b.front, ShouldResemble, "")
 			So(b.transport, ShouldNotBeNil)
 		})
 
@@ -210,8 +210,8 @@ func TestSnowflakeClient(t *testing.T) {
 			b, err := NewBrokerChannel("http://test.broker", "front", transport, false)
 			So(b.url, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(b.Host, ShouldResemble, "test.broker")
-			So(b.url.Host, ShouldResemble, "front")
+			So(b.url.Host, ShouldResemble, "test.broker")
+			So(b.front, ShouldResemble, "front")
 			So(b.transport, ShouldNotBeNil)
 		})
 
