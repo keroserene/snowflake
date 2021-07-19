@@ -52,3 +52,59 @@ To bootstrap Tor, run:
 tor -f torrc
 ```
 This should start the client plugin, bootstrapping to 100% using WebRTC.
+
+### Registration methods
+
+The Snowflake client supports a few different ways of communicating with the broker.
+This initial step is sometimes called rendezvous.
+
+#### Domain fronting HTTPS
+
+For domain fronting rendezvous, use the `-url` and `-front` command-line options together.
+[Domain fronting](https://www.bamsoftware.com/papers/fronting/)
+hides the externally visible domain name from an external observer,
+making it appear that the Snowflake client is communicating with some server
+other than the Snowflake broker.
+
+* `-url` is the HTTPS URL of a forwarder to the broker, on some service that supports domain fronting, such as a CDN.
+* `-front` is the domain name to show externally. It must be another domain on the same service.
+
+Example:
+```
+-url https://snowflake-broker.torproject.net.global.prod.fastly.net/ \
+-front cdn.sstatic.net \
+```
+
+#### AMP cache
+
+For AMP cache rendezvous, use the `-url`, `-ampcache`, and `-front` command-line options together.
+[AMP](https://amp.dev/documentation/) is a standard for web pages for mobile computers.
+An [AMP cache](https://amp.dev/documentation/guides-and-tutorials/learn/amp-caches-and-cors/how_amp_pages_are_cached/)
+is a cache and proxy specialized for AMP pages.
+The Snowflake broker has the ability to make its client registration responses look like AMP pages,
+so it can be accessed through an AMP cache.
+When you use AMP cache rendezvous, it appears to an observer that the Snowflake client
+is accessing an AMP cache, or some other domain operated by the same organization.
+You still need to use the `-front` command-line option, because the
+[format of AMP cache URLs](https://amp.dev/documentation/guides-and-tutorials/learn/amp-caches-and-cors/amp-cache-urls/)
+would otherwise reveal the domain name of the broker.
+
+There is only one AMP cache that works with this option,
+the Google AMP cache at https://cdn.ampproject.org/.
+
+* `-url` is the HTTPS URL of the broker.
+* `-ampcache` is `https://cdn.ampproject.org/`.
+* `-front` is any Google domain, such as `www.google.com`.
+
+Example:
+```
+-url https://snowflake-broker.torproject.net/ \
+-ampcache https://cdn.ampproject.org/ \
+-front www.google.com \
+```
+
+#### Direct access
+
+It is also possible to access the broker directly using HTTPS, without domain fronting,
+for testing purposes. This mode is not suitable for circumvention, because the
+broker is easily blocked by its address.
