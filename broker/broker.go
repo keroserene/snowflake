@@ -218,6 +218,8 @@ func main() {
 	http.Handle("/metrics", MetricsHandler{metricsFilename, metricsHandler})
 	http.Handle("/prometheus", promhttp.HandlerFor(ctx.metrics.promMetrics.registry, promhttp.HandlerOpts{}))
 
+	http.Handle("/amp/client/", SnowflakeHandler{i, ampClientOffers})
+
 	server := http.Server{
 		Addr: addr,
 	}

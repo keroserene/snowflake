@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"container/heap"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/common/amp"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -23,6 +25,15 @@ func NullLogger() *log.Logger {
 }
 
 var promOnce sync.Once
+
+func decodeAMPArmorToString(r io.Reader) (string, error) {
+	dec, err := amp.NewArmorDecoder(r)
+	if err != nil {
+		return "", err
+	}
+	p, err := ioutil.ReadAll(dec)
+	return string(p), err
+}
 
 func TestBroker(t *testing.T) {
 
@@ -69,7 +80,7 @@ func TestBroker(t *testing.T) {
 			So(offer.sdp, ShouldResemble, []byte("test offer"))
 		})
 
-		Convey("Responds to client offers...", func() {
+		Convey("Responds to HTTP client offers...", func() {
 			w := httptest.NewRecorder()
 			data := bytes.NewReader(
 				[]byte("1.0\n{\"offer\": \"fake\", \"nat\": \"unknown\"}"))
@@ -117,7 +128,7 @@ func TestBroker(t *testing.T) {
 			})
 		})
 
-		Convey("Responds to legacy client offers...", func() {
+		Convey("Responds to HTTP legacy client offers...", func() {
 			w := httptest.NewRecorder()
 			data := bytes.NewReader([]byte("{test}"))
 			r, err := http.NewRequest("POST", "snowflake.broker/client", data)
@@ -161,6 +172,69 @@ func TestBroker(t *testing.T) {
 				So(offer.sdp, ShouldResemble, []byte("{test}"))
 				<-done
 				So(w.Code, ShouldEqual, http.StatusGatewayTimeout)
+			})
+
+		})
+
+		Convey("Responds to AMP client offers...", func() {
+			w := httptest.NewRecorder()
+			encPollReq := []byte("1.0\n{\"offer\": \"fake\", \"nat\": \"unknown\"}")
+			r, err := http.NewRequest("GET", "/amp/client/"+amp.EncodePath(encPollReq), nil)
+			So(err, ShouldBeNil)
+
+			Convey("with status 200 when request is badly formatted.", func() {
+				r, err := http.NewRequest("GET", "/amp/client/bad", nil)
+				So(err, ShouldBeNil)
+				ampClientOffers(i, w, r)
+				body, err := decodeAMPArmorToString(w.Body)
+				So(err, ShouldBeNil)
+				So(body, ShouldEqual, `{"error":"cannot decode URL path"}`)
+			})
+
+			Convey("with error when no snowflakes are available.", func() {
+				ampClientOffers(i, w, r)
+				So(w.Code, ShouldEqual, http.StatusOK)
+				body, err := decodeAMPArmorToString(w.Body)
+				So(err, ShouldBeNil)
+				So(body, ShouldEqual, `{"error":"no snowflake proxies currently available"}`)
+			})
+
+			Convey("with a proxy answer if available.", func() {
+				done := make(chan bool)
+				// Prepare a fake proxy to respond with.
+				snowflake := ctx.AddSnowflake("fake", "", NATUnrestricted, 0)
+				go func() {
+					ampClientOffers(i, w, r)
+					done <- true
+				}()
+				offer := <-snowflake.offerChannel
+				So(offer.sdp, ShouldResemble, []byte("fake"))
+				snowflake.answerChannel <- "fake answer"
+				<-done
+				body, err := decodeAMPArmorToString(w.Body)
+				So(err, ShouldBeNil)
+				So(body, ShouldEqual, `{"answer":"fake answer"}`)
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("Times out when no proxy responds.", func() {
+				if testing.Short() {
+					return
+				}
+				done := make(chan bool)
+				snowflake := ctx.AddSnowflake("fake", "", NATUnrestricted, 0)
+				go func() {
+					ampClientOffers(i, w, r)
+					// Takes a few seconds here...
+					done <- true
+				}()
+				offer := <-snowflake.offerChannel
+				So(offer.sdp, ShouldResemble, []byte("fake"))
+				<-done
+				So(w.Code, ShouldEqual, http.StatusOK)
+				body, err := decodeAMPArmorToString(w.Body)
+				So(err, ShouldBeNil)
+				So(body, ShouldEqual, `{"error":"timed out waiting for answer!"}`)
 			})
 
 		})
