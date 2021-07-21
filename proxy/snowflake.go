@@ -485,7 +485,10 @@ func main() {
 	checkNATType(config, defaultProbeURL)
 	log.Printf("NAT type: %s", currentNATType)
 
-	for {
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	for ; true; <-ticker.C {
 		tokens.get()
 		sessionID := genSessionID()
 		runSession(sessionID)
