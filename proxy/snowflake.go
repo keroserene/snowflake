@@ -123,19 +123,12 @@ func (s *SignalingServer) Post(path string, payload io.Reader) ([]byte, error) {
 
 func (s *SignalingServer) pollOffer(sid string) *webrtc.SessionDescription {
 	brokerPath := s.url.ResolveReference(&url.URL{Path: "proxy"})
-	timeOfNextPoll := time.Now()
-	for {
-		// Sleep until we're scheduled to poll again.
-		now := time.Now()
-		time.Sleep(timeOfNextPoll.Sub(now))
-		// Compute the next time to poll -- if it's in the past, that
-		// means that the POST took longer than pollInterval, so we're
-		// allowed to do another one immediately.
-		timeOfNextPoll = timeOfNextPoll.Add(pollInterval)
-		if timeOfNextPoll.Before(now) {
-			timeOfNextPoll = now
-		}
 
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	// Run the loop once before hitting the ticker
+	for ; true; <-ticker.C {
 		numClients := int((tokens.count() / 8) * 8) // Round down to 8
 		body, err := messages.EncodePollRequest(sid, "standalone", currentNATType, numClients)
 		if err != nil {
@@ -163,6 +156,7 @@ func (s *SignalingServer) pollOffer(sid string) *webrtc.SessionDescription {
 
 		}
 	}
+	return nil
 }
 
 func (s *SignalingServer) sendAnswer(sid string, pc *webrtc.PeerConnection) error {
