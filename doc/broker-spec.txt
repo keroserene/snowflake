@@ -107,6 +107,11 @@ through the exchange of WebRTC SDP information with its endpoints.
 
 2.1. Client interactions with the broker
 
+The broker offers multiple ways for clients to exchange registration
+messages.
+
+2.1.1. HTTPS POST
+
 Clients interact with the broker by making a POST request to `/client` with the
 offer SDP in the request body:
 ```
@@ -130,6 +135,38 @@ If no proxies were available, they receive a 503 status code:
 HTTP 503 Service Unavailable
 ```
 
+2.1.2. AMP
+
+The broker's /amp/client endpoint receives client poll messages encoded
+into the URL path, and sends client poll responses encoded as HTML that
+conforms to the requirements of AMP (Accelerated Mobile Pages). This
+endpoint is intended to be accessed through an AMP cache, using the
+-ampcache option of snowflake-client.
+
+The client encodes its poll message into a GET request as follows:
+```
+GET /amp/client/0[0 or more bytes]/[base64 of client poll message]
+```
+The components of the path are as follows:
+* "/amp/client/", the root of the endpoint.
+* "0", a format version number, which controls the interpretation of the
+  rest of the path. Only the first byte matters as a version indicator
+  (not the whole first path component).
+* Any number of slash or non-slash bytes. These may be used as padding
+  or to prevent cache collisions in the AMP cache.
+* A final slash.
+* base64 encoding of the client poll message, using the URL-safe
+  alphabet (which does not include slash).
+
+The broker returns a client poll response message in the HTTP response.
+The message is encoded using AMP armor, an AMP-compatible HTML encoding.
+The data stream is notionally a "0" byte (a format version indicator)
+followed by the base64 encoding of the message (using the standard
+alphabet, with "=" padding). This stream is broken into
+whitespace-separated chunks, which are then bundled into HTML <pre>
+elements. The <pre> elements are then surrounded by AMP boilerplate. To
+decode, search the HTML for <pre> elements, concatenate their contents
+and join on whitespace, discard the "0" prefix, and base64 decode.
 
 2.2 Proxy interactions with the broker
 
