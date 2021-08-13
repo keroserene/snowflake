@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -44,7 +45,7 @@ func copyLoop(socks, sfconn io.ReadWriter) {
 }
 
 // Accept local SOCKS connections and connect to a Snowflake connection
-func socksAcceptLoop(ln *pt.SocksListener, transport *sf.Transport, shutdown chan struct{}, wg *sync.WaitGroup) {
+func socksAcceptLoop(ln *pt.SocksListener, config sf.ClientConfig, shutdown chan struct{}, wg *sync.WaitGroup) {
 	defer ln.Close()
 	for {
 		conn, err := ln.AcceptSocks()
@@ -65,6 +66,30 @@ func socksAcceptLoop(ln *pt.SocksListener, transport *sf.Transport, shutdown cha
 			if err != nil {
 				log.Printf("conn.Grant error: %s", err)
 				return
+			}
+
+			// Check to see if our command line options are overriden by SOCKS options
+			if arg, ok := conn.Req.Args.Get("ampcache"); ok {
+				config.AmpCacheURL = arg
+			}
+			if arg, ok := conn.Req.Args.Get("front"); ok {
+				config.FrontDomain = arg
+			}
+			if arg, ok := conn.Req.Args.Get("ice"); ok {
+				config.ICEAddresses = strings.Split(strings.TrimSpace(arg), ",")
+			}
+			if arg, ok := conn.Req.Args.Get("max"); ok {
+				max, err := strconv.Atoi(arg)
+				if err == nil {
+					config.Max = max
+				}
+			}
+			if arg, ok := conn.Req.Args.Get("url"); ok {
+				config.BrokerURL = arg
+			}
+			transport, err := sf.NewSnowflakeClient(config)
+			if err != nil {
+				log.Fatal("Failed to start snowflake transport: ", err)
 			}
 
 			handler := make(chan struct{})
@@ -149,10 +174,6 @@ func main() {
 		KeepLocalAddresses: *keepLocalAddresses || *oldKeepLocalAddresses,
 		Max:                *max,
 	}
-	transport, err := sf.NewSnowflakeClient(config)
-	if err != nil {
-		log.Fatal("Failed to start snowflake transport: ", err)
-	}
 
 	// Begin goptlib client process.
 	ptInfo, err := pt.ClientSetup(nil)
@@ -176,7 +197,7 @@ func main() {
 				break
 			}
 			log.Printf("Started SOCKS listener at %v.", ln.Addr())
-			go socksAcceptLoop(ln, transport, shutdown, &wg)
+			go socksAcceptLoop(ln, config, shutdown, &wg)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			listeners = append(listeners, ln)
 		default:
