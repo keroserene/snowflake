@@ -29,7 +29,7 @@ go build
 
 ### Running the Snowflake client with Tor
 
-We have an example `torrc` file in this repository. The client uses these following `torrc` options by default:
+The Snowflake client can be configured with either command line options or SOCKS options. We have a few example `torrc` files in this directory. We recommend the following `torrc` options by default:
 ```
 UseBridges 1
 

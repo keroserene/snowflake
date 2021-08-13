@@ -1,8 +1,0 @@
-UseBridges 1
-DataDirectory datadir
-
-ClientTransportPlugin snowflake exec ./client \
--url http://localhost:8080/ \
--keep-local-addresses
-
-Bridge snowflake 192.0.2.3:1
