@@ -141,8 +141,15 @@ func main() {
 
 	iceAddresses := strings.Split(strings.TrimSpace(*iceServersCommas), ",")
 
-	transport, err := sf.NewSnowflakeClient(*brokerURL, *ampCacheURL, *frontDomain, iceAddresses,
-		*keepLocalAddresses || *oldKeepLocalAddresses, *max)
+	config := sf.ClientConfig{
+		BrokerURL:          *brokerURL,
+		AmpCacheURL:        *ampCacheURL,
+		FrontDomain:        *frontDomain,
+		ICEAddresses:       iceAddresses,
+		KeepLocalAddresses: *keepLocalAddresses || *oldKeepLocalAddresses,
+		Max:                *max,
+	}
+	transport, err := sf.NewSnowflakeClient(config)
 	if err != nil {
 		log.Fatal("Failed to start snowflake transport: ", err)
 	}

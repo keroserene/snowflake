@@ -37,17 +37,25 @@ type Transport struct {
 	dialer *WebRTCDialer
 }
 
+type ClientConfig struct {
+	BrokerURL          string
+	AmpCacheURL        string
+	FrontDomain        string
+	ICEAddresses       []string
+	KeepLocalAddresses bool
+	Max                int
+}
+
 // Create a new Snowflake transport client that can spawn multiple Snowflake connections.
 // brokerURL and frontDomain are the urls for the broker host and domain fronting host
 // iceAddresses are the STUN/TURN urls needed for WebRTC negotiation
 // keepLocalAddresses is a flag to enable sending local network addresses (for testing purposes)
 // max is the maximum number of snowflakes the client should gather for each SOCKS connection
-func NewSnowflakeClient(brokerURL, ampCacheURL, frontDomain string,
-	iceAddresses []string, keepLocalAddresses bool, max int) (*Transport, error) {
+func NewSnowflakeClient(config ClientConfig) (*Transport, error) {
 
 	log.Println("\n\n\n --- Starting Snowflake Client ---")
 
-	iceServers := parseIceServers(iceAddresses)
+	iceServers := parseIceServers(config.ICEAddresses)
 	// chooses a random subset of servers from inputs
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(iceServers), func(i, j int) {
@@ -63,14 +71,14 @@ func NewSnowflakeClient(brokerURL, ampCacheURL, frontDomain string,
 
 	// Rendezvous with broker using the given parameters.
 	broker, err := NewBrokerChannel(
-		brokerURL, ampCacheURL, frontDomain, CreateBrokerTransport(),
-		keepLocalAddresses)
+		config.BrokerURL, config.AmpCacheURL, config.FrontDomain, CreateBrokerTransport(),
+		config.KeepLocalAddresses)
 	if err != nil {
 		return nil, err
 	}
 	go updateNATType(iceServers, broker)
 
-	transport := &Transport{dialer: NewWebRTCDialer(broker, iceServers, max)}
+	transport := &Transport{dialer: NewWebRTCDialer(broker, iceServers, config.Max)}
 
 	return transport, nil
 }
