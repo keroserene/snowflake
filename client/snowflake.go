@@ -62,12 +62,6 @@ func socksAcceptLoop(ln *pt.SocksListener, config sf.ClientConfig, shutdown chan
 			defer wg.Done()
 			defer conn.Close()
 
-			err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
-			if err != nil {
-				log.Printf("conn.Grant error: %s", err)
-				return
-			}
-
 			// Check to see if our command line options are overriden by SOCKS options
 			if arg, ok := conn.Req.Args.Get("ampcache"); ok {
 				config.AmpCacheURL = arg
@@ -80,16 +74,26 @@ func socksAcceptLoop(ln *pt.SocksListener, config sf.ClientConfig, shutdown chan
 			}
 			if arg, ok := conn.Req.Args.Get("max"); ok {
 				max, err := strconv.Atoi(arg)
-				if err == nil {
-					config.Max = max
+				if err != nil {
+					conn.Reject()
+					log.Println("Invalid SOCKS arg: max=", arg)
+					return
 				}
+				config.Max = max
 			}
 			if arg, ok := conn.Req.Args.Get("url"); ok {
 				config.BrokerURL = arg
 			}
 			transport, err := sf.NewSnowflakeClient(config)
 			if err != nil {
-				log.Fatal("Failed to start snowflake transport: ", err)
+				conn.Reject()
+				log.Println("Failed to start snowflake transport: ", err)
+				return
+			}
+			err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
+			if err != nil {
+				log.Printf("conn.Grant error: %s", err)
+				return
 			}
 
 			handler := make(chan struct{})
