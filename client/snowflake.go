@@ -90,7 +90,7 @@ func socksAcceptLoop(ln *pt.SocksListener, config sf.ClientConfig, shutdown chan
 				log.Println("Failed to start snowflake transport: ", err)
 				return
 			}
-			err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
+			err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 			if err != nil {
 				log.Printf("conn.Grant error: %s", err)
 				return
