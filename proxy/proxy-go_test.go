@@ -336,7 +336,8 @@ func TestBrokerInteractions(t *testing.T) {
 	const sampleAnswer = `{"type":"answer","sdp":` + sampleSDP + `}`
 
 	Convey("Proxy connections to broker", t, func() {
-		broker, err := newSignalingServer("localhost", false)
+		var err error
+		broker, err = newSignalingServer("localhost", false)
 		So(err, ShouldEqual, nil)
 		tokens = newTokens(0)
 
