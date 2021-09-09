@@ -1,9 +1,5 @@
 package lib
 
-import (
-	"net"
-)
-
 // Interface for catching Snowflakes. (aka the remote dialer)
 type Tongue interface {
 	Catch() (*WebRTCPeer, error)
@@ -24,11 +20,4 @@ type SnowflakeCollector interface {
 
 	// Signal when the collector has stopped collecting.
 	Melted() <-chan struct{}
-}
-
-// Interface to adapt to goptlib's SocksConn struct.
-type SocksConnector interface {
-	Grant(*net.TCPAddr) error
-	Reject() error
-	net.Conn
 }

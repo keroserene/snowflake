@@ -21,7 +21,7 @@ import (
 // version of Snowflake)
 type Peers struct {
 	Tongue
-	BytesLogger BytesLogger
+	bytesLogger bytesLogger
 
 	snowflakeChan chan *WebRTCPeer
 	activePeers   *list.List
@@ -88,7 +88,7 @@ func (p *Peers) Pop() *WebRTCPeer {
 			continue
 		}
 		// Set to use the same rate-limited traffic logger to keep consistency.
-		snowflake.BytesLogger = p.BytesLogger
+		snowflake.bytesLogger = p.bytesLogger
 		return snowflake
 	}
 }

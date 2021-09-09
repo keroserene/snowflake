@@ -9,27 +9,27 @@ const (
 	LogTimeInterval = 5 * time.Second
 )
 
-type BytesLogger interface {
-	AddOutbound(int)
-	AddInbound(int)
+type bytesLogger interface {
+	addOutbound(int)
+	addInbound(int)
 }
 
-// Default BytesLogger does nothing.
-type BytesNullLogger struct{}
+// Default bytesLogger does nothing.
+type bytesNullLogger struct{}
 
-func (b BytesNullLogger) AddOutbound(amount int) {}
-func (b BytesNullLogger) AddInbound(amount int)  {}
+func (b bytesNullLogger) addOutbound(amount int) {}
+func (b bytesNullLogger) addInbound(amount int)  {}
 
-// BytesSyncLogger uses channels to safely log from multiple sources with output
+// bytesSyncLogger uses channels to safely log from multiple sources with output
 // occuring at reasonable intervals.
-type BytesSyncLogger struct {
+type bytesSyncLogger struct {
 	outboundChan chan int
 	inboundChan  chan int
 }
 
-// NewBytesSyncLogger returns a new BytesSyncLogger and starts it loggin.
-func NewBytesSyncLogger() *BytesSyncLogger {
-	b := &BytesSyncLogger{
+// newBytesSyncLogger returns a new bytesSyncLogger and starts it loggin.
+func newBytesSyncLogger() *bytesSyncLogger {
+	b := &bytesSyncLogger{
 		outboundChan: make(chan int, 5),
 		inboundChan:  make(chan int, 5),
 	}
@@ -37,7 +37,7 @@ func NewBytesSyncLogger() *BytesSyncLogger {
 	return b
 }
 
-func (b *BytesSyncLogger) log() {
+func (b *bytesSyncLogger) log() {
 	var outbound, inbound, outEvents, inEvents int
 	ticker := time.NewTicker(LogTimeInterval)
 	for {
@@ -61,10 +61,10 @@ func (b *BytesSyncLogger) log() {
 	}
 }
 
-func (b *BytesSyncLogger) AddOutbound(amount int) {
+func (b *bytesSyncLogger) addOutbound(amount int) {
 	b.outboundChan <- amount
 }
 
-func (b *BytesSyncLogger) AddInbound(amount int) {
+func (b *bytesSyncLogger) addInbound(amount int) {
 	b.inboundChan <- amount
 }

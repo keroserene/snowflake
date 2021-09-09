@@ -71,8 +71,7 @@ func NewSnowflakeClient(config ClientConfig) (*Transport, error) {
 
 	// Rendezvous with broker using the given parameters.
 	broker, err := NewBrokerChannel(
-		config.BrokerURL, config.AmpCacheURL, config.FrontDomain, CreateBrokerTransport(),
-		config.KeepLocalAddresses)
+		config.BrokerURL, config.AmpCacheURL, config.FrontDomain, config.KeepLocalAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +102,7 @@ func (t *Transport) Dial() (net.Conn, error) {
 	cleanup = append(cleanup, func() { snowflakes.End() })
 
 	// Use a real logger to periodically output how much traffic is happening.
-	snowflakes.BytesLogger = NewBytesSyncLogger()
+	snowflakes.bytesLogger = newBytesSyncLogger()
 
 	log.Printf("---- SnowflakeConn: begin collecting snowflakes ---")
 	go connectLoop(snowflakes)
@@ -198,7 +197,7 @@ func newSession(snowflakes SnowflakeCollector) (net.PacketConn, *smux.Session, e
 	// We build a persistent KCP session on a sequence of ephemeral WebRTC
 	// connections. This dialContext tells RedialPacketConn how to get a new
 	// WebRTC connection when the previous one dies. Inside each WebRTC
-	// connection, we use EncapsulationPacketConn to encode packets into a
+	// connection, we use encapsulationPacketConn to encode packets into a
 	// stream.
 	dialContext := func(ctx context.Context) (net.PacketConn, error) {
 		log.Printf("redialing on same connection")
@@ -218,7 +217,7 @@ func newSession(snowflakes SnowflakeCollector) (net.PacketConn, *smux.Session, e
 		if err != nil {
 			return nil, err
 		}
-		return NewEncapsulationPacketConn(dummyAddr{}, dummyAddr{}, conn), nil
+		return newEncapsulationPacketConn(dummyAddr{}, dummyAddr{}, conn), nil
 	}
 	pconn := turbotunnel.NewRedialPacketConn(dummyAddr{}, dummyAddr{}, dialContext)
 

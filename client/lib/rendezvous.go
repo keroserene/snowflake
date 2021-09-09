@@ -42,14 +42,14 @@ type rendezvousMethod interface {
 type BrokerChannel struct {
 	rendezvous         rendezvousMethod
 	keepLocalAddresses bool
-	NATType            string
+	natType            string
 	lock               sync.Mutex
 }
 
 // We make a copy of DefaultTransport because we want the default Dial
 // and TLSHandshakeTimeout settings. But we want to disable the default
 // ProxyFromEnvironment setting.
-func CreateBrokerTransport() http.RoundTripper {
+func createBrokerTransport() http.RoundTripper {
 	transport := http.DefaultTransport.(*http.Transport)
 	transport.Proxy = nil
 	transport.ResponseHeaderTimeout = 15 * time.Second
@@ -59,7 +59,7 @@ func CreateBrokerTransport() http.RoundTripper {
 // Construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannel(broker, ampCache, front string, transport http.RoundTripper, keepLocalAddresses bool) (*BrokerChannel, error) {
+func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (*BrokerChannel, error) {
 	log.Println("Rendezvous using Broker at:", broker)
 	if ampCache != "" {
 		log.Println("Through AMP cache at:", ampCache)
@@ -71,9 +71,9 @@ func NewBrokerChannel(broker, ampCache, front string, transport http.RoundTrippe
 	var rendezvous rendezvousMethod
 	var err error
 	if ampCache != "" {
-		rendezvous, err = newAMPCacheRendezvous(broker, ampCache, front, transport)
+		rendezvous, err = newAMPCacheRendezvous(broker, ampCache, front, createBrokerTransport())
 	} else {
-		rendezvous, err = newHTTPRendezvous(broker, front, transport)
+		rendezvous, err = newHTTPRendezvous(broker, front, createBrokerTransport())
 	}
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func NewBrokerChannel(broker, ampCache, front string, transport http.RoundTrippe
 	return &BrokerChannel{
 		rendezvous:         rendezvous,
 		keepLocalAddresses: keepLocalAddresses,
-		NATType:            nat.NATUnknown,
+		natType:            nat.NATUnknown,
 	}, nil
 }
 
@@ -110,7 +110,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	bc.lock.Lock()
 	req := &messages.ClientPollRequest{
 		Offer: offerSDP,
-		NAT:   bc.NATType,
+		NAT:   bc.natType,
 	}
 	encReq, err := req.EncodePollRequest()
 	bc.lock.Unlock()
@@ -138,7 +138,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 
 func (bc *BrokerChannel) SetNATType(NATType string) {
 	bc.lock.Lock()
-	bc.NATType = NATType
+	bc.natType = NATType
 	bc.lock.Unlock()
 	log.Printf("NAT Type: %s", NATType)
 }

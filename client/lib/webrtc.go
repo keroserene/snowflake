@@ -32,7 +32,7 @@ type WebRTCPeer struct {
 
 	once sync.Once // Synchronization for PeerConnection destruction
 
-	BytesLogger BytesLogger
+	bytesLogger bytesLogger
 }
 
 // Construct a WebRTC PeerConnection.
@@ -49,7 +49,7 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 	connection.closed = make(chan struct{})
 
 	// Override with something that's not NullLogger to have real logging.
-	connection.BytesLogger = &BytesNullLogger{}
+	connection.bytesLogger = &bytesNullLogger{}
 
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
@@ -75,7 +75,7 @@ func (c *WebRTCPeer) Write(b []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	c.BytesLogger.AddOutbound(len(b))
+	c.bytesLogger.addOutbound(len(b))
 	return len(b), nil
 }
 
@@ -186,7 +186,7 @@ func (c *WebRTCPeer) preparePeerConnection(config *webrtc.Configuration) error {
 			log.Println("0 length message---")
 		}
 		n, err := c.writePipe.Write(msg.Data)
-		c.BytesLogger.AddInbound(n)
+		c.bytesLogger.addInbound(n)
 		if err != nil {
 			// TODO: Maybe shouldn't actually close.
 			log.Println("Error writing to SOCKS pipe")
