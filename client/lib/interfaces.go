@@ -1,4 +1,4 @@
-package lib
+package snowflake_client
 
 // Tongue is an interface for catching Snowflakes. (aka the remote dialer)
 type Tongue interface {

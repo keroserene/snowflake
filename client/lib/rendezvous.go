@@ -1,7 +1,7 @@
 // WebRTC rendezvous requires the exchange of SessionDescriptions between
 // peers in order to establish a PeerConnection.
 
-package lib
+package snowflake_client
 
 import (
 	"errors"

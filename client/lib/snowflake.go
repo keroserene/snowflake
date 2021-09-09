@@ -1,4 +1,31 @@
-package lib
+/*
+Package snowflake_client implements functionality necessary for a client to establish a connection
+to a server using Snowflake.
+
+Included in the package is a Transport type that implements the Pluggable Transports v2.1 Go API
+specification. To use Snowflake, you must first create a client from a configuration:
+
+	config := snowflake_client.ClientConfig{
+		BrokerURL:   "https://snowflake-broker.example.com",
+		FrontDomain: "https://friendlyfrontdomain.net",
+		Max: 1,
+		// ...
+	}
+	transport, err := snowflake_client.NewSnowflakeClient(config)
+	if err != nil {
+		// handle error
+	}
+
+The Dial function connects to a Snowflake server:
+
+	conn, err := transport.Dial()
+	if err != nil {
+		// handle error
+	}
+	defer conn.Close()
+
+*/
+package snowflake_client
 
 import (
 	"context"
