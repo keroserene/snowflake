@@ -17,10 +17,15 @@ import (
 
 func main() {
 
-    transport, err := sf.NewSnowflakeClient("https://snowflake-broker.example.com",
-        "https://friendlyfrontdomain.net",
-        []string{"stun:stun.voip.blackberry.com:3478", "stun:stun.stunprotocol.org:3478"},
-        false, 1)
+    config := sf.ClientConfig{
+        BrokerURL:   "https://snowflake-broker.example.com",
+        FrontDomain: "https://friendlyfrontdomain.net",
+        ICEAddresses: []string{
+            "stun:stun.voip.blackberry.com:3478",
+            "stun:stun.stunprotocol.org:3478"},
+        Max: 1,
+    }
+    transport, err := sf.NewSnowflakeClient(config)
     if err != nil {
         log.Fatal("Failed to start snowflake transport: ", err)
     }
