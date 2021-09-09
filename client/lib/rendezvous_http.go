@@ -60,7 +60,7 @@ func (r *httpRendezvous) Exchange(encPollReq []byte) ([]byte, error) {
 
 	log.Printf("HTTP rendezvous response: %s", resp.Status)
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(BrokerErrorUnexpected)
+		return nil, errors.New(brokerErrorUnexpected)
 	}
 
 	return limitedRead(resp.Body, readLimit)

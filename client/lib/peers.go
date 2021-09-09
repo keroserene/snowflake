@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// Container which keeps track of multiple WebRTC remote peers.
+// Peers is a container that keeps track of multiple WebRTC remote peers.
 // Implements |SnowflakeCollector|.
 //
 // Maintaining a set of pre-connected Peers with fresh but inactive datachannels
@@ -31,7 +31,7 @@ type Peers struct {
 	collectLock sync.Mutex
 }
 
-// Construct a fresh container of remote peers.
+// NewPeers constructs a fresh container of remote peers.
 func NewPeers(tongue Tongue) (*Peers, error) {
 	p := &Peers{}
 	// Use buffered go channel to pass snowflakes onwards to the SOCKS handler.
@@ -45,7 +45,7 @@ func NewPeers(tongue Tongue) (*Peers, error) {
 	return p, nil
 }
 
-// As part of |SnowflakeCollector| interface.
+// Collect connects to and adds a new remote peer as part of |SnowflakeCollector| interface.
 func (p *Peers) Collect() (*WebRTCPeer, error) {
 	// Engage the Snowflake Catching interface, which must be available.
 	p.collectLock.Lock()
@@ -76,8 +76,8 @@ func (p *Peers) Collect() (*WebRTCPeer, error) {
 	return connection, nil
 }
 
-// Pop blocks until an available, valid snowflake appears. Returns nil after End
-// has been called.
+// Pop blocks until an available, valid snowflake appears.
+// Pop will return nil after End has been called.
 func (p *Peers) Pop() *WebRTCPeer {
 	for {
 		snowflake, ok := <-p.snowflakeChan
@@ -93,12 +93,13 @@ func (p *Peers) Pop() *WebRTCPeer {
 	}
 }
 
-// As part of |SnowflakeCollector| interface.
+// Melted returns a channel that will close when peers stop being collected.
+// Melted is a necessary part of |SnowflakeCollector| interface.
 func (p *Peers) Melted() <-chan struct{} {
 	return p.melt
 }
 
-// Returns total available Snowflakes (including the active one)
+// Count returns the total available Snowflakes (including the active ones)
 // The count only reduces when connections themselves close, rather than when
 // they are popped.
 func (p *Peers) Count() int {
@@ -118,7 +119,8 @@ func (p *Peers) purgeClosedPeers() {
 	}
 }
 
-// Close all Peers contained here.
+// End closes all active connections to Peers contained here, and stops the
+// collection of future Peers.
 func (p *Peers) End() {
 	close(p.melt)
 	p.collectLock.Lock()

@@ -93,7 +93,7 @@ func (r *ampCacheRendezvous) Exchange(encPollReq []byte) ([]byte, error) {
 		// * If the broker returns a 5xx status, the AMP cache
 		//   translates it to a 404.
 		// https://amp.dev/documentation/guides-and-tutorials/learn/amp-caches-and-cors/amp-cache-urls/#redirect-%26-error-handling
-		return nil, errors.New(BrokerErrorUnexpected)
+		return nil, errors.New(brokerErrorUnexpected)
 	}
 	if _, err := resp.Location(); err == nil {
 		// The Google AMP Cache may return a "silent redirect" with
@@ -103,7 +103,7 @@ func (r *ampCacheRendezvous) Exchange(encPollReq []byte) ([]byte, error) {
 		// follow redirects nor execute JavaScript, but in any case we
 		// cannot extract information from this response and can only
 		// treat it as an error.
-		return nil, errors.New(BrokerErrorUnexpected)
+		return nil, errors.New(brokerErrorUnexpected)
 	}
 
 	lr := io.LimitReader(resp.Body, readLimit+1)

@@ -122,7 +122,7 @@ func TestHTTPRendezvous(t *testing.T) {
 			answer, err := rend.Exchange(fakeEncPollReq)
 			So(err, ShouldNotBeNil)
 			So(answer, ShouldBeNil)
-			So(err.Error(), ShouldResemble, BrokerErrorUnexpected)
+			So(err.Error(), ShouldResemble, brokerErrorUnexpected)
 		})
 
 		Convey("httpRendezvous.Exchange fails with error", func() {
@@ -243,7 +243,7 @@ func TestAMPCacheRendezvous(t *testing.T) {
 			answer, err := rend.Exchange(fakeEncPollReq)
 			So(err, ShouldNotBeNil)
 			So(answer, ShouldBeNil)
-			So(err.Error(), ShouldResemble, BrokerErrorUnexpected)
+			So(err.Error(), ShouldResemble, brokerErrorUnexpected)
 		})
 
 		Convey("ampCacheRendezvous.Exchange fails with error", func() {

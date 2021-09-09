@@ -1,23 +1,24 @@
 package lib
 
-// Interface for catching Snowflakes. (aka the remote dialer)
+// Tongue is an interface for catching Snowflakes. (aka the remote dialer)
 type Tongue interface {
+	// Catch makes a connection to a new snowflake.
 	Catch() (*WebRTCPeer, error)
 
-	// Get the maximum number of snowflakes
+	// GetMax returns the maximum number of snowflakes a client can have.
 	GetMax() int
 }
 
-// Interface for collecting some number of Snowflakes, for passing along
-// ultimately to the SOCKS handler.
+// SnowflakeCollector is an interface for managing a client's collection of snowflakes.
 type SnowflakeCollector interface {
-	// Add a Snowflake to the collection.
-	// Implementation should decide how to connect and maintain the webRTCConn.
+	// Collect adds a snowflake to the collection.
+	// The implementation of Collect should decide how to connect to and maintain
+	// the connection to the WebRTCPeer.
 	Collect() (*WebRTCPeer, error)
 
-	// Remove and return the most available Snowflake from the collection.
+	// Pop removes and returns the most available snowflake from the collection.
 	Pop() *WebRTCPeer
 
-	// Signal when the collector has stopped collecting.
+	// Melted returns a channel that will signal when the collector has stopped.
 	Melted() <-chan struct{}
 }
