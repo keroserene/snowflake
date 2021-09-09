@@ -26,21 +26,20 @@ const (
 	readLimit                    = 100000 //Maximum number of bytes to be read from an HTTP response
 )
 
-// rendezvousMethod represents a way of communicating with the broker: sending
+// RendezvousMethod represents a way of communicating with the broker: sending
 // an encoded client poll request (SDP offer) and receiving an encoded client
-// poll response (SDP answer) in return. rendezvousMethod is used by
+// poll response (SDP answer) in return. RendezvousMethod is used by
 // BrokerChannel, which is in charge of encoding and decoding, and all other
 // tasks that are independent of the rendezvous method.
-type rendezvousMethod interface {
+type RendezvousMethod interface {
 	Exchange([]byte) ([]byte, error)
 }
 
-// BrokerChannel contains a rendezvousMethod, as well as data that is not
-// specific to any rendezvousMethod. BrokerChannel has the responsibility of
-// encoding and decoding SDP offers and answers; rendezvousMethod is responsible
-// for the exchange of encoded information.
+// BrokerChannel uses a RendezvousMethod to communicate with the Snowflake broker.
+// The BrokerChannel is responsible for encoding and decoding SDP offers and answers;
+// RendezvousMethod is responsible for the exchange of encoded information.
 type BrokerChannel struct {
-	rendezvous         rendezvousMethod
+	Rendezvous         RendezvousMethod
 	keepLocalAddresses bool
 	natType            string
 	lock               sync.Mutex
@@ -68,7 +67,7 @@ func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (
 		log.Println("Domain fronting using:", front)
 	}
 
-	var rendezvous rendezvousMethod
+	var rendezvous RendezvousMethod
 	var err error
 	if ampCache != "" {
 		rendezvous, err = newAMPCacheRendezvous(broker, ampCache, front, createBrokerTransport())
@@ -80,7 +79,7 @@ func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (
 	}
 
 	return &BrokerChannel{
-		rendezvous:         rendezvous,
+		Rendezvous:         rendezvous,
 		keepLocalAddresses: keepLocalAddresses,
 		natType:            nat.NATUnknown,
 	}, nil
@@ -118,8 +117,8 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		return nil, err
 	}
 
-	// Do the exchange using our rendezvousMethod.
-	encResp, err := bc.rendezvous.Exchange(encReq)
+	// Do the exchange using our RendezvousMethod.
+	encResp, err := bc.Rendezvous.Exchange(encReq)
 	if err != nil {
 		return nil, err
 	}

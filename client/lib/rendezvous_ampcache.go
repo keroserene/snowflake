@@ -11,7 +11,7 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/common/amp"
 )
 
-// ampCacheRendezvous is a rendezvousMethod that communicates with the
+// ampCacheRendezvous is a RendezvousMethod that communicates with the
 // .../amp/client route of the broker, optionally over an AMP cache proxy, and
 // with optional domain fronting.
 type ampCacheRendezvous struct {

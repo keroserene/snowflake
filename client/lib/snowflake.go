@@ -132,6 +132,10 @@ func (t *Transport) Dial() (net.Conn, error) {
 	return &SnowflakeConn{Stream: stream, sess: sess, pconn: pconn, snowflakes: snowflakes}, nil
 }
 
+func (t *Transport) SetRendezvousMethod(r RendezvousMethod) {
+	t.dialer.Rendezvous = r
+}
+
 type SnowflakeConn struct {
 	*smux.Stream
 	sess       *smux.Session

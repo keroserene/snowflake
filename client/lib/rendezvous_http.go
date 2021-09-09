@@ -10,7 +10,7 @@ import (
 	"net/url"
 )
 
-// httpRendezvous is a rendezvousMethod that communicates with the .../client
+// httpRendezvous is a RendezvousMethod that communicates with the .../client
 // route of the broker over HTTP or HTTPS, with optional domain fronting.
 type httpRendezvous struct {
 	brokerURL *url.URL

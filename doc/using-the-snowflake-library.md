@@ -38,6 +38,60 @@ func main() {
 }
 ```
 
+#### Using your own rendezvous method
+
+You can define and use your own rendezvous method to communicate with a Snowflake broker by implementing the `RendezvousMethod` interface.
+
+```Golang
+
+package main
+
+import (
+    "log"
+
+    sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
+)
+
+type StubMethod struct {
+}
+
+func (m *StubMethod) Exchange(pollReq []byte) ([]byte, error) {
+    var brokerResponse []byte
+    var err error
+
+    //Implement the logic you need to communicate with the Snowflake broker here
+
+    return brokerResponse, err
+}
+
+func main() {
+    config := sf.ClientConfig{
+        ICEAddresses:       []string{
+            "stun:stun.voip.blackberry.com:3478",
+            "stun:stun.stunprotocol.org:3478"},
+    }
+    transport, err := sf.NewSnowflakeClient(config)
+    if err != nil {
+        log.Fatal("Failed to start snowflake transport: ", err)
+    }
+
+    // custom rendezvous methods can be set with `SetRendezvousMethod`
+    rendezvous := &StubMethod{}
+    transport.SetRendezvousMethod(rendezvous)
+
+    // transport implements the ClientFactory interface and returns a net.Conn
+    conn, err := transport.Dial()
+    if err != nil {
+        log.Printf("dial error: %s", err)
+        return
+    }
+    defer conn.Close()
+
+    // ...
+
+}
+```
+
 ### Server library
 
 The Snowflake server library contains functions for running a Snowflake server.
