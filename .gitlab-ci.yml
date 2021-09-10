@@ -80,12 +80,12 @@ android:
         gnupg
         wget
     - cd /usr/local
-    - export gotarball="go1.15.10.linux-amd64.tar.gz"
+    - export gotarball="go1.16.8.linux-amd64.tar.gz"
     - wget -q https://dl.google.com/go/${gotarball}
     - wget -q https://dl.google.com/go/${gotarball}.asc
     - curl https://dl.google.com/linux/linux_signing_key.pub | gpg --import
     - gpg --verify ${gotarball}.asc
-    - echo "4aa1267517df32f2bf1cc3d55dfc27d0c6b2c2b0989449c96dd19273ccca051d  ${gotarball}" | sha256sum -c
+    - echo "f32501aeb8b7b723bc7215f6c373abb6981bbc7e1c7b44e9f07317e1a300dce2  ${gotarball}" | sha256sum -c
     - tar -xzf ${gotarball}
     - export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"  # putting this in 'variables:' cause weird runner errors
     - cd $CI_PROJECT_DIR
@@ -97,8 +97,8 @@ android:
 
     - go get golang.org/x/mobile/cmd/gomobile
     - go get golang.org/x/mobile/cmd/gobind
-    - go install golang.org/x/mobile/cmd/gomobile
     - go install golang.org/x/mobile/cmd/gobind
+    - go install golang.org/x/mobile/cmd/gomobile
     - echo y | $ANDROID_HOME/tools/bin/sdkmanager 'ndk-bundle' > /dev/null
     - echo y | $ANDROID_HOME/tools/bin/sdkmanager "platforms;android-${ANDROID_VERSION}" > /dev/null
     - gomobile init
@@ -108,6 +108,7 @@ android:
     - cd $CI_PROJECT_DIR/client
     # gomobile builds a shared library not a CLI executable
     - sed -i 's,^package main$,package snowflakeclient,' snowflake.go
+    - go get golang.org/x/mobile/bind
     - gomobile bind -v -target=android .
   <<: *test-template
 
