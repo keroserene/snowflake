@@ -8,7 +8,6 @@ specification. To use Snowflake, you must first create a client from a configura
 	config := snowflake_client.ClientConfig{
 		BrokerURL:   "https://snowflake-broker.example.com",
 		FrontDomain: "https://friendlyfrontdomain.net",
-		Max: 1,
 		// ...
 	}
 	transport, err := snowflake_client.NewSnowflakeClient(config)
@@ -91,7 +90,7 @@ type ClientConfig struct {
 	// and testing.
 	KeepLocalAddresses bool
 	// Max is the maximum number of snowflake proxy peers that the client should attempt to
-	// connect to.
+	// connect to. Defaults to 1.
 	Max int
 }
 
@@ -128,7 +127,11 @@ func NewSnowflakeClient(config ClientConfig) (*Transport, error) {
 	}
 	go updateNATType(iceServers, broker)
 
-	transport := &Transport{dialer: NewWebRTCDialer(broker, iceServers, config.Max)}
+	max := 1
+	if config.Max > max {
+		max = config.Max
+	}
+	transport := &Transport{dialer: NewWebRTCDialer(broker, iceServers, max)}
 
 	return transport, nil
 }
