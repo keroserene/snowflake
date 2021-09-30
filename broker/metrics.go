@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"gitlab.torproject.org/tpo/anti-censorship/geoip"
 )
 
 const (
@@ -38,8 +39,7 @@ type CountryStats struct {
 // Implements Observable
 type Metrics struct {
 	logger  *log.Logger
-	tablev4 *GeoIPv4Table
-	tablev6 *GeoIPv6Table
+	geoipdb *geoip.Geoip
 
 	countryStats                  CountryStats
 	clientRoundtripEstimate       time.Duration
@@ -115,19 +115,10 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType stri
 	}
 
 	ip := net.ParseIP(addr)
-	if ip.To4() != nil {
-		//This is an IPv4 address
-		if m.tablev4 == nil {
-			return
-		}
-		country, ok = GetCountryByAddr(m.tablev4, ip)
-	} else {
-		if m.tablev6 == nil {
-			return
-		}
-		country, ok = GetCountryByAddr(m.tablev6, ip)
+	if m.geoipdb == nil {
+		return
 	}
-
+	country, ok = m.geoipdb.GetCountryByAddr(ip)
 	if !ok {
 		country = "??"
 	}
@@ -164,23 +155,10 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType stri
 func (m *Metrics) LoadGeoipDatabases(geoipDB string, geoip6DB string) error {
 
 	// Load geoip databases
+	var err error
 	log.Println("Loading geoip databases")
-	tablev4 := new(GeoIPv4Table)
-	err := GeoIPLoadFile(tablev4, geoipDB)
-	if err != nil {
-		m.tablev4 = nil
-		return err
-	}
-	m.tablev4 = tablev4
-
-	tablev6 := new(GeoIPv6Table)
-	err = GeoIPLoadFile(tablev6, geoip6DB)
-	if err != nil {
-		m.tablev6 = nil
-		return err
-	}
-	m.tablev6 = tablev6
-	return nil
+	m.geoipdb, err = geoip.New(geoipDB, geoip6DB)
+	return err
 }
 
 func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
