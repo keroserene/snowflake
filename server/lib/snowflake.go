@@ -35,7 +35,7 @@ func NewSnowflakeServer(getCertificate func(*tls.ClientHelloInfo) (*tls.Certific
 func (t *Transport) Listen(addr net.Addr) (*SnowflakeListener, error) {
 	listener := &SnowflakeListener{addr: addr, queue: make(chan net.Conn, 65534)}
 
-	handler := HTTPHandler{
+	handler := httpHandler{
 		// pconn is shared among all connections to this server. It
 		// overlays packet-based client sessions on top of ephemeral
 		// WebSocket connections.
@@ -187,7 +187,7 @@ func (l *SnowflakeListener) acceptStreams(conn *kcp.UDPSession) error {
 			}
 			return err
 		}
-		l.QueueConn(&SnowflakeClientConn{Conn: stream, address: addr})
+		l.queueConn(&SnowflakeClientConn{Conn: stream, address: addr})
 	}
 }
 
@@ -226,7 +226,7 @@ func (l *SnowflakeListener) acceptSessions(ln *kcp.Listener) error {
 	}
 }
 
-func (l *SnowflakeListener) QueueConn(conn net.Conn) error {
+func (l *SnowflakeListener) queueConn(conn net.Conn) error {
 	select {
 	case <-l.closed:
 		return fmt.Errorf("accepted connection on closed listener")
