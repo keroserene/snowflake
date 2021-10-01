@@ -193,6 +193,7 @@ func turbotunnelMode(conn net.Conn, addr net.Addr, pconn *turbotunnel.QueuePacke
 	return nil
 }
 
+// ClientMapAddr is a string that represents a connecting client.
 type ClientMapAddr string
 
 func (addr ClientMapAddr) Network() string {

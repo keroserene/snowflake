@@ -17,7 +17,9 @@ import (
 )
 
 const (
+	// WindowSize is the number of packets in the send and receive window of a KCP connection.
 	WindowSize = 65535
+	// StreamSize controls the maximum amount of in flight data between a client and server.
 	StreamSize = 1048576 //1MB
 )
 
@@ -27,11 +29,14 @@ type Transport struct {
 	getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
 }
 
+// NewSnowflakeServer returns a new server-side Transport for Snowflake.
 func NewSnowflakeServer(getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) *Transport {
 
 	return &Transport{getCertificate: getCertificate}
 }
 
+// Listen starts a listener on addr that will accept both turbotunnel
+// and legacy Snowflake connections.
 func (t *Transport) Listen(addr net.Addr) (*SnowflakeListener, error) {
 	listener := &SnowflakeListener{addr: addr, queue: make(chan net.Conn, 65534)}
 
@@ -129,9 +134,9 @@ type SnowflakeListener struct {
 	closeOnce sync.Once
 }
 
-// Allows the caller to accept incoming Snowflake connections
+// Accept allows the caller to accept incoming Snowflake connections.
 // We accept connections from a queue to accommodate both incoming
-// smux Streams and legacy non-turbotunnel connections
+// smux Streams and legacy non-turbotunnel connections.
 func (l *SnowflakeListener) Accept() (net.Conn, error) {
 	select {
 	case <-l.closed:
@@ -142,10 +147,12 @@ func (l *SnowflakeListener) Accept() (net.Conn, error) {
 	}
 }
 
+// Addr returns the address of the SnowflakeListener
 func (l *SnowflakeListener) Addr() net.Addr {
 	return l.addr
 }
 
+// Close closes the Snowflake connection.
 func (l *SnowflakeListener) Close() error {
 	// Close our HTTP server and our KCP listener
 	l.closeOnce.Do(func() {
@@ -235,14 +242,15 @@ func (l *SnowflakeListener) queueConn(conn net.Conn) error {
 	}
 }
 
-// A wrapper for the underlying oneshot or turbotunnel conn
-// because we need to reference our mapping to determine the client
-// address
+// SnowflakeClientConn is a wrapper for the underlying oneshot or turbotunnel
+// conn. We need to reference our client address map to determine the
+// remote address
 type SnowflakeClientConn struct {
 	net.Conn
 	address net.Addr
 }
 
+// RemoteAddr returns the mapped client address of the Snowflake connection
 func (conn *SnowflakeClientConn) RemoteAddr() net.Addr {
 	return conn.address
 }
