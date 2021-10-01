@@ -1,4 +1,40 @@
-package lib
+/*
+Package snowflake_server implements the functionality necessary to accept Snowflake
+connections from Snowflake clients.
+
+Included in the package is a Transport type that implements the Pluggable Transports v2.1 Go API
+specification. To start a TLS Snowflake server using the golang.org/x/crypto/acme/autocert
+library, configure a certificate manager for the server's domain name and then create a new
+Transport as follows:
+
+	// The snowflake server runs a websocket server. To run this securely, you will
+	// need a valid certificate.
+	certManager := &autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist("snowflake.yourdomain.com"),
+		Email:      "you@yourdomain.com",
+	}
+
+	transport := snowflake_server.NewSnowflakeServer(certManager.GetCertificate)
+
+
+The Listen function starts a new listener, and Accept will return incoming Snowflake connections:
+
+	ln, err := transport.Listen(addr)
+	if err != nil {
+		// handle error
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			// handle error
+		}
+		// handle conn
+	}
+
+
+*/
+package snowflake_server
 
 import (
 	"crypto/tls"

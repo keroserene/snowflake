@@ -1,4 +1,4 @@
-package lib
+package snowflake_server
 
 import (
 	"encoding/binary"
