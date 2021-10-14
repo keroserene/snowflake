@@ -25,9 +25,9 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-const defaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
+const defaultBrokerURL = "https://snowflake-broker.torproject.net/"
 const defaultProbeURL = "https://snowflake-broker.torproject.net:8443/probe"
-const defaultRelayURL = "wss://snowflake.bamsoftware.com/"
+const defaultRelayURL = "wss://snowflake.torproject.net/"
 const defaultSTUNURL = "stun:stun.stunprotocol.org:3478"
 const pollInterval = 5 * time.Second
 const (

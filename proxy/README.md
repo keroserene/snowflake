@@ -30,7 +30,7 @@ The Snowflake proxy can be run with the following options:
 ```
 Usage of ./proxy:
   -broker string
-        broker URL (default "https://snowflake-broker.bamsoftware.com/")
+        broker URL (default "https://snowflake-broker.torproject.net/")
   -capacity uint
         maximum concurrent clients
   -keep-local-addresses
@@ -38,7 +38,7 @@ Usage of ./proxy:
   -log string
         log filename
   -relay string
-        websocket relay URL (default "wss://snowflake.bamsoftware.com/")
+        websocket relay URL (default "wss://snowflake.torproject.net/")
   -stun string
         stun URL (default "stun:stun.stunprotocol.org:3478")
   -unsafe-logging
