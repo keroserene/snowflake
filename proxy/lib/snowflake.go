@@ -2,7 +2,8 @@
 Package snowflake_proxy provides functionality for creating, starting, and stopping a snowflake
 proxy.
 
-To run a proxy, you must first create a proxy configuration
+To run a proxy, you must first create a proxy configuration. Unconfigured fields
+will be set to the defined defaults.
 
 	proxy := snowflake_proxy.SnowflakeProxy{
 		BrokerURL: "https://snowflake-broker.example.com",
@@ -45,24 +46,16 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-// DefaultBrokerURL is the bamsoftware.com broker, https://snowflake-broker.bamsoftware.com
-// Changing this will change the default broker. The recommended way of changing
-// the broker that gets used is by passing an argument to Main.
-const DefaultBrokerURL = "https://snowflake-broker.bamsoftware.com/"
+// DefaultBrokerURL is the snowflake broker run at https://snowflake-broker.torproject.net
+const DefaultBrokerURL = "https://snowflake-broker.torproject.net/"
 
-// DefaultProbeURL is the torproject.org  ProbeURL, https://snowflake-broker.torproject.net:8443/probe
-// Changing this will change the default Probe URL. The recommended way of changing
-// the probe that gets used is by passing an argument to Main.
+// DefaultProbeURL is run at https://snowflake-broker.torproject.net:8443/probe
 const DefaultProbeURL = "https://snowflake-broker.torproject.net:8443/probe"
 
-// DefaultRelayURL is the bamsoftware.com  Websocket Relay, wss://snowflake.bamsoftware.com/
-// Changing this will change the default Relay URL. The recommended way of changing
-// the relay that gets used is by passing an argument to Main.
+// DefaultRelayURL is run at wss://snowflake.torproject.net
 const DefaultRelayURL = "wss://snowflake.bamsoftware.com/"
 
-// DefaultSTUNURL is a stunprotocol.org STUN URL. stun:stun.stunprotocol.org:3478
-// Changing this will change the default STUN URL. The recommended way of changing
-// the STUN Server that gets used is by passing an argument to Main.
+// DefaultSTUNURL is run at stun:stun.stunprotocol.org:3478
 const DefaultSTUNURL = "stun:stun.stunprotocol.org:3478"
 const pollInterval = 5 * time.Second
 
@@ -95,15 +88,21 @@ var (
 	client http.Client
 )
 
-// SnowflakeProxy is a structure which is used to configure an embedded
+// SnowflakeProxy is used to configure an embedded
 // Snowflake in another Go application.
 type SnowflakeProxy struct {
-	Capacity           uint
-	STUNURL            string
-	BrokerURL          string
+	// Capacity is the maximum number of clients a Snowflake will serve.
+	// Proxies with a capacity of 0 will accept an unlimited number of clients.
+	Capacity uint
+	// STUNURL is the URL of the STUN server the proxy will use
+	STUNURL string
+	// BrokerURL is the URL of the Snowflake broker
+	BrokerURL string
+	// KeepLocalAddresses indicates whether local SDP candidates will be sent to the broker
 	KeepLocalAddresses bool
-	RelayURL           string
-	shutdown           chan struct{}
+	// RelayURL is the URL of the Snowflake server that all traffic will be relayed to
+	RelayURL string
+	shutdown chan struct{}
 }
 
 // Checks whether an IP address is a remote address for the client
@@ -485,9 +484,8 @@ func (sf *SnowflakeProxy) runSession(sid string) {
 	}
 }
 
-// Start configures and starts a Snowflake, fully formed and special. In the
-// case of an empty map, defaults are configured automatically and can be
-// found in the GoDoc and in main.go
+// Start configures and starts a Snowflake, fully formed and special. Configuration
+// values that are unset will default to their corresponding default values.
 func (sf *SnowflakeProxy) Start() {
 
 	sf.shutdown = make(chan struct{})
@@ -539,7 +537,7 @@ func (sf *SnowflakeProxy) Start() {
 	}
 }
 
-// Stop calls close on the sf.shutdown channel shutting down the Snowflake.
+// Stop closes all existing connections and shuts down the Snowflake.
 func (sf *SnowflakeProxy) Stop() {
 	close(sf.shutdown)
 }
