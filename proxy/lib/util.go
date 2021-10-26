@@ -1,21 +1,28 @@
-package main
+package snowflake
 
 import (
 	"fmt"
 	"time"
 )
 
+// BytesLogger is an interface which is used to allow logging the throughput
+// of the Snowflake. A default BytesLogger(BytesNullLogger) does nothing.
 type BytesLogger interface {
 	AddOutbound(int)
 	AddInbound(int)
 	ThroughputSummary() string
 }
 
-// Default BytesLogger does nothing.
+// BytesNullLogger Default BytesLogger does nothing.
 type BytesNullLogger struct{}
 
-func (b BytesNullLogger) AddOutbound(amount int)    {}
-func (b BytesNullLogger) AddInbound(amount int)     {}
+// AddOutbound in BytesNullLogger does nothing
+func (b BytesNullLogger) AddOutbound(amount int) {}
+
+// AddInbound in BytesNullLogger does nothing
+func (b BytesNullLogger) AddInbound(amount int) {}
+
+// ThroughputSummary in BytesNullLogger does nothing
 func (b BytesNullLogger) ThroughputSummary() string { return "" }
 
 // BytesSyncLogger uses channels to safely log from multiple sources with output
@@ -50,14 +57,17 @@ func (b *BytesSyncLogger) log() {
 	}
 }
 
+// AddOutbound add a number of bytes to the outbound total reported by the logger
 func (b *BytesSyncLogger) AddOutbound(amount int) {
 	b.outboundChan <- amount
 }
 
+// AddInbound add a number of bytes to the inbound total reported by the logger
 func (b *BytesSyncLogger) AddInbound(amount int) {
 	b.inboundChan <- amount
 }
 
+// ThroughputSummary view a formatted summary of the throughput totals
 func (b *BytesSyncLogger) ThroughputSummary() string {
 	var inUnit, outUnit string
 	units := []string{"B", "KB", "MB", "GB"}

@@ -1,4 +1,4 @@
-package main
+package snowflake
 
 import (
 	"bytes"
@@ -365,7 +365,7 @@ func TestBrokerInteractions(t *testing.T) {
 				b,
 			}
 
-			sdp := broker.pollOffer(sampleOffer)
+			sdp := broker.pollOffer(sampleOffer, nil)
 			expectedSDP, _ := strconv.Unquote(sampleSDP)
 			So(sdp.SDP, ShouldResemble, expectedSDP)
 		})
@@ -379,7 +379,7 @@ func TestBrokerInteractions(t *testing.T) {
 				b,
 			}
 
-			sdp := broker.pollOffer(sampleOffer)
+			sdp := broker.pollOffer(sampleOffer, nil)
 			So(sdp, ShouldBeNil)
 		})
 		Convey("sends answer to broker", func() {
@@ -478,7 +478,7 @@ func TestUtilityFuncs(t *testing.T) {
 	Convey("CopyLoop", t, func() {
 		c1, s1 := net.Pipe()
 		c2, s2 := net.Pipe()
-		go CopyLoop(s1, s2)
+		go copyLoop(s1, s2, nil)
 		go func() {
 			bytes := []byte("Hello!")
 			c1.Write(bytes)
