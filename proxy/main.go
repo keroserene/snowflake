@@ -7,28 +7,30 @@ import (
 	"os"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
-	"git.torproject.org/pluggable-transports/snowflake.git/proxy/lib"
+	sf "git.torproject.org/pluggable-transports/snowflake.git/proxy/lib"
 )
 
 func main() {
 	capacity := flag.Int("capacity", 10, "maximum concurrent clients")
-	stunURL := flag.String("stun", snowflake.DefaultSTUNURL, "broker URL")
+	stunURL := flag.String("stun", sf.DefaultSTUNURL, "broker URL")
 	logFilename := flag.String("log", "", "log filename")
-	rawBrokerURL := flag.String("broker", snowflake.DefaultBrokerURL, "broker URL")
+	rawBrokerURL := flag.String("broker", sf.DefaultBrokerURL, "broker URL")
 	unsafeLogging := flag.Bool("unsafe-logging", false, "prevent logs from being scrubbed")
 	keepLocalAddresses := flag.Bool("keep-local-addresses", false, "keep local LAN address ICE candidates")
-	relayURL := flag.String("relay", snowflake.DefaultRelayURL, "websocket relay URL")
+	relayURL := flag.String("relay", sf.DefaultRelayURL, "websocket relay URL")
 
 	flag.Parse()
 
-	sf := snowflake.SnowflakeProxy{
+	proxy := sf.SnowflakeProxy{
 		Capacity:           uint(*capacity),
-		StunURL:            *stunURL,
-		RawBrokerURL:       *rawBrokerURL,
+		STUNURL:            *stunURL,
+		BrokerURL:          *rawBrokerURL,
 		KeepLocalAddresses: *keepLocalAddresses,
 		RelayURL:           *relayURL,
-		LogOutput:          os.Stderr,
 	}
+
+	var logOutput io.Writer = os.Stderr
+	log.SetFlags(log.LstdFlags | log.LUTC)
 
 	if *logFilename != "" {
 		f, err := os.OpenFile(*logFilename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
@@ -36,13 +38,13 @@ func main() {
 			log.Fatal(err)
 		}
 		defer f.Close()
-		sf.LogOutput = io.MultiWriter(os.Stderr, f)
+		logOutput = io.MultiWriter(os.Stderr, f)
 	}
 	if *unsafeLogging {
-		log.SetOutput(sf.LogOutput)
+		log.SetOutput(logOutput)
 	} else {
-		log.SetOutput(&safelog.LogScrubber{Output: sf.LogOutput})
+		log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 	}
 
-	sf.Start()
+	proxy.Start()
 }

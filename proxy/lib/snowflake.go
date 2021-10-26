@@ -1,4 +1,27 @@
-package snowflake
+/*
+Package snowflake_proxy provides functionality for creating, starting, and stopping a snowflake
+proxy.
+
+To run a proxy, you must first create a proxy configuration
+
+	proxy := snowflake_proxy.SnowflakeProxy{
+		BrokerURL: "https://snowflake-broker.example.com",
+		STUNURL: "stun:stun.stunprotocol.org:3478",
+		// ...
+	}
+
+You may then start and stop the proxy. Stopping the proxy will close existing connections and
+the proxy will not poll for more clients.
+
+	go func() {
+		proxy.Start()
+	}
+
+	// ...
+
+	proxy.Stop()
+*/
+package snowflake_proxy
 
 import (
 	"bytes"
@@ -76,11 +99,10 @@ var (
 // Snowflake in another Go application.
 type SnowflakeProxy struct {
 	Capacity           uint
-	StunURL            string
-	RawBrokerURL       string
+	STUNURL            string
+	BrokerURL          string
 	KeepLocalAddresses bool
 	RelayURL           string
-	LogOutput          io.Writer
 	shutdown           chan struct{}
 }
 
@@ -475,12 +497,12 @@ func (sf *SnowflakeProxy) Start() {
 	log.Println("starting")
 
 	var err error
-	broker, err = newSignalingServer(sf.RawBrokerURL, sf.KeepLocalAddresses)
+	broker, err = newSignalingServer(sf.BrokerURL, sf.KeepLocalAddresses)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = url.Parse(sf.StunURL)
+	_, err = url.Parse(sf.STUNURL)
 	if err != nil {
 		log.Fatalf("invalid stun url: %s", err)
 	}
@@ -492,7 +514,7 @@ func (sf *SnowflakeProxy) Start() {
 	config = webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
-				URLs: []string{sf.StunURL},
+				URLs: []string{sf.STUNURL},
 			},
 		},
 	}
