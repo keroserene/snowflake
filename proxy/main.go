@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	capacity := flag.Int("capacity", 10, "maximum concurrent clients")
+	capacity := flag.Uint("capacity", 0, "maximum concurrent clients")
 	stunURL := flag.String("stun", sf.DefaultSTUNURL, "broker URL")
 	logFilename := flag.String("log", "", "log filename")
 	rawBrokerURL := flag.String("broker", sf.DefaultBrokerURL, "broker URL")
@@ -32,6 +32,7 @@ func main() {
 	var logOutput io.Writer = os.Stderr
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
+	log.SetFlags(log.LstdFlags | log.LUTC)
 	if *logFilename != "" {
 		f, err := os.OpenFile(*logFilename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
@@ -46,5 +47,8 @@ func main() {
 		log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 	}
 
-	proxy.Start()
+	err := proxy.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

@@ -15,7 +15,8 @@ You may then start and stop the proxy. Stopping the proxy will close existing co
 the proxy will not poll for more clients.
 
 	go func() {
-		proxy.Start()
+		err := proxy.Start()
+		// handle error
 	}
 
 	// ...
@@ -46,16 +47,12 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-// DefaultBrokerURL is the snowflake broker run at https://snowflake-broker.torproject.net
 const DefaultBrokerURL = "https://snowflake-broker.torproject.net/"
 
-// DefaultProbeURL is run at https://snowflake-broker.torproject.net:8443/probe
 const DefaultProbeURL = "https://snowflake-broker.torproject.net:8443/probe"
 
-// DefaultRelayURL is run at wss://snowflake.torproject.net
 const DefaultRelayURL = "wss://snowflake.bamsoftware.com/"
 
-// DefaultSTUNURL is run at stun:stun.stunprotocol.org:3478
 const DefaultSTUNURL = "stun:stun.stunprotocol.org:3478"
 const pollInterval = 5 * time.Second
 
@@ -486,27 +483,35 @@ func (sf *SnowflakeProxy) runSession(sid string) {
 
 // Start configures and starts a Snowflake, fully formed and special. Configuration
 // values that are unset will default to their corresponding default values.
-func (sf *SnowflakeProxy) Start() {
-
-	sf.shutdown = make(chan struct{})
-
-	log.SetFlags(log.LstdFlags | log.LUTC)
+func (sf *SnowflakeProxy) Start() error {
+	var err error
 
 	log.Println("starting")
+	sf.shutdown = make(chan struct{})
 
-	var err error
+	// blank configurations revert to default
+	if sf.BrokerURL == "" {
+		sf.BrokerURL = DefaultBrokerURL
+	}
+	if sf.RelayURL == "" {
+		sf.RelayURL = DefaultRelayURL
+	}
+	if sf.STUNURL == "" {
+		sf.STUNURL = DefaultSTUNURL
+	}
+
 	broker, err = newSignalingServer(sf.BrokerURL, sf.KeepLocalAddresses)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("error configuring broker: %s", err)
 	}
 
 	_, err = url.Parse(sf.STUNURL)
 	if err != nil {
-		log.Fatalf("invalid stun url: %s", err)
+		return fmt.Errorf("invalid stun url: %s", err)
 	}
 	_, err = url.Parse(sf.RelayURL)
 	if err != nil {
-		log.Fatalf("invalid relay url: %s", err)
+		return fmt.Errorf("invalid relay url: %s", err)
 	}
 
 	config = webrtc.Configuration{
@@ -528,13 +533,14 @@ func (sf *SnowflakeProxy) Start() {
 	for ; true; <-ticker.C {
 		select {
 		case <-sf.shutdown:
-			return
+			return nil
 		default:
 			tokens.get()
 			sessionID := genSessionID()
 			sf.runSession(sessionID)
 		}
 	}
+	return nil
 }
 
 // Stop closes all existing connections and shuts down the Snowflake.
