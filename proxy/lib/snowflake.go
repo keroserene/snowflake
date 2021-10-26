@@ -49,7 +49,7 @@ import (
 
 const DefaultBrokerURL = "https://snowflake-broker.torproject.net/"
 
-const DefaultProbeURL = "https://snowflake-broker.torproject.net:8443/probe"
+const DefaultNATProbeURL = "https://snowflake-broker.torproject.net:8443/probe"
 
 const DefaultRelayURL = "wss://snowflake.bamsoftware.com/"
 
@@ -99,7 +99,9 @@ type SnowflakeProxy struct {
 	KeepLocalAddresses bool
 	// RelayURL is the URL of the Snowflake server that all traffic will be relayed to
 	RelayURL string
-	shutdown chan struct{}
+	// NATProbeURL is the URL of the probe service we use for NAT checks
+	NATProbeURL string
+	shutdown    chan struct{}
 }
 
 // Checks whether an IP address is a remote address for the client
@@ -499,6 +501,9 @@ func (sf *SnowflakeProxy) Start() error {
 	if sf.STUNURL == "" {
 		sf.STUNURL = DefaultSTUNURL
 	}
+	if sf.NATProbeURL == "" {
+		sf.NATProbeURL = DefaultNATProbeURL
+	}
 
 	broker, err = newSignalingServer(sf.BrokerURL, sf.KeepLocalAddresses)
 	if err != nil {
@@ -524,7 +529,7 @@ func (sf *SnowflakeProxy) Start() error {
 	tokens = newTokens(sf.Capacity)
 
 	// use probetest to determine NAT compatability
-	sf.checkNATType(config, DefaultProbeURL)
+	sf.checkNATType(config, sf.NATProbeURL)
 	log.Printf("NAT type: %s", currentNATType)
 
 	ticker := time.NewTicker(pollInterval)
