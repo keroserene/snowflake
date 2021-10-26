@@ -29,7 +29,7 @@ type webRTCConn struct {
 	lock sync.Mutex // Synchronization for DataChannel destruction
 	once sync.Once  // Synchronization for PeerConnection destruction
 
-	bytesLogger BytesLogger
+	bytesLogger bytesLogger
 }
 
 func (c *webRTCConn) Read(b []byte) (int, error) {

@@ -5,37 +5,37 @@ import (
 	"time"
 )
 
-// BytesLogger is an interface which is used to allow logging the throughput
-// of the Snowflake. A default BytesLogger(BytesNullLogger) does nothing.
-type BytesLogger interface {
+// bytesLogger is an interface which is used to allow logging the throughput
+// of the Snowflake. A default bytesLogger(bytesNullLogger) does nothing.
+type bytesLogger interface {
 	AddOutbound(int)
 	AddInbound(int)
 	ThroughputSummary() string
 }
 
-// BytesNullLogger Default BytesLogger does nothing.
-type BytesNullLogger struct{}
+// bytesNullLogger Default bytesLogger does nothing.
+type bytesNullLogger struct{}
 
-// AddOutbound in BytesNullLogger does nothing
-func (b BytesNullLogger) AddOutbound(amount int) {}
+// AddOutbound in bytesNullLogger does nothing
+func (b bytesNullLogger) AddOutbound(amount int) {}
 
-// AddInbound in BytesNullLogger does nothing
-func (b BytesNullLogger) AddInbound(amount int) {}
+// AddInbound in bytesNullLogger does nothing
+func (b bytesNullLogger) AddInbound(amount int) {}
 
-// ThroughputSummary in BytesNullLogger does nothing
-func (b BytesNullLogger) ThroughputSummary() string { return "" }
+// ThroughputSummary in bytesNullLogger does nothing
+func (b bytesNullLogger) ThroughputSummary() string { return "" }
 
-// BytesSyncLogger uses channels to safely log from multiple sources with output
+// bytesSyncLogger uses channels to safely log from multiple sources with output
 // occuring at reasonable intervals.
-type BytesSyncLogger struct {
+type bytesSyncLogger struct {
 	outboundChan, inboundChan              chan int
 	outbound, inbound, outEvents, inEvents int
 	start                                  time.Time
 }
 
-// NewBytesSyncLogger returns a new BytesSyncLogger and starts it loggin.
-func NewBytesSyncLogger() *BytesSyncLogger {
-	b := &BytesSyncLogger{
+// newBytesSyncLogger returns a new bytesSyncLogger and starts it loggin.
+func newBytesSyncLogger() *bytesSyncLogger {
+	b := &bytesSyncLogger{
 		outboundChan: make(chan int, 5),
 		inboundChan:  make(chan int, 5),
 	}
@@ -44,7 +44,7 @@ func NewBytesSyncLogger() *BytesSyncLogger {
 	return b
 }
 
-func (b *BytesSyncLogger) log() {
+func (b *bytesSyncLogger) log() {
 	for {
 		select {
 		case amount := <-b.outboundChan:
@@ -58,17 +58,17 @@ func (b *BytesSyncLogger) log() {
 }
 
 // AddOutbound add a number of bytes to the outbound total reported by the logger
-func (b *BytesSyncLogger) AddOutbound(amount int) {
+func (b *bytesSyncLogger) AddOutbound(amount int) {
 	b.outboundChan <- amount
 }
 
 // AddInbound add a number of bytes to the inbound total reported by the logger
-func (b *BytesSyncLogger) AddInbound(amount int) {
+func (b *bytesSyncLogger) AddInbound(amount int) {
 	b.inboundChan <- amount
 }
 
 // ThroughputSummary view a formatted summary of the throughput totals
-func (b *BytesSyncLogger) ThroughputSummary() string {
+func (b *bytesSyncLogger) ThroughputSummary() string {
 	var inUnit, outUnit string
 	units := []string{"B", "KB", "MB", "GB"}
 

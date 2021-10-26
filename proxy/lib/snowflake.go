@@ -306,7 +306,7 @@ func (sf *SnowflakeProxy) makePeerConnectionFromOffer(sdp *webrtc.SessionDescrip
 
 		pr, pw := io.Pipe()
 		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
-		conn.bytesLogger = NewBytesSyncLogger()
+		conn.bytesLogger = newBytesSyncLogger()
 
 		dc.OnOpen(func() {
 			log.Println("OnOpen channel")
