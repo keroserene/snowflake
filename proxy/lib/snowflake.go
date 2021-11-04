@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/task"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/util"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/websocketconn"
 	"github.com/gorilla/websocket"
@@ -545,6 +546,19 @@ func (sf *SnowflakeProxy) Start() error {
 	currentNATTypeAccess.RUnlock()
 
 	log.Printf("NAT type: %s", currentNATTypeLoaded)
+
+	NatRetestTask := task.Periodic{
+		Interval: time.Second * time.Duration(sf.NATTypeMeasurementIntervalSecond),
+		Execute: func() error {
+			sf.checkNATType(config, sf.NATProbeURL)
+			return nil
+		},
+	}
+
+	if sf.NATTypeMeasurementIntervalSecond != 0 {
+		NatRetestTask.Start()
+		defer NatRetestTask.Close()
+	}
 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
