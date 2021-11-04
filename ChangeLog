@@ -1,3 +1,19 @@
+Changes in version v2.0.0 - 2021-11-04
+
+- Turn the standalone snowflake proxy code into a library
+- Clean up and reworked the snowflake client and server library code
+- Unify broker/bridge domains to *.torproject.net
+- Updates to the snowflake library documentation
+- New package functions to define and set a rendezvous method with the
+broker
+- Factor out the broker geoip code into its own external library
+- Bug fix to check error calls in preparePeerConnection
+- Bug fixes in snowflake tests
+- Issue 40059: add the ability to pass in snowflake arguments through SOCKS
+- Increase buffer sizes for sending and receiving snowflake data
+- Issue 25985: rendezvous with the broker using AMP cache
+- Issue 40055: wait for the full poll interval between proxy polls
+
 Changes in version v1.1.0 - 2021-07-13
 
 - Refactors of the Snowflake broker code
