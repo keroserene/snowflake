@@ -105,7 +105,9 @@ type SnowflakeProxy struct {
 	RelayURL string
 	// NATProbeURL is the URL of the probe service we use for NAT checks
 	NATProbeURL string
-	shutdown    chan struct{}
+	// NATTypeMeasurementIntervalSecond is time in second before NAT type is retested
+	NATTypeMeasurementIntervalSecond uint
+	shutdown                         chan struct{}
 }
 
 // Checks whether an IP address is a remote address for the client
