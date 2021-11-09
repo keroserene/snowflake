@@ -80,6 +80,12 @@ var currentNATTypeAccess = &sync.RWMutex{}
 // Obtain currentNATTypeAccess before access.
 var currentNATType = NATUnknown
 
+func getCurrentNATType() string {
+	currentNATTypeAccess.RLock()
+	defer currentNATTypeAccess.RUnlock()
+	return currentNATType
+}
+
 const (
 	sessionIDLength = 16
 )
@@ -190,9 +196,7 @@ func (s *SignalingServer) pollOffer(sid string, shutdown chan struct{}) *webrtc.
 			return nil
 		default:
 			numClients := int((tokens.count() / 8) * 8) // Round down to 8
-			currentNATTypeAccess.RLock()
-			currentNATTypeLoaded := currentNATType
-			currentNATTypeAccess.RUnlock()
+			currentNATTypeLoaded := getCurrentNATType()
 			body, err := messages.EncodePollRequest(sid, "standalone", currentNATTypeLoaded, numClients)
 			if err != nil {
 				log.Printf("Error encoding poll message: %s", err.Error())
@@ -541,9 +545,7 @@ func (sf *SnowflakeProxy) Start() error {
 	// use probetest to determine NAT compatability
 	sf.checkNATType(config, sf.NATProbeURL)
 
-	currentNATTypeAccess.RLock()
-	currentNATTypeLoaded := currentNATType
-	currentNATTypeAccess.RUnlock()
+	currentNATTypeLoaded := getCurrentNATType()
 
 	log.Printf("NAT type: %s", currentNATTypeLoaded)
 
@@ -632,9 +634,7 @@ func (sf *SnowflakeProxy) checkNATType(config webrtc.Configuration, probeURL str
 		return
 	}
 
-	currentNATTypeAccess.RLock()
-	currentNATTypeLoaded := currentNATType
-	currentNATTypeAccess.RUnlock()
+	currentNATTypeLoaded := getCurrentNATType()
 
 	currentNATTypeTestResult := NATUnknown
 	select {
