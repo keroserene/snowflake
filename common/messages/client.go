@@ -1,6 +1,6 @@
 //Package for communication with the snowflake broker
 
-//import "git.torproject.org/pluggable-transports/snowflake.git/common/messages"
+//import "git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
 package messages
 
 import (

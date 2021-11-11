@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/nat"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/nat"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/util"
 	"github.com/pion/webrtc/v3"
 )
 

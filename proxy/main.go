@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
-	sf "git.torproject.org/pluggable-transports/snowflake.git/proxy/lib"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/safelog"
+	sf "git.torproject.org/pluggable-transports/snowflake.git/v2/proxy/lib"
 )
 
 func main() {

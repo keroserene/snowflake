@@ -12,7 +12,7 @@ package main
 import (
     "log"
 
-    sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
+    sf "git.torproject.org/pluggable-transports/snowflake.git/v2/client/lib"
 )
 
 func main() {
@@ -54,7 +54,7 @@ package main
 import (
     "log"
 
-    sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
+    sf "git.torproject.org/pluggable-transports/snowflake.git/v2/client/lib"
 )
 
 type StubMethod struct {
@@ -110,7 +110,7 @@ import (
     "log"
     "net"
 
-    sf "git.torproject.org/pluggable-transports/snowflake.git/server/lib"
+    sf "git.torproject.org/pluggable-transports/snowflake.git/v2/server/lib"
     "golang.org/x/crypto/acme/autocert"
 )
 

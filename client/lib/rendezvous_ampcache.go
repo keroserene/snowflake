@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/amp"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/amp"
 )
 
 // ampCacheRendezvous is a RendezvousMethod that communicates with the

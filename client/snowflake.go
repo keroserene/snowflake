@@ -16,8 +16,8 @@ import (
 	"syscall"
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
-	sf "git.torproject.org/pluggable-transports/snowflake.git/client/lib"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
+	sf "git.torproject.org/pluggable-transports/snowflake.git/v2/client/lib"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/safelog"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/amp"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/amp"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
 )
 
 // ampClientOffers is the AMP-speaking endpoint for client poll messages,

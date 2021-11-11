@@ -1,4 +1,4 @@
-module git.torproject.org/pluggable-transports/snowflake.git
+module git.torproject.org/pluggable-transports/snowflake.git/v2
 
 go 1.13
 

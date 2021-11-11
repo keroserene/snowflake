@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
 )
 
 const (

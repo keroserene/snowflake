@@ -2,7 +2,7 @@ language: go
 
 dist: xenial
 
-go_import_path: git.torproject.org/pluggable-transports/snowflake.git
+go_import_path: git.torproject.org/pluggable-transports/snowflake.git/v2
 
 go:
     - 1.13.x

@@ -1,6 +1,6 @@
 //Package for a safer logging wrapper around the standard logging package
 
-//import "git.torproject.org/pluggable-transports/snowflake.git/common/safelog"
+//import "git.torproject.org/pluggable-transports/snowflake.git/v2/common/safelog"
 package safelog
 
 import (

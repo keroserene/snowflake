@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/encapsulation"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/turbotunnel"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/encapsulation"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/turbotunnel"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/websocketconn"
 	"github.com/gorilla/websocket"
 )
 

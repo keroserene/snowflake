@@ -40,9 +40,9 @@ import (
 	"sync"
 	"time"
 
-	"git.torproject.org/pluggable-transports/snowflake.git/common/messages"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/util"
-	"git.torproject.org/pluggable-transports/snowflake.git/common/websocketconn"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/util"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/websocketconn"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 )
