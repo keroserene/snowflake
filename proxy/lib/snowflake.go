@@ -646,32 +646,14 @@ func (sf *SnowflakeProxy) checkNATType(config webrtc.Configuration, probeURL str
 
 	currentNATTypeToStore := NATUnknown
 	switch currentNATTypeLoaded + "->" + currentNATTypeTestResult {
-	case NATUnknown + "->" + NATUnknown:
-		currentNATTypeToStore = NATUnknown
-
-	case NATUnknown + "->" + NATUnrestricted:
-		currentNATTypeToStore = NATUnrestricted
-
-	case NATUnknown + "->" + NATRestricted:
-		currentNATTypeToStore = NATRestricted
-
 	case NATUnrestricted + "->" + NATUnknown:
 		currentNATTypeToStore = NATUnrestricted
-
-	case NATUnrestricted + "->" + NATUnrestricted:
-		currentNATTypeToStore = NATUnrestricted
-
-	case NATUnrestricted + "->" + NATRestricted:
-		currentNATTypeToStore = NATRestricted
 
 	case NATRestricted + "->" + NATUnknown:
 		currentNATTypeToStore = NATRestricted
 
-	case NATRestricted + "->" + NATUnrestricted:
-		currentNATTypeToStore = NATUnrestricted
-
-	case NATRestricted + "->" + NATRestricted:
-		currentNATTypeToStore = NATRestricted
+	default:
+		currentNATTypeToStore = currentNATTypeTestResult
 	}
 
 	log.Printf("NAT Type measurement: %v -> %v = %v\n", currentNATTypeLoaded, currentNATTypeTestResult, currentNATTypeToStore)
