@@ -1,3 +1,5 @@
+// Package task
+// Reused from https://github.com/v2fly/v2ray-core/blob/784775f68922f07d40c9eead63015b2026af2ade/common/task/periodic.go
 package task
 
 import (
