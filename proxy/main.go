@@ -19,7 +19,7 @@ func main() {
 	unsafeLogging := flag.Bool("unsafe-logging", false, "prevent logs from being scrubbed")
 	keepLocalAddresses := flag.Bool("keep-local-addresses", false, "keep local LAN address ICE candidates")
 	relayURL := flag.String("relay", sf.DefaultRelayURL, "websocket relay URL")
-	NATTypeMeasurementIntervalString := flag.String("nat-retest-interval", "24h",
+	NATTypeMeasurementInterval := flag.Duration("nat-retest-interval", time.Hour*24,
 		"the time interval in second before NAT type is retested, 0s disables retest. Valid time units are \"s\", \"m\", \"h\". ")
 
 	flag.Parse()
@@ -30,12 +30,8 @@ func main() {
 		BrokerURL:          *rawBrokerURL,
 		KeepLocalAddresses: *keepLocalAddresses,
 		RelayURL:           *relayURL,
-	}
 
-	if NATTypeMeasurementIntervalTime, err := time.ParseDuration(*NATTypeMeasurementIntervalString); err == nil {
-		proxy.NATTypeMeasurementIntervalSecond = uint(NATTypeMeasurementIntervalTime.Seconds())
-	} else {
-		log.Fatalf("unable to parse nat-retest-seconds: %v", err)
+		NATTypeMeasurementIntervalSecond: uint(NATTypeMeasurementInterval.Seconds()),
 	}
 
 	var logOutput io.Writer = os.Stderr
