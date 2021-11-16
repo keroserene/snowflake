@@ -31,7 +31,7 @@ func main() {
 		KeepLocalAddresses: *keepLocalAddresses,
 		RelayURL:           *relayURL,
 
-		NATTypeMeasurementIntervalSecond: uint(NATTypeMeasurementInterval.Seconds()),
+		NATTypeMeasurementInterval: *NATTypeMeasurementInterval,
 	}
 
 	var logOutput io.Writer = os.Stderr

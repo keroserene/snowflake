@@ -112,9 +112,9 @@ type SnowflakeProxy struct {
 	RelayURL string
 	// NATProbeURL is the URL of the probe service we use for NAT checks
 	NATProbeURL string
-	// NATTypeMeasurementIntervalSecond is time in second before NAT type is retested
-	NATTypeMeasurementIntervalSecond uint
-	shutdown                         chan struct{}
+	// NATTypeMeasurementInterval is time before NAT type is retested
+	NATTypeMeasurementInterval time.Duration
+	shutdown                   chan struct{}
 }
 
 // Checks whether an IP address is a remote address for the client
@@ -550,14 +550,14 @@ func (sf *SnowflakeProxy) Start() error {
 	log.Printf("NAT type: %s", currentNATTypeLoaded)
 
 	NatRetestTask := task.Periodic{
-		Interval: time.Second * time.Duration(sf.NATTypeMeasurementIntervalSecond),
+		Interval: sf.NATTypeMeasurementInterval,
 		Execute: func() error {
 			sf.checkNATType(config, sf.NATProbeURL)
 			return nil
 		},
 	}
 
-	if sf.NATTypeMeasurementIntervalSecond != 0 {
+	if sf.NATTypeMeasurementInterval != 0 {
 		NatRetestTask.Start()
 		defer NatRetestTask.Close()
 	}
