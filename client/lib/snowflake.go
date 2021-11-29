@@ -35,6 +35,7 @@ import (
 	"strings"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/turbotunnel"
 	"github.com/pion/webrtc/v3"
@@ -92,6 +93,9 @@ type ClientConfig struct {
 	// Max is the maximum number of snowflake proxy peers that the client should attempt to
 	// connect to. Defaults to 1.
 	Max int
+	// EventDispatcher is the event bus for snowflake events.
+	// When an important event happens, it will be distributed here.
+	EventDispatcher event.SnowflakeEventDispatcher
 }
 
 // NewSnowflakeClient creates a new Snowflake transport client that can spawn multiple
