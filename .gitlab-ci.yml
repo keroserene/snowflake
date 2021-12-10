@@ -139,15 +139,22 @@ android:
     - go get golang.org/x/mobile/bind
     - gomobile bind -v -target=android $REPRODUCIBLE_FLAGS .
 
-go-1.13:
-  image: golang:1.13-stretch
+go-1.15:
+  image: golang:1.15-stretch
   <<: *golang-docker-debian-template
   <<: *test-template
   script:
     - *go-test
 
-go-1.14:
-  image: golang:1.14-stretch
+go-1.16:
+  image: golang:1.16-stretch
+  <<: *golang-docker-debian-template
+  <<: *test-template
+  script:
+    - *go-test
+
+go-1.17:
+  image: golang:1.17-stretch
   <<: *golang-docker-debian-template
   <<: *test-template
   script:
