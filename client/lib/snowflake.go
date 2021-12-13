@@ -135,7 +135,7 @@ func NewSnowflakeClient(config ClientConfig) (*Transport, error) {
 	if config.Max > max {
 		max = config.Max
 	}
-	transport := &Transport{dialer: NewWebRTCDialer(broker, iceServers, max)}
+	transport := &Transport{dialer: NewWebRTCDialer4E(broker, iceServers, max, config.EventDispatcher)}
 
 	return transport, nil
 }
