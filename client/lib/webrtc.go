@@ -36,13 +36,22 @@ type WebRTCPeer struct {
 	eventsLogger event.SnowflakeEventReceiver
 }
 
-// NewWebRTCPeer constructs a WebRTC PeerConnection to a snowflake proxy.
+func NewWebRTCPeer(config *webrtc.Configuration,
+	broker *BrokerChannel) (*WebRTCPeer, error) {
+	return NewWebRTCPeer3E(config, broker, nil)
+}
+
+// NewWebRTCPeer3E constructs a WebRTC PeerConnection to a snowflake proxy.
 //
 // The creation of the peer handles the signaling to the Snowflake broker, including
 // the exchange of SDP information, the creation of a PeerConnection, and the establishment
 // of a DataChannel to the Snowflake proxy.
-func NewWebRTCPeer(config *webrtc.Configuration,
-	broker *BrokerChannel) (*WebRTCPeer, error) {
+func NewWebRTCPeer3E(config *webrtc.Configuration,
+	broker *BrokerChannel, eventsLogger event.SnowflakeEventReceiver) (*WebRTCPeer, error) {
+	if eventsLogger == nil {
+		eventsLogger = event.NewSnowflakeEventDispatcher()
+	}
+
 	connection := new(WebRTCPeer)
 	{
 		var buf [8]byte
@@ -58,6 +67,8 @@ func NewWebRTCPeer(config *webrtc.Configuration,
 
 	// Pipes remain the same even when DataChannel gets switched.
 	connection.recvPipe, connection.writePipe = io.Pipe()
+
+	connection.eventsLogger = eventsLogger
 
 	err := connection.connect(config, broker)
 	if err != nil {
