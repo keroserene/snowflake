@@ -17,6 +17,7 @@ import (
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	sf "git.torproject.org/pluggable-transports/snowflake.git/v2/client/lib"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/safelog"
 )
 
@@ -170,6 +171,10 @@ func main() {
 
 	iceAddresses := strings.Split(strings.TrimSpace(*iceServersCommas), ",")
 
+	eventLogger := event.NewSnowflakeEventDispatcher()
+
+	eventLogger.AddSnowflakeEventListener(sf.NewPTEventLogger())
+
 	config := sf.ClientConfig{
 		BrokerURL:          *brokerURL,
 		AmpCacheURL:        *ampCacheURL,
@@ -177,6 +182,7 @@ func main() {
 		ICEAddresses:       iceAddresses,
 		KeepLocalAddresses: *keepLocalAddresses || *oldKeepLocalAddresses,
 		Max:                *max,
+		EventDispatcher:    eventLogger,
 	}
 
 	// Begin goptlib client process.
