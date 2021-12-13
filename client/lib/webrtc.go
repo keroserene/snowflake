@@ -202,7 +202,7 @@ func (c *WebRTCPeer) preparePeerConnection(config *webrtc.Configuration) error {
 		return err
 	}
 	dc.OnOpen(func() {
-		c.eventsLogger.OnNewSnowflakeEvent(&event.EventOnSnowflakeConnected{})
+		c.eventsLogger.OnNewSnowflakeEvent(event.EventOnSnowflakeConnected{})
 		log.Println("WebRTC: DataChannel.OnOpen")
 		close(c.open)
 	})
@@ -211,7 +211,7 @@ func (c *WebRTCPeer) preparePeerConnection(config *webrtc.Configuration) error {
 		c.Close()
 	})
 	dc.OnError(func(err error) {
-		c.eventsLogger.OnNewSnowflakeEvent(&event.EventOnSnowflakeConnectionFailed{Error: err})
+		c.eventsLogger.OnNewSnowflakeEvent(event.EventOnSnowflakeConnectionFailed{Error: err})
 	})
 	dc.OnMessage(func(msg webrtc.DataChannelMessage) {
 		if len(msg.Data) <= 0 {
