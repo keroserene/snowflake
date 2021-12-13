@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -31,7 +32,8 @@ type WebRTCPeer struct {
 
 	once sync.Once // Synchronization for PeerConnection destruction
 
-	bytesLogger bytesLogger
+	bytesLogger  bytesLogger
+	eventsLogger event.SnowflakeEventReceiver
 }
 
 // NewWebRTCPeer constructs a WebRTC PeerConnection to a snowflake proxy.
@@ -131,10 +133,21 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 	log.Println(c.id, " connecting...")
 	// TODO: When go-webrtc is more stable, it's possible that a new
 	// PeerConnection won't need to be re-prepared each time.
-	if err := c.preparePeerConnection(config); err != nil {
+	err := c.preparePeerConnection(config)
+	localDescription := c.pc.LocalDescription()
+	c.eventsLogger.OnNewSnowflakeEvent(event.EventOnOfferCreated{
+		WebRTCLocalDescription: localDescription,
+		Error:                  err,
+	})
+	if err != nil {
 		return err
 	}
-	answer, err := broker.Negotiate(c.pc.LocalDescription())
+
+	answer, err := broker.Negotiate(localDescription)
+	c.eventsLogger.OnNewSnowflakeEvent(event.EventOnBrokerRendezvous{
+		WebRTCRemoteDescription: answer,
+		Error:                   err,
+	})
 	if err != nil {
 		return err
 	}
