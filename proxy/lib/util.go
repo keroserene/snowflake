@@ -11,6 +11,7 @@ type bytesLogger interface {
 	AddOutbound(int)
 	AddInbound(int)
 	ThroughputSummary() string
+	GetStat() (in int, out int)
 }
 
 // bytesNullLogger Default bytesLogger does nothing.
@@ -24,6 +25,8 @@ func (b bytesNullLogger) AddInbound(amount int) {}
 
 // ThroughputSummary in bytesNullLogger does nothing
 func (b bytesNullLogger) ThroughputSummary() string { return "" }
+
+func (b bytesNullLogger) GetStat() (in int, out int) { return -1, -1 }
 
 // bytesSyncLogger uses channels to safely log from multiple sources with output
 // occuring at reasonable intervals.
@@ -92,3 +95,5 @@ func (b *bytesSyncLogger) ThroughputSummary() string {
 	t := time.Now()
 	return fmt.Sprintf("Traffic throughput (up|down): %d %s|%d %s -- (%d OnMessages, %d Sends, over %d seconds)", inbound, inUnit, outbound, outUnit, b.outEvents, b.inEvents, int(t.Sub(b.start).Seconds()))
 }
+
+func (b *bytesSyncLogger) GetStat() (in int, out int) { return b.inbound, b.outbound }
