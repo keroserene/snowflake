@@ -72,28 +72,28 @@ func (b *bytesSyncLogger) AddInbound(amount int) {
 
 // ThroughputSummary view a formatted summary of the throughput totals
 func (b *bytesSyncLogger) ThroughputSummary() string {
-	var inUnit, outUnit string
-	units := []string{"B", "KB", "MB", "GB"}
-
 	inbound := b.inbound
 	outbound := b.outbound
 
-	for i, u := range units {
-		inUnit = u
-		if (inbound < 1000) || (i == len(units)-1) {
-			break
-		}
-		inbound = inbound / 1000
-	}
-	for i, u := range units {
-		outUnit = u
-		if (outbound < 1000) || (i == len(units)-1) {
-			break
-		}
-		outbound = outbound / 1000
-	}
+	inbound, inUnit := formatTraffic(inbound)
+	outbound, outUnit := formatTraffic(outbound)
+
 	t := time.Now()
 	return fmt.Sprintf("Traffic throughput (up|down): %d %s|%d %s -- (%d OnMessages, %d Sends, over %d seconds)", inbound, inUnit, outbound, outUnit, b.outEvents, b.inEvents, int(t.Sub(b.start).Seconds()))
 }
 
 func (b *bytesSyncLogger) GetStat() (in int, out int) { return b.inbound, b.outbound }
+
+func formatTraffic(amount int) (value int, unit string) {
+	value = amount
+	units := []string{"B", "KB", "MB", "GB"}
+	for i, u := range units {
+		unit = u
+		if (value < 1000) || (i == len(units)-1) {
+			break
+		}
+		value = value / 1000
+	}
+	return
+
+}
