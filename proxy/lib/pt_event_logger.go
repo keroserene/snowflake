@@ -9,7 +9,7 @@ import (
 )
 
 func NewProxyEventLogger(logPeriod time.Duration) event.SnowflakeEventReceiver {
-	el := &logEventLogger{}
+	el := &logEventLogger{logPeriod: logPeriod}
 	el.task = &task.Periodic{Interval: logPeriod, Execute: el.logTick}
 	el.task.Start()
 	return el
@@ -36,7 +36,7 @@ func (p *logEventLogger) OnNewSnowflakeEvent(e event.SnowflakeEvent) {
 func (p *logEventLogger) logTick() error {
 	inbound, inboundUnit := formatTraffic(p.inboundSum)
 	outbound, outboundUnit := formatTraffic(p.inboundSum)
-	fmt.Printf("In the last %v, there are %v connections. Traffic Relaied ↑ %v %v, ↓ %v %v.",
+	fmt.Printf("In the last %v, there are %v connections. Traffic Relaied ↑ %v %v, ↓ %v %v.\n",
 		p.logPeriod.String(), p.connectionCount, inbound, inboundUnit, outbound, outboundUnit)
 	p.outboundSum = 0
 	p.inboundSum = 0
