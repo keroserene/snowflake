@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"io"
 	"log"
 	"os"
@@ -21,8 +22,16 @@ func main() {
 	relayURL := flag.String("relay", sf.DefaultRelayURL, "websocket relay URL")
 	NATTypeMeasurementInterval := flag.Duration("nat-retest-interval", time.Hour*24,
 		"the time interval in second before NAT type is retested, 0s disables retest. Valid time units are \"s\", \"m\", \"h\". ")
+	SummaryInterval := flag.Duration("summary-interval", time.Hour,
+		"the time interval to output summary, 0s disables retest. Valid time units are \"s\", \"m\", \"h\". ")
 
 	flag.Parse()
+
+	periodicEventLogger := sf.NewProxyEventLogger(*SummaryInterval)
+
+	eventLogger := event.NewSnowflakeEventDispatcher()
+
+	eventLogger.AddSnowflakeEventListener(periodicEventLogger)
 
 	proxy := sf.SnowflakeProxy{
 		Capacity:           uint(*capacity),
@@ -32,6 +41,7 @@ func main() {
 		RelayURL:           *relayURL,
 
 		NATTypeMeasurementInterval: *NATTypeMeasurementInterval,
+		EventDispatcher:            eventLogger,
 	}
 
 	var logOutput io.Writer = os.Stderr
