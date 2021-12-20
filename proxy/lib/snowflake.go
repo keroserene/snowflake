@@ -115,6 +115,7 @@ type SnowflakeProxy struct {
 	NATProbeURL string
 	// NATTypeMeasurementInterval is time before NAT type is retested
 	NATTypeMeasurementInterval time.Duration
+	EventDispatcher            event.SnowflakeEventDispatcher
 	shutdown                   chan struct{}
 }
 
@@ -340,7 +341,7 @@ func (sf *SnowflakeProxy) makePeerConnectionFromOffer(sdp *webrtc.SessionDescrip
 		close(dataChan)
 
 		pr, pw := io.Pipe()
-		conn := &webRTCConn{pc: pc, dc: dc, pr: pr}
+		conn := &webRTCConn{pc: pc, dc: dc, pr: pr, eventLogger: sf.EventDispatcher}
 		conn.bytesLogger = newBytesSyncLogger()
 
 		dc.OnOpen(func() {
@@ -523,6 +524,9 @@ func (sf *SnowflakeProxy) Start() error {
 	}
 	if sf.NATProbeURL == "" {
 		sf.NATProbeURL = DefaultNATProbeURL
+	}
+	if sf.EventDispatcher == nil {
+		sf.EventDispatcher = event.NewSnowflakeEventDispatcher()
 	}
 
 	broker, err = newSignalingServer(sf.BrokerURL, sf.KeepLocalAddresses)
