@@ -40,6 +40,7 @@ import (
 	"sync"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/task"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/util"
@@ -350,6 +351,11 @@ func (sf *SnowflakeProxy) makePeerConnectionFromOffer(sdp *webrtc.SessionDescrip
 			defer conn.lock.Unlock()
 			log.Println("OnClose channel")
 			log.Println(conn.bytesLogger.ThroughputSummary())
+			in, out := conn.bytesLogger.GetStat()
+			conn.eventLogger.OnNewSnowflakeEvent(event.EventOnProxyConnectionOver{
+				InboundTraffic:  in,
+				OutboundTraffic: out,
+			})
 			conn.dc = nil
 			dc.Close()
 			pw.Close()

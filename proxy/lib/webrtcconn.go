@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"github.com/pion/ice/v2"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
@@ -30,6 +31,7 @@ type webRTCConn struct {
 	once sync.Once  // Synchronization for PeerConnection destruction
 
 	bytesLogger bytesLogger
+	eventLogger event.SnowflakeEventReceiver
 }
 
 func (c *webRTCConn) Read(b []byte) (int, error) {
