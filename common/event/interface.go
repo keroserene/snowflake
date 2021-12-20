@@ -28,6 +28,12 @@ type EventOnSnowflakeConnectionFailed struct {
 	Error error
 }
 
+type EventOnProxyConnectionOver struct {
+	SnowflakeEvent
+	InboundTraffic  int
+	OutboundTraffic int
+}
+
 type SnowflakeEventReceiver interface {
 	// OnNewSnowflakeEvent notify receiver about a new event
 	// This method MUST not block
