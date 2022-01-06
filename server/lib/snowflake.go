@@ -38,6 +38,7 @@ package snowflake_server
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -262,7 +263,7 @@ func (l *SnowflakeListener) acceptSessions(ln *kcp.Listener) error {
 		go func() {
 			defer conn.Close()
 			err := l.acceptStreams(conn)
-			if err != nil && err != io.ErrClosedPipe {
+			if err != nil && !errors.Is(err, io.ErrClosedPipe) {
 				log.Printf("acceptStreams: %v", err)
 			}
 		}()
