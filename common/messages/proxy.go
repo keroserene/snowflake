@@ -7,9 +7,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/nat"
 )
 
-const version = "1.2"
+const (
+	version = "1.2"
+
+	ProxyStandalone = "standalone"
+	ProxyWebext     = "webext"
+	ProxyBadge      = "badge"
+	ProxyUnknown    = "unknown"
+)
 
 /* Version 1.2 specification:
 
@@ -116,12 +125,28 @@ func DecodePollRequest(data []byte) (sid string, proxyType string, natType strin
 		return
 	}
 
-	natType = message.NAT
-	if natType == "" {
-		natType = "unknown"
+	switch message.NAT {
+	case "":
+		message.NAT = nat.NATUnknown
+	case nat.NATUnknown:
+	case nat.NATRestricted:
+	case nat.NATUnrestricted:
+	default:
+		err = fmt.Errorf("invalid NAT type")
+		return
 	}
 
-	return message.Sid, message.Type, natType, message.Clients, nil
+	// we don't reject polls with an unknown proxy type because we encourage
+	// projects that embed proxy code to include their own type
+	switch message.Type {
+	case ProxyStandalone:
+	case ProxyWebext:
+	case ProxyBadge:
+	default:
+		message.Type = ProxyUnknown
+	}
+
+	return message.Sid, message.Type, message.NAT, message.Clients, nil
 }
 
 type ProxyPollResponse struct {

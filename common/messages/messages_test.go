@@ -22,7 +22,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 			{
 				//Version 1.0 proxy message
 				"ymbcCMto7KHNGYlp",
-				"",
+				"unknown",
 				"unknown",
 				0,
 				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`,

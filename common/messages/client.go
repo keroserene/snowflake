@@ -6,6 +6,8 @@ package messages
 import (
 	"encoding/json"
 	"fmt"
+
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/nat"
 )
 
 const ClientVersion = "1.0"
@@ -73,8 +75,14 @@ func DecodeClientPollRequest(data []byte) (*ClientPollRequest, error) {
 		return nil, fmt.Errorf("no supplied offer")
 	}
 
-	if message.NAT == "" {
-		message.NAT = "unknown"
+	switch message.NAT {
+	case "":
+		message.NAT = nat.NATUnknown
+	case nat.NATUnknown:
+	case nat.NATRestricted:
+	case nat.NATUnrestricted:
+	default:
+		return nil, fmt.Errorf("invalid NAT type")
 	}
 
 	return &message, nil
