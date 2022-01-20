@@ -17,7 +17,6 @@ import (
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	sf "git.torproject.org/pluggable-transports/snowflake.git/v2/client/lib"
-	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/safelog"
 )
 
@@ -91,6 +90,7 @@ func socksAcceptLoop(ln *pt.SocksListener, config sf.ClientConfig, shutdown chan
 				log.Println("Failed to start snowflake transport: ", err)
 				return
 			}
+			transport.AddSnowflakeEventListener(sf.NewPTEventLogger())
 			err = conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 			if err != nil {
 				log.Printf("conn.Grant error: %s", err)
@@ -171,10 +171,6 @@ func main() {
 
 	iceAddresses := strings.Split(strings.TrimSpace(*iceServersCommas), ",")
 
-	eventLogger := event.NewSnowflakeEventDispatcher()
-
-	eventLogger.AddSnowflakeEventListener(sf.NewPTEventLogger())
-
 	config := sf.ClientConfig{
 		BrokerURL:          *brokerURL,
 		AmpCacheURL:        *ampCacheURL,
@@ -182,7 +178,6 @@ func main() {
 		ICEAddresses:       iceAddresses,
 		KeepLocalAddresses: *keepLocalAddresses || *oldKeepLocalAddresses,
 		Max:                *max,
-		EventDispatcher:    eventLogger,
 	}
 
 	// Begin goptlib client process.

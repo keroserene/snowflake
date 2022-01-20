@@ -71,6 +71,10 @@ func (addr dummyAddr) String() string  { return "dummy" }
 // https://github.com/Pluggable-Transports/Pluggable-Transports-spec/blob/master/releases/PTSpecV2.1/Pluggable%20Transport%20Specification%20v2.1%20-%20Go%20Transport%20API.pdf
 type Transport struct {
 	dialer *WebRTCDialer
+
+	// EventDispatcher is the event bus for snowflake events.
+	// When an important event happens, it will be distributed here.
+	eventDispatcher event.SnowflakeEventDispatcher
 }
 
 // ClientConfig defines how the SnowflakeClient will connect to the broker and Snowflake proxies.
@@ -93,9 +97,6 @@ type ClientConfig struct {
 	// Max is the maximum number of snowflake proxy peers that the client should attempt to
 	// connect to. Defaults to 1.
 	Max int
-	// EventDispatcher is the event bus for snowflake events.
-	// When an important event happens, it will be distributed here.
-	EventDispatcher event.SnowflakeEventDispatcher
 }
 
 // NewSnowflakeClient creates a new Snowflake transport client that can spawn multiple
@@ -135,7 +136,8 @@ func NewSnowflakeClient(config ClientConfig) (*Transport, error) {
 	if config.Max > max {
 		max = config.Max
 	}
-	transport := &Transport{dialer: NewWebRTCDialer4E(broker, iceServers, max, config.EventDispatcher)}
+	eventsLogger := event.NewSnowflakeEventDispatcher()
+	transport := &Transport{dialer: NewWebRTCDialer4E(broker, iceServers, max, eventsLogger), eventDispatcher: eventsLogger}
 
 	return transport, nil
 }
@@ -190,6 +192,13 @@ func (t *Transport) Dial() (net.Conn, error) {
 	// All good, clear the cleanup list.
 	cleanup = nil
 	return &SnowflakeConn{Stream: stream, sess: sess, pconn: pconn, snowflakes: snowflakes}, nil
+}
+func (t *Transport) AddSnowflakeEventListener(receiver event.SnowflakeEventReceiver) {
+	t.eventDispatcher.AddSnowflakeEventListener(receiver)
+}
+
+func (t *Transport) RemoveSnowflakeEventListener(receiver event.SnowflakeEventReceiver) {
+	t.eventDispatcher.RemoveSnowflakeEventListener(receiver)
 }
 
 // SetRendezvousMethod sets the rendezvous method to the Snowflake broker.
