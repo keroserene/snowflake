@@ -147,11 +147,11 @@ type WebRTCDialer struct {
 }
 
 func NewWebRTCDialer(broker *BrokerChannel, iceServers []webrtc.ICEServer, max int) *WebRTCDialer {
-	return NewWebRTCDialer4E(broker, iceServers, max, nil)
+	return NewWebRTCDialerWithEvents(broker, iceServers, max, nil)
 }
 
-// NewWebRTCDialer4E constructs a new WebRTCDialer.
-func NewWebRTCDialer4E(broker *BrokerChannel, iceServers []webrtc.ICEServer, max int, eventLogger event.SnowflakeEventReceiver) *WebRTCDialer {
+// NewWebRTCDialerWithEvents constructs a new WebRTCDialer.
+func NewWebRTCDialerWithEvents(broker *BrokerChannel, iceServers []webrtc.ICEServer, max int, eventLogger event.SnowflakeEventReceiver) *WebRTCDialer {
 	config := webrtc.Configuration{
 		ICEServers: iceServers,
 	}
@@ -169,7 +169,7 @@ func NewWebRTCDialer4E(broker *BrokerChannel, iceServers []webrtc.ICEServer, max
 func (w WebRTCDialer) Catch() (*WebRTCPeer, error) {
 	// TODO: [#25591] Fetch ICE server information from Broker.
 	// TODO: [#25596] Consider TURN servers here too.
-	return NewWebRTCPeer3E(w.webrtcConfig, w.BrokerChannel, w.eventLogger)
+	return NewWebRTCPeerWithEvents(w.webrtcConfig, w.BrokerChannel, w.eventLogger)
 }
 
 // GetMax returns the maximum number of snowflakes to collect.

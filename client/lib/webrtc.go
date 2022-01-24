@@ -38,15 +38,15 @@ type WebRTCPeer struct {
 
 func NewWebRTCPeer(config *webrtc.Configuration,
 	broker *BrokerChannel) (*WebRTCPeer, error) {
-	return NewWebRTCPeer3E(config, broker, nil)
+	return NewWebRTCPeerWithEvents(config, broker, nil)
 }
 
-// NewWebRTCPeer3E constructs a WebRTC PeerConnection to a snowflake proxy.
+// NewWebRTCPeerWithEvents constructs a WebRTC PeerConnection to a snowflake proxy.
 //
 // The creation of the peer handles the signaling to the Snowflake broker, including
 // the exchange of SDP information, the creation of a PeerConnection, and the establishment
 // of a DataChannel to the Snowflake proxy.
-func NewWebRTCPeer3E(config *webrtc.Configuration,
+func NewWebRTCPeerWithEvents(config *webrtc.Configuration,
 	broker *BrokerChannel, eventsLogger event.SnowflakeEventReceiver) (*WebRTCPeer, error) {
 	if eventsLogger == nil {
 		eventsLogger = event.NewSnowflakeEventDispatcher()
