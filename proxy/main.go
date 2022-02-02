@@ -4,6 +4,7 @@ import (
 	"flag"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -24,14 +25,11 @@ func main() {
 		"the time interval in second before NAT type is retested, 0s disables retest. Valid time units are \"s\", \"m\", \"h\". ")
 	SummaryInterval := flag.Duration("summary-interval", time.Hour,
 		"the time interval to output summary, 0s disables retest. Valid time units are \"s\", \"m\", \"h\". ")
+	verboseLogging := flag.Bool("verbose", false, "increase log verbosity")
 
 	flag.Parse()
 
-	periodicEventLogger := sf.NewProxyEventLogger(*SummaryInterval)
-
 	eventLogger := event.NewSnowflakeEventDispatcher()
-
-	eventLogger.AddSnowflakeEventListener(periodicEventLogger)
 
 	proxy := sf.SnowflakeProxy{
 		Capacity:           uint(*capacity),
@@ -45,22 +43,30 @@ func main() {
 	}
 
 	var logOutput io.Writer = os.Stderr
+	var eventlogOutput io.Writer = os.Stderr
 	log.SetFlags(log.LstdFlags | log.LUTC)
 
-	log.SetFlags(log.LstdFlags | log.LUTC)
+	if !*verboseLogging {
+		logOutput = ioutil.Discard
+	}
+
 	if *logFilename != "" {
 		f, err := os.OpenFile(*logFilename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer f.Close()
-		logOutput = io.MultiWriter(os.Stderr, f)
+		logOutput = io.MultiWriter(logOutput, f)
+		eventlogOutput = io.MultiWriter(eventlogOutput, f)
 	}
 	if *unsafeLogging {
 		log.SetOutput(logOutput)
 	} else {
 		log.SetOutput(&safelog.LogScrubber{Output: logOutput})
 	}
+
+	periodicEventLogger := sf.NewProxyEventLogger(*SummaryInterval, eventlogOutput)
+	eventLogger.AddSnowflakeEventListener(periodicEventLogger)
 
 	err := proxy.Start()
 	if err != nil {

@@ -2,14 +2,16 @@ package snowflake_proxy
 
 import (
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/task"
+	"io"
 	"log"
 	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 )
 
-func NewProxyEventLogger(logPeriod time.Duration) event.SnowflakeEventReceiver {
-	el := &logEventLogger{logPeriod: logPeriod}
+func NewProxyEventLogger(logPeriod time.Duration, output io.Writer) event.SnowflakeEventReceiver {
+	logger := log.New(output, "", log.LstdFlags|log.LUTC)
+	el := &logEventLogger{logPeriod: logPeriod, logger: logger}
 	el.task = &task.Periodic{Interval: logPeriod, Execute: el.logTick}
 	el.task.Start()
 	return el
@@ -21,6 +23,7 @@ type logEventLogger struct {
 	connectionCount int
 	logPeriod       time.Duration
 	task            *task.Periodic
+	logger          *log.Logger
 }
 
 func (p *logEventLogger) OnNewSnowflakeEvent(e event.SnowflakeEvent) {
@@ -36,7 +39,7 @@ func (p *logEventLogger) OnNewSnowflakeEvent(e event.SnowflakeEvent) {
 func (p *logEventLogger) logTick() error {
 	inbound, inboundUnit := formatTraffic(p.inboundSum)
 	outbound, outboundUnit := formatTraffic(p.inboundSum)
-	log.Printf("In the last %v, there are %v connections. Traffic Relayed ↑ %v %v, ↓ %v %v.\n",
+	p.logger.Printf("In the last %v, there are %v connections. Traffic Relayed ↑ %v %v, ↓ %v %v.\n",
 		p.logPeriod.String(), p.connectionCount, inbound, inboundUnit, outbound, outboundUnit)
 	p.outboundSum = 0
 	p.inboundSum = 0
