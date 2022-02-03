@@ -279,7 +279,7 @@ func (l *SnowflakeListener) queueConn(conn net.Conn) error {
 	}
 }
 
-// SnowflakeClientConn is a wrapper for the underlying oneshot or turbotunnel
+// SnowflakeClientConn is a wrapper for the underlying turbotunnel
 // conn. We need to reference our client address map to determine the
 // remote address
 type SnowflakeClientConn struct {

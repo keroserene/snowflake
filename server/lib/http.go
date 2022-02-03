@@ -48,23 +48,10 @@ var upgrader = websocket.Upgrader{
 // attached to the WebSocket connection and every session.
 var clientIDAddrMap = newClientIDMap(clientIDAddrMapCapacity)
 
-// overrideReadConn is a net.Conn with an overridden Read method. Compare to
-// recordingConn at
-// https://dave.cheney.net/2015/05/22/struct-composition-with-go.
-type overrideReadConn struct {
-	net.Conn
-	io.Reader
-}
-
-func (conn *overrideReadConn) Read(p []byte) (int, error) {
-	return conn.Reader.Read(p)
-}
-
 type httpHandler struct {
 	// pconn is the adapter layer between stream-oriented WebSocket
 	// connections and the packet-oriented KCP layer.
 	pconn *turbotunnel.QueuePacketConn
-	ln    *SnowflakeListener
 }
 
 func (handler *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -99,22 +86,15 @@ func (handler *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		// We didn't find a matching token, which means that we are
 		// dealing with a client that doesn't know about such things.
-		// "Unread" the token by constructing a new Reader and pass it
-		// to the old one-session-per-WebSocket mode.
-		conn2 := &overrideReadConn{Conn: conn, Reader: io.MultiReader(bytes.NewReader(token[:]), conn)}
-		err = oneshotMode(conn2, addr, handler.ln)
+		// Close the conn as we no longer support the old
+		// one-session-per-WebSocket mode.
+		log.Println("Received unsupported oneshot connection")
+		return
 	}
 	if err != nil {
 		log.Println(err)
 		return
 	}
-}
-
-// oneshotMode handles clients that did not send turbotunnel.Token at the start
-// of their stream. These clients use the WebSocket as a raw pipe, and expect
-// their session to begin and end when this single WebSocket does.
-func oneshotMode(conn net.Conn, addr net.Addr, ln *SnowflakeListener) error {
-	return ln.queueConn(&SnowflakeClientConn{Conn: conn, address: addr})
 }
 
 // turbotunnelMode handles clients that sent turbotunnel.Token at the start of
