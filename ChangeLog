@@ -1,3 +1,15 @@
+Changes in version v2.1.0 - 2022-02-08
+
+- Issue 40098: Remove support for legacy one shot mode
+- Issue 40079: Make connection summary at proxy privacy preserving
+- Issue 40076: Add snowflake event API for notifications of connection events
+- Issue 40084: Increase capacity of client address map at the server
+- Issue 40060: Further clean up snowflake server logs
+- Issue 40089: Validate proxy and client supplied strings at broker
+- Issue 40014: Update version of DTLS library to include fingerprinting fixes
+- Issue 40075: Support recurring NAT type check in standalone proxy
+
+
 Changes in version v2.0.0 - 2021-11-04
 
 - Turn the standalone snowflake proxy code into a library
