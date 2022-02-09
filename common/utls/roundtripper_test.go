@@ -129,23 +129,25 @@ func TestRoundTripper(t *testing.T) {
 				InsecureSkipVerify: true,
 			}, http.DefaultTransport)
 
-			Convey("HTTP 1.1 Test", t, func(c C) {
-				{
-					req, err := http.NewRequest("GET", "https://127.0.0.1:23801/", nil)
-					So(err, ShouldBeNil)
-					_, err = rtter.RoundTrip(req)
-					So(err, ShouldBeNil)
-				}
-			})
+			for count := 0; count <= 10; count++ {
+				Convey("HTTP 1.1 Test", t, func(c C) {
+					{
+						req, err := http.NewRequest("GET", "https://127.0.0.1:23801/", nil)
+						So(err, ShouldBeNil)
+						_, err = rtter.RoundTrip(req)
+						So(err, ShouldBeNil)
+					}
+				})
 
-			Convey("HTTP 2 Test", t, func(c C) {
-				{
-					req, err := http.NewRequest("GET", "https://127.0.0.1:23802/", nil)
-					So(err, ShouldBeNil)
-					_, err = rtter.RoundTrip(req)
-					So(err, ShouldBeNil)
-				}
-			})
+				Convey("HTTP 2 Test", t, func(c C) {
+					{
+						req, err := http.NewRequest("GET", "https://127.0.0.1:23802/", nil)
+						So(err, ShouldBeNil)
+						_, err = rtter.RoundTrip(req)
+						So(err, ShouldBeNil)
+					}
+				})
+			}
 		})
 	}
 
