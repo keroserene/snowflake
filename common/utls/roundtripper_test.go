@@ -6,17 +6,18 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	utls "github.com/refraction-networking/utls"
-	"golang.org/x/net/http2"
 	"math/big"
 	"net/http"
 	"testing"
 	"time"
+
+	stdcontext "context"
+
+	utls "github.com/refraction-networking/utls"
+	"golang.org/x/net/http2"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
-
-import . "github.com/smartystreets/goconvey/convey"
-
-import stdcontext "context"
 
 func TestRoundTripper(t *testing.T) {
 	var selfSignedCert []byte
