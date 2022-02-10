@@ -97,6 +97,9 @@ type ClientConfig struct {
 	// Max is the maximum number of snowflake proxy peers that the client should attempt to
 	// connect to. Defaults to 1.
 	Max int
+	// UTlsClientID is the type of user application that snowflake should imitate.
+	// If an empty value is provided, it will use Go's default TLS implementation
+	UTlsClientID string
 }
 
 // NewSnowflakeClient creates a new Snowflake transport client that can spawn multiple

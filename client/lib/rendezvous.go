@@ -5,6 +5,8 @@ package snowflake_client
 
 import (
 	"errors"
+	"fmt"
+
 	"log"
 	"net/http"
 	"sync"
@@ -14,7 +16,9 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/nat"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/util"
+	utlsutil "git.torproject.org/pluggable-transports/snowflake.git/v2/common/utls"
 	"github.com/pion/webrtc/v3"
+	utls "github.com/refraction-networking/utls"
 )
 
 const (
@@ -51,10 +55,14 @@ func createBrokerTransport() http.RoundTripper {
 	return transport
 }
 
-// NewBrokerChannel construct a new BrokerChannel, where:
+func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (*BrokerChannel, error) {
+	return NewBrokerChannelWithUTlsClientID(broker, ampCache, front, keepLocalAddresses, "")
+}
+
+// NewBrokerChannelWithUTlsClientID construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (*BrokerChannel, error) {
+func NewBrokerChannelWithUTlsClientID(broker, ampCache, front string, keepLocalAddresses bool, utlsClientID string) (*BrokerChannel, error) {
 	log.Println("Rendezvous using Broker at:", broker)
 	if ampCache != "" {
 		log.Println("Through AMP cache at:", ampCache)
@@ -63,12 +71,23 @@ func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (
 		log.Println("Domain fronting using:", front)
 	}
 
+	brokerTransport := createBrokerTransport()
+
+	if utlsClientID != "" {
+		utlsClientHelloID, err := utlsutil.NameToUTlsID(utlsClientID)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create broker channel: %v", err)
+		}
+		config := &utls.Config{}
+		brokerTransport = utlsutil.NewUTLSHTTPRoundTripper(utlsClientHelloID, config, brokerTransport, false)
+	}
+
 	var rendezvous RendezvousMethod
 	var err error
 	if ampCache != "" {
-		rendezvous, err = newAMPCacheRendezvous(broker, ampCache, front, createBrokerTransport())
+		rendezvous, err = newAMPCacheRendezvous(broker, ampCache, front, brokerTransport)
 	} else {
-		rendezvous, err = newHTTPRendezvous(broker, front, createBrokerTransport())
+		rendezvous, err = newHTTPRendezvous(broker, front, brokerTransport)
 	}
 	if err != nil {
 		return nil, err
