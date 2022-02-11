@@ -56,13 +56,13 @@ func createBrokerTransport() http.RoundTripper {
 }
 
 func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (*BrokerChannel, error) {
-	return NewBrokerChannelWithUTlsClientID(broker, ampCache, front, keepLocalAddresses, "", false)
+	return NewBrokerChannelWithUTlsSettings(broker, ampCache, front, keepLocalAddresses, "", false)
 }
 
-// NewBrokerChannelWithUTlsClientID construct a new BrokerChannel, where:
+// NewBrokerChannelWithUTlsSettings construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannelWithUTlsClientID(broker, ampCache, front string, keepLocalAddresses bool, utlsClientID string, removeSNI bool) (*BrokerChannel, error) {
+func NewBrokerChannelWithUTlsSettings(broker, ampCache, front string, keepLocalAddresses bool, utlsClientID string, removeSNI bool) (*BrokerChannel, error) {
 	log.Println("Rendezvous using Broker at:", broker)
 	if ampCache != "" {
 		log.Println("Through AMP cache at:", ampCache)
