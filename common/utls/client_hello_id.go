@@ -29,7 +29,7 @@ var clientHelloIDMap = map[string]utls.ClientHelloID{
 
 var errNameNotFound = errors.New("client hello name is unrecognized")
 
-func NameToUTlsID(name string) (utls.ClientHelloID, error) {
+func NameToUTLSID(name string) (utls.ClientHelloID, error) {
 	normalizedName := strings.ToLower(name)
 	if id, ok := clientHelloIDMap[normalizedName]; ok {
 		return id, nil
