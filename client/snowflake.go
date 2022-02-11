@@ -127,6 +127,7 @@ func main() {
 	ampCacheURL := flag.String("ampcache", "", "URL of AMP cache to use as a proxy for signaling")
 	logFilename := flag.String("log", "", "name of log file")
 	utlsClientHelloID := flag.String("utls-imitate", "", "type of TLS client to imitate with utls")
+	utlsRemoveSNI := flag.Bool("utls-nosni", false, "remove SNI from client hello(ignored if uTLS is not used)")
 	logToStateDir := flag.Bool("log-to-state-dir", false, "resolve the log file relative to tor's pt state dir")
 	keepLocalAddresses := flag.Bool("keep-local-addresses", false, "keep local LAN address ICE candidates")
 	unsafeLogging := flag.Bool("unsafe-logging", false, "prevent logs from being scrubbed")
@@ -180,6 +181,7 @@ func main() {
 		KeepLocalAddresses: *keepLocalAddresses || *oldKeepLocalAddresses,
 		Max:                *max,
 		UTlsClientID:       *utlsClientHelloID,
+		UTlsRemoveSNI:      *utlsRemoveSNI,
 	}
 
 	// Begin goptlib client process.

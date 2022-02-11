@@ -100,6 +100,9 @@ type ClientConfig struct {
 	// UTlsClientID is the type of user application that snowflake should imitate.
 	// If an empty value is provided, it will use Go's default TLS implementation
 	UTlsClientID string
+	// UTlsRemoveSNI is the flag to control whether SNI should be removed from Client Hello
+	// when uTLS is used.
+	UTlsRemoveSNI bool
 }
 
 // NewSnowflakeClient creates a new Snowflake transport client that can spawn multiple

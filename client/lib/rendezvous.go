@@ -56,13 +56,13 @@ func createBrokerTransport() http.RoundTripper {
 }
 
 func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (*BrokerChannel, error) {
-	return NewBrokerChannelWithUTlsClientID(broker, ampCache, front, keepLocalAddresses, "")
+	return NewBrokerChannelWithUTlsClientID(broker, ampCache, front, keepLocalAddresses, "", false)
 }
 
 // NewBrokerChannelWithUTlsClientID construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannelWithUTlsClientID(broker, ampCache, front string, keepLocalAddresses bool, utlsClientID string) (*BrokerChannel, error) {
+func NewBrokerChannelWithUTlsClientID(broker, ampCache, front string, keepLocalAddresses bool, utlsClientID string, removeSNI bool) (*BrokerChannel, error) {
 	log.Println("Rendezvous using Broker at:", broker)
 	if ampCache != "" {
 		log.Println("Through AMP cache at:", ampCache)
@@ -79,7 +79,7 @@ func NewBrokerChannelWithUTlsClientID(broker, ampCache, front string, keepLocalA
 			return nil, fmt.Errorf("unable to create broker channel: %v", err)
 		}
 		config := &utls.Config{}
-		brokerTransport = utlsutil.NewUTLSHTTPRoundTripper(utlsClientHelloID, config, brokerTransport, false)
+		brokerTransport = utlsutil.NewUTLSHTTPRoundTripper(utlsClientHelloID, config, brokerTransport, removeSNI)
 	}
 
 	var rendezvous RendezvousMethod
