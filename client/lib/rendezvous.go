@@ -62,7 +62,8 @@ func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (
 // NewBrokerChannelWithUTlsSettings construct a new BrokerChannel, where:
 // |broker| is the full URL of the facilitating program which assigns proxies
 // to clients, and |front| is the option fronting domain.
-func NewBrokerChannelWithUTlsSettings(broker, ampCache, front string, keepLocalAddresses bool, utlsClientID string, removeSNI bool) (*BrokerChannel, error) {
+func NewBrokerChannelWithUTlsSettings(broker, ampCache, front string, keepLocalAddresses bool,
+	utlsClientID string, removeSNI bool) (*BrokerChannel, error) {
 	log.Println("Rendezvous using Broker at:", broker)
 	if ampCache != "" {
 		log.Println("Through AMP cache at:", ampCache)
