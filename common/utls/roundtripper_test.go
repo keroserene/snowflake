@@ -128,7 +128,7 @@ func TestRoundTripper(t *testing.T) {
 		t.Run("Testing fingerprint for "+v.name, func(t *testing.T) {
 			rtter := NewUTLSHTTPRoundTripper(v.id, &utls.Config{
 				InsecureSkipVerify: true,
-			}, http.DefaultTransport)
+			}, http.DefaultTransport, false)
 
 			for count := 0; count <= 10; count++ {
 				Convey("HTTP 1.1 Test", t, func(c C) {
