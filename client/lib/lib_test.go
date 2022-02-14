@@ -171,7 +171,8 @@ func TestSnowflakeClient(t *testing.T) {
 
 func TestWebRTCPeer(t *testing.T) {
 	Convey("WebRTCPeer", t, func(c C) {
-		p := &WebRTCPeer{closed: make(chan struct{})}
+		eventsLogger := NewPTEventLogger()
+		p := &WebRTCPeer{closed: make(chan struct{}), eventsLogger: eventsLogger}
 		Convey("checks for staleness", func() {
 			go p.checkForStaleness(time.Second)
 			<-time.After(2 * time.Second)
