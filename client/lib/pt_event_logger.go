@@ -19,7 +19,7 @@ func (p ptEventLogger) OnNewSnowflakeEvent(e event.SnowflakeEvent) {
 	case event.EventOnOfferCreated:
 		e := e.(event.EventOnOfferCreated)
 		if e.Error != nil {
-			pt.Log(pt.LogSeverityError, fmt.Sprintf("offer creation failure %v", e.Error.Error()))
+			pt.Log(pt.LogSeverityNotice, fmt.Sprintf("offer creation failure %v", e.Error.Error()))
 		} else {
 			pt.Log(pt.LogSeverityNotice, fmt.Sprintf("offer created"))
 		}
@@ -27,7 +27,7 @@ func (p ptEventLogger) OnNewSnowflakeEvent(e event.SnowflakeEvent) {
 	case event.EventOnBrokerRendezvous:
 		e := e.(event.EventOnBrokerRendezvous)
 		if e.Error != nil {
-			pt.Log(pt.LogSeverityError, fmt.Sprintf("broker failure %v", e.Error.Error()))
+			pt.Log(pt.LogSeverityNotice, fmt.Sprintf("broker failure %v", e.Error.Error()))
 		} else {
 			pt.Log(pt.LogSeverityNotice, fmt.Sprintf("broker rendezvous peer received"))
 		}
@@ -37,7 +37,7 @@ func (p ptEventLogger) OnNewSnowflakeEvent(e event.SnowflakeEvent) {
 
 	case event.EventOnSnowflakeConnectionFailed:
 		e := e.(event.EventOnSnowflakeConnectionFailed)
-		pt.Log(pt.LogSeverityError, fmt.Sprintf("connection failed %v", e.Error.Error()))
+		pt.Log(pt.LogSeverityNotice, fmt.Sprintf("connection failed %v", e.Error.Error()))
 	}
 
 }
