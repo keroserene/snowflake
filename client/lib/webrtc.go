@@ -129,6 +129,8 @@ func (c *WebRTCPeer) checkForStaleness(timeout time.Duration) {
 		if time.Since(lastReceive) > timeout {
 			log.Printf("WebRTC: No messages received for %v -- closing stale connection.",
 				timeout)
+			err := errors.New("no messages received, closing stale connection")
+			c.eventsLogger.OnNewSnowflakeEvent(event.EventOnSnowflakeConnectionFailed{Error: err})
 			c.Close()
 			return
 		}
@@ -174,7 +176,9 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 	case <-c.open:
 	case <-time.After(DataChannelTimeout):
 		c.transport.Close()
-		return errors.New("timeout waiting for DataChannel.OnOpen")
+		err = errors.New("timeout waiting for DataChannel.OnOpen")
+		c.eventsLogger.OnNewSnowflakeEvent(event.EventOnSnowflakeConnectionFailed{Error: err})
+		return err
 	}
 
 	go c.checkForStaleness(SnowflakeTimeout)
