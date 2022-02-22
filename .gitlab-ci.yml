@@ -166,3 +166,40 @@ debian-testing:
   <<: *test-template
   script:
     - *go-test
+
+generate_tarball:
+  stage: deploy
+  image: golang:1.17-stretch
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - go mod vendor
+    - tar czf ${CI_PROJECT_NAME}-${CI_COMMIT_TAG#v}.tar.gz --transform "s,^,${CI_PROJECT_NAME}-${CI_COMMIT_TAG#v}/," *
+  after_script:
+    - echo TAR_JOB_ID=$CI_JOB_ID >> generate_tarball.env
+  artifacts:
+    paths:
+      - ${CI_PROJECT_NAME}-${CI_COMMIT_TAG#v}.tar.gz
+    reports:
+      dotenv: generate_tarball.env
+
+release-job:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - job: generate_tarball
+      artifacts: true
+  script:
+    - echo "running release_job"
+  release:
+    name: 'Release $CI_COMMIT_TAG'
+    description: 'Created using the release-cli'
+    tag_name: '$CI_COMMIT_TAG'
+    ref: '$CI_COMMIT_TAG'
+    assets:
+      links:
+        - name: '${CI_PROJECT_NAME}-${CI_COMMIT_TAG#v}.tar.gz'
+          url: '${CI_PROJECT_URL}/-/jobs/${TAR_JOB_ID}/artifacts/file/${CI_PROJECT_NAME}-${CI_COMMIT_TAG#v}.tar.gz'
+ 
