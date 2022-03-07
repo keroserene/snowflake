@@ -84,6 +84,17 @@ func socksAcceptLoop(ln *pt.SocksListener, config sf.ClientConfig, shutdown chan
 			if arg, ok := conn.Req.Args.Get("url"); ok {
 				config.BrokerURL = arg
 			}
+			if arg, ok := conn.Req.Args.Get("utls-nosni"); ok {
+				switch strings.ToLower(arg) {
+				case "true":
+					fallthrough
+				case "yes":
+					config.UTLSRemoveSNI = true
+				}
+			}
+			if arg, ok := conn.Req.Args.Get("utls-imitate"); ok {
+				config.UTLSClientID = arg
+			}
 			transport, err := sf.NewSnowflakeClient(config)
 			if err != nil {
 				conn.Reject()
@@ -126,8 +137,6 @@ func main() {
 	frontDomain := flag.String("front", "", "front domain")
 	ampCacheURL := flag.String("ampcache", "", "URL of AMP cache to use as a proxy for signaling")
 	logFilename := flag.String("log", "", "name of log file")
-	uTLSClientHelloID := flag.String("utls-imitate", "", "type of TLS client to imitate with utls")
-	uTLSRemoveSNI := flag.Bool("utls-nosni", false, "remove SNI from client hello(ignored if uTLS is not used)")
 	logToStateDir := flag.Bool("log-to-state-dir", false, "resolve the log file relative to tor's pt state dir")
 	keepLocalAddresses := flag.Bool("keep-local-addresses", false, "keep local LAN address ICE candidates")
 	unsafeLogging := flag.Bool("unsafe-logging", false, "prevent logs from being scrubbed")
@@ -180,8 +189,6 @@ func main() {
 		ICEAddresses:       iceAddresses,
 		KeepLocalAddresses: *keepLocalAddresses || *oldKeepLocalAddresses,
 		Max:                *max,
-		UTLSClientID:       *uTLSClientHelloID,
-		UTLSRemoveSNI:      *uTLSRemoveSNI,
 	}
 
 	// Begin goptlib client process.
