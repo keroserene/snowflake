@@ -45,7 +45,7 @@ func makeEncPollReq(offer string) []byte {
 	encPollReq, err := (&messages.ClientPollRequest{
 		Offer: offer,
 		NAT:   nat.NATUnknown,
-	}).EncodePollRequest()
+	}).EncodeClientPollRequest()
 	if err != nil {
 		panic(err)
 	}

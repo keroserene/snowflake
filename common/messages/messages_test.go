@@ -97,7 +97,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				fmt.Errorf(""),
 			},
 		} {
-			sid, proxyType, natType, clients, err := DecodePollRequest([]byte(test.data))
+			sid, proxyType, natType, clients, err := DecodeProxyPollRequest([]byte(test.data))
 			So(sid, ShouldResemble, test.sid)
 			So(proxyType, ShouldResemble, test.proxyType)
 			So(natType, ShouldResemble, test.natType)
@@ -110,9 +110,9 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 
 func TestEncodeProxyPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
-		b, err := EncodePollRequest("ymbcCMto7KHNGYlp", "standalone", "unknown", 16)
+		b, err := EncodeProxyPollRequest("ymbcCMto7KHNGYlp", "standalone", "unknown", 16)
 		So(err, ShouldEqual, nil)
-		sid, proxyType, natType, clients, err := DecodePollRequest(b)
+		sid, proxyType, natType, clients, err := DecodeProxyPollRequest(b)
 		So(sid, ShouldEqual, "ymbcCMto7KHNGYlp")
 		So(proxyType, ShouldEqual, "standalone")
 		So(natType, ShouldEqual, "unknown")
@@ -328,7 +328,7 @@ func TestEncodeClientPollRequests(t *testing.T) {
 			NAT:   "unknown",
 			Offer: "fake",
 		}
-		b, err := req1.EncodePollRequest()
+		b, err := req1.EncodeClientPollRequest()
 		So(err, ShouldEqual, nil)
 		fmt.Println(string(b))
 		parts := bytes.SplitN(b, []byte("\n"), 2)

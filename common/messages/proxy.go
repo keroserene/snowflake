@@ -92,7 +92,7 @@ type ProxyPollRequest struct {
 	Clients int
 }
 
-func EncodePollRequest(sid string, proxyType string, natType string, clients int) ([]byte, error) {
+func EncodeProxyPollRequest(sid string, proxyType string, natType string, clients int) ([]byte, error) {
 	return json.Marshal(ProxyPollRequest{
 		Sid:     sid,
 		Version: version,
@@ -105,7 +105,7 @@ func EncodePollRequest(sid string, proxyType string, natType string, clients int
 // Decodes a poll message from a snowflake proxy and returns the
 // sid, proxy type, nat type and clients of the proxy on success
 // and an error if it failed
-func DecodePollRequest(data []byte) (sid string, proxyType string, natType string, clients int, err error) {
+func DecodeProxyPollRequest(data []byte) (sid string, proxyType string, natType string, clients int, err error) {
 	var message ProxyPollRequest
 
 	err = json.Unmarshal(data, &message)

@@ -125,7 +125,7 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 		Offer: offerSDP,
 		NAT:   bc.natType,
 	}
-	encReq, err := req.EncodePollRequest()
+	encReq, err := req.EncodeClientPollRequest()
 	bc.lock.Unlock()
 	if err != nil {
 		return nil, err

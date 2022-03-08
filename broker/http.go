@@ -149,7 +149,7 @@ func clientOffers(i *IPC, w http.ResponseWriter, r *http.Request) {
 			Offer: string(body),
 			NAT:   r.Header.Get("Snowflake-NAT-Type"),
 		}
-		body, err = req.EncodePollRequest()
+		body, err = req.EncodeClientPollRequest()
 		if err != nil {
 			log.Printf("Error shimming the legacy request: %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)

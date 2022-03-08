@@ -54,7 +54,7 @@ type ClientPollRequest struct {
 }
 
 // Encodes a poll message from a snowflake client
-func (req *ClientPollRequest) EncodePollRequest() ([]byte, error) {
+func (req *ClientPollRequest) EncodeClientPollRequest() ([]byte, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
