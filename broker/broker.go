@@ -139,10 +139,11 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	return snowflake
 }
 
-// Client offer contains an SDP and the NAT type of the client
+// Client offer contains an SDP, bridge fingerprint and the NAT type of the client
 type ClientOffer struct {
-	natType string
-	sdp     []byte
+	natType     string
+	sdp         []byte
+	fingerprint string
 }
 
 func main() {

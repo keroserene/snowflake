@@ -103,6 +103,9 @@ type ClientConfig struct {
 	// UTLSRemoveSNI is the flag to control whether SNI should be removed from Client Hello
 	// when uTLS is used.
 	UTLSRemoveSNI bool
+	// BridgeFingerprint is the fingerprint of the bridge that the client will eventually
+	// connect to, as specified in the Bridge line of the torrc.
+	BridgeFingerprint string
 }
 
 // NewSnowflakeClient creates a new Snowflake transport client that can spawn multiple

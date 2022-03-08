@@ -130,8 +130,9 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 	}
 
 	offer := &ClientOffer{
-		natType: req.NAT,
-		sdp:     []byte(req.Offer),
+		natType:     req.NAT,
+		sdp:         []byte(req.Offer),
+		fingerprint: req.Fingerprint,
 	}
 
 	// Only hand out known restricted snowflakes to unrestricted clients

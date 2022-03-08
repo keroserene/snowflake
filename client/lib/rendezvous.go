@@ -43,6 +43,7 @@ type BrokerChannel struct {
 	keepLocalAddresses bool
 	natType            string
 	lock               sync.Mutex
+	BridgeFingerprint  string
 }
 
 // We make a copy of DefaultTransport because we want the default Dial
@@ -92,6 +93,7 @@ func newBrokerChannelFromConfig(config ClientConfig) (*BrokerChannel, error) {
 		Rendezvous:         rendezvous,
 		keepLocalAddresses: config.KeepLocalAddresses,
 		natType:            nat.NATUnknown,
+		BridgeFingerprint:  config.BridgeFingerprint,
 	}, nil
 }
 
@@ -116,8 +118,9 @@ func (bc *BrokerChannel) Negotiate(offer *webrtc.SessionDescription) (
 	// Encode the client poll request.
 	bc.lock.Lock()
 	req := &messages.ClientPollRequest{
-		Offer: offerSDP,
-		NAT:   bc.natType,
+		Offer:       offerSDP,
+		NAT:         bc.natType,
+		Fingerprint: bc.BridgeFingerprint,
 	}
 	encReq, err := req.EncodeClientPollRequest()
 	bc.lock.Unlock()
