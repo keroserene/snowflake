@@ -131,9 +131,7 @@ func NewSnowflakeClient(config ClientConfig) (*Transport, error) {
 	}
 
 	// Rendezvous with broker using the given parameters.
-	broker, err := NewBrokerChannelWithUTLSSettings(
-		config.BrokerURL, config.AmpCacheURL, config.FrontDomain,
-		config.KeepLocalAddresses, config.UTLSClientID, config.UTLSRemoveSNI)
+	broker, err := newBrokerChannelFromConfig(config)
 	if err != nil {
 		return nil, err
 	}

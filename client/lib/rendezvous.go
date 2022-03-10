@@ -55,40 +55,34 @@ func createBrokerTransport() http.RoundTripper {
 	return transport
 }
 
-func NewBrokerChannel(broker, ampCache, front string, keepLocalAddresses bool) (*BrokerChannel, error) {
-	return NewBrokerChannelWithUTLSSettings(broker, ampCache, front, keepLocalAddresses, "", false)
-}
+func newBrokerChannelFromConfig(config ClientConfig) (*BrokerChannel, error) {
+	log.Println("Rendezvous using Broker at:", config.BrokerURL)
 
-// NewBrokerChannelWithUTLSSettings construct a new BrokerChannel, where:
-// |broker| is the full URL of the facilitating program which assigns proxies
-// to clients, and |front| is the option fronting domain.
-func NewBrokerChannelWithUTLSSettings(broker, ampCache, front string, keepLocalAddresses bool,
-	uTLSClientID string, removeSNI bool) (*BrokerChannel, error) {
-	log.Println("Rendezvous using Broker at:", broker)
-	if ampCache != "" {
-		log.Println("Through AMP cache at:", ampCache)
-	}
-	if front != "" {
-		log.Println("Domain fronting using:", front)
+	if config.FrontDomain != "" {
+		log.Println("Domain fronting using:", config.FrontDomain)
 	}
 
 	brokerTransport := createBrokerTransport()
 
-	if uTLSClientID != "" {
-		utlsClientHelloID, err := utlsutil.NameToUTLSID(uTLSClientID)
+	if config.UTLSClientID != "" {
+		utlsClientHelloID, err := utlsutil.NameToUTLSID(config.UTLSClientID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create broker channel: %v", err)
 		}
-		config := &utls.Config{}
-		brokerTransport = utlsutil.NewUTLSHTTPRoundTripper(utlsClientHelloID, config, brokerTransport, removeSNI)
+		utlsConfig := &utls.Config{}
+		brokerTransport = utlsutil.NewUTLSHTTPRoundTripper(utlsClientHelloID, utlsConfig, brokerTransport, config.UTLSRemoveSNI)
 	}
 
 	var rendezvous RendezvousMethod
 	var err error
-	if ampCache != "" {
-		rendezvous, err = newAMPCacheRendezvous(broker, ampCache, front, brokerTransport)
+	if config.AmpCacheURL != "" {
+		log.Println("Through AMP cache at:", config.AmpCacheURL)
+		rendezvous, err = newAMPCacheRendezvous(
+			config.BrokerURL, config.AmpCacheURL, config.FrontDomain,
+			brokerTransport)
 	} else {
-		rendezvous, err = newHTTPRendezvous(broker, front, brokerTransport)
+		rendezvous, err = newHTTPRendezvous(
+			config.BrokerURL, config.FrontDomain, brokerTransport)
 	}
 	if err != nil {
 		return nil, err
@@ -96,7 +90,7 @@ func NewBrokerChannelWithUTLSSettings(broker, ampCache, front string, keepLocalA
 
 	return &BrokerChannel{
 		Rendezvous:         rendezvous,
-		keepLocalAddresses: keepLocalAddresses,
+		keepLocalAddresses: config.KeepLocalAddresses,
 		natType:            nat.NATUnknown,
 	}, nil
 }
