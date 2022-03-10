@@ -146,8 +146,9 @@ func clientOffers(i *IPC, w http.ResponseWriter, r *http.Request) {
 	if len(body) > 0 && body[0] == '{' {
 		isLegacy = true
 		req := messages.ClientPollRequest{
-			Offer: string(body),
-			NAT:   r.Header.Get("Snowflake-NAT-Type"),
+			Offer:   string(body),
+			NAT:     r.Header.Get("Snowflake-NAT-Type"),
+			Version: messages.ClientVersion1_0,
 		}
 		body, err = req.EncodeClientPollRequest()
 		if err != nil {

@@ -1,7 +1,6 @@
 package messages
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -286,14 +285,16 @@ func TestDecodeClientPollRequest(t *testing.T) {
 				//version 1.0 client message
 				"unknown",
 				"fake",
-				`{"nat":"unknown","offer":"fake"}`,
+				`1.0
+{"nat":"unknown","offer":"fake"}`,
 				nil,
 			},
 			{
 				//version 1.0 client message
 				"unknown",
 				"fake",
-				`{"offer":"fake"}`,
+				`1.0
+{"offer":"fake"}`,
 				nil,
 			},
 			{
@@ -307,16 +308,17 @@ func TestDecodeClientPollRequest(t *testing.T) {
 				//no offer
 				"",
 				"",
-				`{"nat":"unknown"}`,
+				`1.0
+{"nat":"unknown"}`,
 				fmt.Errorf(""),
 			},
 		} {
 			req, err := DecodeClientPollRequest([]byte(test.data))
+			So(err, ShouldHaveSameTypeAs, test.err)
 			if test.err == nil {
 				So(req.NAT, ShouldResemble, test.natType)
 				So(req.Offer, ShouldResemble, test.offer)
 			}
-			So(err, ShouldHaveSameTypeAs, test.err)
 		}
 
 	})
@@ -325,15 +327,12 @@ func TestDecodeClientPollRequest(t *testing.T) {
 func TestEncodeClientPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
 		req1 := &ClientPollRequest{
-			NAT:   "unknown",
-			Offer: "fake",
+			NAT:     "unknown",
+			Offer:   "fake",
+			Version: ClientVersion1_0,
 		}
 		b, err := req1.EncodeClientPollRequest()
 		So(err, ShouldEqual, nil)
-		fmt.Println(string(b))
-		parts := bytes.SplitN(b, []byte("\n"), 2)
-		So(string(parts[0]), ShouldEqual, "1.0")
-		b = parts[1]
 		req2, err := DecodeClientPollRequest(b)
 		So(err, ShouldEqual, nil)
 		So(req2, ShouldResemble, req1)
