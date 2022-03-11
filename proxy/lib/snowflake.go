@@ -56,6 +56,7 @@ const DefaultNATProbeURL = "https://snowflake-broker.torproject.net:8443/probe"
 const DefaultRelayURL = "wss://snowflake.bamsoftware.com/"
 
 const DefaultSTUNURL = "stun:stun.stunprotocol.org:3478"
+const DefaultProxyType = "standalone"
 const pollInterval = 5 * time.Second
 
 const (
@@ -115,8 +116,10 @@ type SnowflakeProxy struct {
 	NATProbeURL string
 	// NATTypeMeasurementInterval is time before NAT type is retested
 	NATTypeMeasurementInterval time.Duration
-	EventDispatcher            event.SnowflakeEventDispatcher
-	shutdown                   chan struct{}
+	// ProxyType is the type reported to the broker, if not provided it "standalone" will be used
+	ProxyType       string
+	EventDispatcher event.SnowflakeEventDispatcher
+	shutdown        chan struct{}
 }
 
 // Checks whether an IP address is a remote address for the client
@@ -185,7 +188,7 @@ func (s *SignalingServer) Post(path string, payload io.Reader) ([]byte, error) {
 	return limitedRead(resp.Body, readLimit)
 }
 
-func (s *SignalingServer) pollOffer(sid string, shutdown chan struct{}) *webrtc.SessionDescription {
+func (s *SignalingServer) pollOffer(sid string, proxyType string, shutdown chan struct{}) *webrtc.SessionDescription {
 	brokerPath := s.url.ResolveReference(&url.URL{Path: "proxy"})
 
 	ticker := time.NewTicker(pollInterval)
@@ -199,7 +202,7 @@ func (s *SignalingServer) pollOffer(sid string, shutdown chan struct{}) *webrtc.
 		default:
 			numClients := int((tokens.count() / 8) * 8) // Round down to 8
 			currentNATTypeLoaded := getCurrentNATType()
-			body, err := messages.EncodeProxyPollRequest(sid, "standalone", currentNATTypeLoaded, numClients)
+			body, err := messages.EncodeProxyPollRequest(sid, proxyType, currentNATTypeLoaded, numClients)
 			if err != nil {
 				log.Printf("Error encoding poll message: %s", err.Error())
 				return nil
@@ -467,7 +470,7 @@ func (sf *SnowflakeProxy) makeNewPeerConnection(config webrtc.Configuration,
 }
 
 func (sf *SnowflakeProxy) runSession(sid string) {
-	offer := broker.pollOffer(sid, sf.shutdown)
+	offer := broker.pollOffer(sid, sf.ProxyType, sf.shutdown)
 	if offer == nil {
 		log.Printf("bad offer from broker")
 		tokens.ret()
@@ -524,6 +527,9 @@ func (sf *SnowflakeProxy) Start() error {
 	}
 	if sf.NATProbeURL == "" {
 		sf.NATProbeURL = DefaultNATProbeURL
+	}
+	if sf.ProxyType == "" {
+		sf.ProxyType = DefaultProxyType
 	}
 	if sf.EventDispatcher == nil {
 		sf.EventDispatcher = event.NewSnowflakeEventDispatcher()
