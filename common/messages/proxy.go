@@ -12,13 +12,16 @@ import (
 )
 
 const (
-	version = "1.2"
-
-	ProxyStandalone = "standalone"
-	ProxyWebext     = "webext"
-	ProxyBadge      = "badge"
-	ProxyUnknown    = "unknown"
+	version      = "1.2"
+	ProxyUnknown = "unknown"
 )
+
+var KnownProxyTypes = map[string]bool{
+	"standalone": true,
+	"webext":     true,
+	"badge":      true,
+	"iptproxy":   true,
+}
 
 /* Version 1.2 specification:
 
@@ -138,11 +141,7 @@ func DecodeProxyPollRequest(data []byte) (sid string, proxyType string, natType 
 
 	// we don't reject polls with an unknown proxy type because we encourage
 	// projects that embed proxy code to include their own type
-	switch message.Type {
-	case ProxyStandalone:
-	case ProxyWebext:
-	case ProxyBadge:
-	default:
+	if !KnownProxyTypes[message.Type] {
 		message.Type = ProxyUnknown
 	}
 

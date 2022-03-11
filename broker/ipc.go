@@ -25,18 +25,15 @@ type IPC struct {
 }
 
 func (i *IPC) Debug(_ interface{}, response *string) error {
-	var webexts, browsers, standalones, unknowns int
+	var unknowns int
 	var natRestricted, natUnrestricted, natUnknown int
+	proxyTypes := make(map[string]int)
 
 	i.ctx.snowflakeLock.Lock()
 	s := fmt.Sprintf("current snowflakes available: %d\n", len(i.ctx.idToSnowflake))
 	for _, snowflake := range i.ctx.idToSnowflake {
-		if snowflake.proxyType == "badge" {
-			browsers++
-		} else if snowflake.proxyType == "webext" {
-			webexts++
-		} else if snowflake.proxyType == "standalone" {
-			standalones++
+		if messages.KnownProxyTypes[snowflake.proxyType] {
+			proxyTypes[snowflake.proxyType]++
 		} else {
 			unknowns++
 		}
@@ -53,10 +50,10 @@ func (i *IPC) Debug(_ interface{}, response *string) error {
 	}
 	i.ctx.snowflakeLock.Unlock()
 
-	s += fmt.Sprintf("\tstandalone proxies: %d", standalones)
-	s += fmt.Sprintf("\n\tbrowser proxies: %d", browsers)
-	s += fmt.Sprintf("\n\twebext proxies: %d", webexts)
-	s += fmt.Sprintf("\n\tunknown proxies: %d", unknowns)
+	for pType, num := range proxyTypes {
+		s += fmt.Sprintf("\t%s proxies: %d\n", pType, num)
+	}
+	s += fmt.Sprintf("\tunknown proxies: %d", unknowns)
 
 	s += fmt.Sprintf("\nNAT Types available:")
 	s += fmt.Sprintf("\n\trestricted: %d", natRestricted)

@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
 	"github.com/prometheus/client_golang/prometheus"
 	"gitlab.torproject.org/tpo/anti-censorship/geoip"
 )
@@ -24,10 +25,9 @@ const (
 )
 
 type CountryStats struct {
-	standalone map[string]bool
-	badge      map[string]bool
-	webext     map[string]bool
-	unknown    map[string]bool
+	// map[proxyType][address]bool
+	proxies map[string]map[string]bool
+	unknown map[string]bool
 
 	natRestricted   map[string]bool
 	natUnrestricted map[string]bool
@@ -96,22 +96,17 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType stri
 	var country string
 	var ok bool
 
-	if proxyType == "standalone" {
-		if m.countryStats.standalone[addr] {
-			return
-		}
-	} else if proxyType == "badge" {
-		if m.countryStats.badge[addr] {
-			return
-		}
-	} else if proxyType == "webext" {
-		if m.countryStats.webext[addr] {
-			return
-		}
-	} else {
+	addresses, ok := m.countryStats.proxies[proxyType]
+	if !ok {
 		if m.countryStats.unknown[addr] {
 			return
 		}
+		m.countryStats.unknown[addr] = true
+	} else {
+		if addresses[addr] {
+			return
+		}
+		addresses[addr] = true
 	}
 
 	ip := net.ParseIP(addr)
@@ -122,18 +117,7 @@ func (m *Metrics) UpdateCountryStats(addr string, proxyType string, natType stri
 	if !ok {
 		country = "??"
 	}
-
-	//update map of unique ips and counts
 	m.countryStats.counts[country]++
-	if proxyType == "standalone" {
-		m.countryStats.standalone[addr] = true
-	} else if proxyType == "badge" {
-		m.countryStats.badge[addr] = true
-	} else if proxyType == "webext" {
-		m.countryStats.webext[addr] = true
-	} else {
-		m.countryStats.unknown[addr] = true
-	}
 
 	m.promMetrics.ProxyTotal.With(prometheus.Labels{
 		"nat":  natType,
@@ -166,13 +150,14 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 
 	m.countryStats = CountryStats{
 		counts:          make(map[string]int),
-		standalone:      make(map[string]bool),
-		badge:           make(map[string]bool),
-		webext:          make(map[string]bool),
+		proxies:         make(map[string]map[string]bool),
 		unknown:         make(map[string]bool),
 		natRestricted:   make(map[string]bool),
 		natUnrestricted: make(map[string]bool),
 		natUnknown:      make(map[string]bool),
+	}
+	for pType := range messages.KnownProxyTypes {
+		m.countryStats.proxies[pType] = make(map[string]bool)
 	}
 
 	m.logger = metricsLogger
@@ -197,11 +182,12 @@ func (m *Metrics) printMetrics() {
 	m.lock.Lock()
 	m.logger.Println("snowflake-stats-end", time.Now().UTC().Format("2006-01-02 15:04:05"), fmt.Sprintf("(%d s)", int(metricsResolution.Seconds())))
 	m.logger.Println("snowflake-ips", m.countryStats.Display())
-	m.logger.Println("snowflake-ips-total", len(m.countryStats.standalone)+
-		len(m.countryStats.badge)+len(m.countryStats.webext)+len(m.countryStats.unknown))
-	m.logger.Println("snowflake-ips-standalone", len(m.countryStats.standalone))
-	m.logger.Println("snowflake-ips-badge", len(m.countryStats.badge))
-	m.logger.Println("snowflake-ips-webext", len(m.countryStats.webext))
+	total := len(m.countryStats.unknown)
+	for pType, addresses := range m.countryStats.proxies {
+		m.logger.Printf("snowflake-ips-%s %d\n", pType, len(addresses))
+		total += len(addresses)
+	}
+	m.logger.Println("snowflake-ips-total", total)
 	m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
 	m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
 	m.logger.Println("client-restricted-denied-count", binCount(m.clientRestrictedDeniedCount))
@@ -221,9 +207,9 @@ func (m *Metrics) zeroMetrics() {
 	m.clientUnrestrictedDeniedCount = 0
 	m.clientProxyMatchCount = 0
 	m.countryStats.counts = make(map[string]int)
-	m.countryStats.standalone = make(map[string]bool)
-	m.countryStats.badge = make(map[string]bool)
-	m.countryStats.webext = make(map[string]bool)
+	for pType := range m.countryStats.proxies {
+		m.countryStats.proxies[pType] = make(map[string]bool)
+	}
 	m.countryStats.unknown = make(map[string]bool)
 	m.countryStats.natRestricted = make(map[string]bool)
 	m.countryStats.natUnrestricted = make(map[string]bool)

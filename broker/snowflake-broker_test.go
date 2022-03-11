@@ -549,8 +549,13 @@ func TestMetrics(t *testing.T) {
 			p.offerChannel <- nil
 			<-done
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldResemble, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=4\nsnowflake-ips-total 4\nsnowflake-ips-standalone 1\nsnowflake-ips-badge 1\nsnowflake-ips-webext 1\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 1\n")
 
+			metricsStr := buf.String()
+			So(metricsStr, ShouldStartWith, "snowflake-stats-end "+time.Now().UTC().Format("2006-01-02 15:04:05")+" (86400 s)\nsnowflake-ips CA=4\n")
+			So(metricsStr, ShouldContainSubstring, "\nsnowflake-ips-standalone 1\n")
+			So(metricsStr, ShouldContainSubstring, "\nsnowflake-ips-badge 1\n")
+			So(metricsStr, ShouldContainSubstring, "\nsnowflake-ips-webext 1\n")
+			So(metricsStr, ShouldEndWith, "\nsnowflake-ips-total 4\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 1\n")
 		})
 
 		//Test addition of client failures
@@ -570,7 +575,11 @@ func TestMetrics(t *testing.T) {
 			buf.Reset()
 			ctx.metrics.zeroMetrics()
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldContainSubstring, "snowflake-ips \nsnowflake-ips-total 0\nsnowflake-ips-standalone 0\nsnowflake-ips-badge 0\nsnowflake-ips-webext 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 0\n")
+			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips \n")
+			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-standalone 0\n")
+			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-badge 0\n")
+			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-webext 0\n")
+			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-total 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 0\n")
 		})
 		//Test addition of client matches
 		Convey("for client-proxy match", func() {
@@ -690,7 +699,9 @@ func TestMetrics(t *testing.T) {
 			<-done
 
 			ctx.metrics.printMetrics()
-			So(buf.String(), ShouldContainSubstring, "snowflake-ips CA=1\nsnowflake-ips-total 1")
+			metricsStr := buf.String()
+			So(metricsStr, ShouldContainSubstring, "snowflake-ips CA=1\n")
+			So(metricsStr, ShouldContainSubstring, "snowflake-ips-total 1\n")
 		})
 		//Test NAT types
 		Convey("proxy counts by NAT type", func() {
