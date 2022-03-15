@@ -13,6 +13,14 @@ import (
 	"golang.org/x/net/http2"
 )
 
+// NewUTLSHTTPRoundTripper creates an instance of RoundTripper that dial to remote HTTPS endpoint with
+// an alternative version of TLS implementation that attempts to imitate browsers' fingerprint.
+// clientHelloID is the clientHello that uTLS attempts to imitate
+// uTlsConfig is the TLS Configuration template
+// backdropTransport is the transport that will be used for non-https traffic
+// removeSNI indicates not to send Server Name Indication Extension
+// returns a RoundTripper: its behaviour is documented at
+// https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/merge_requests/76#note_2777161
 func NewUTLSHTTPRoundTripper(clientHelloID utls.ClientHelloID, uTlsConfig *utls.Config,
 	backdropTransport http.RoundTripper, removeSNI bool) http.RoundTripper {
 	rtImpl := &uTLSHTTPRoundTripperImpl{
