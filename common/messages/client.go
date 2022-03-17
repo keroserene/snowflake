@@ -11,7 +11,7 @@ import (
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/nat"
 )
 
-const ClientVersion1_0 = "1.0"
+const ClientVersion = "1.0"
 
 /* Client--Broker protocol v1.x specification:
 
@@ -50,21 +50,17 @@ for the error.
 */
 
 type ClientPollRequest struct {
-	Offer   string `json:"offer"`
-	NAT     string `json:"nat"`
-	Version string `json:"-"`
+	Offer string `json:"offer"`
+	NAT   string `json:"nat"`
 }
 
 // Encodes a poll message from a snowflake client
 func (req *ClientPollRequest) EncodeClientPollRequest() ([]byte, error) {
-	if req.Version != ClientVersion1_0 {
-		return nil, fmt.Errorf("unsupported message version")
-	}
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	return append([]byte(req.Version+"\n"), body...), nil
+	return append([]byte(ClientVersion+"\n"), body...), nil
 }
 
 // Decodes a poll message from a snowflake client
@@ -78,9 +74,7 @@ func DecodeClientPollRequest(data []byte) (*ClientPollRequest, error) {
 
 	var message ClientPollRequest
 
-	if string(parts[0]) == ClientVersion1_0 {
-		message.Version = ClientVersion1_0
-	} else {
+	if string(parts[0]) != ClientVersion {
 		return nil, fmt.Errorf("unsupported message version")
 	}
 

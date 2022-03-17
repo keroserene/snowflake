@@ -129,15 +129,9 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
 	}
 
-	var offer *ClientOffer
-	switch req.Version {
-	case messages.ClientVersion1_0:
-		offer = &ClientOffer{
-			natType: req.NAT,
-			sdp:     []byte(req.Offer),
-		}
-	default:
-		panic("unknown version")
+	offer := &ClientOffer{
+		natType: req.NAT,
+		sdp:     []byte(req.Offer),
 	}
 
 	// Only hand out known restricted snowflakes to unrestricted clients
@@ -162,13 +156,8 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 			i.ctx.metrics.clientRestrictedDeniedCount++
 		}
 		i.ctx.metrics.lock.Unlock()
-		switch req.Version {
-		case messages.ClientVersion1_0:
-			resp := &messages.ClientPollResponse{Error: messages.StrNoProxies}
-			return sendClientResponse(resp, response)
-		default:
-			panic("unknown version")
-		}
+		resp := &messages.ClientPollResponse{Error: messages.StrNoProxies}
+		return sendClientResponse(resp, response)
 	}
 
 	// Otherwise, find the most available snowflake proxy, and pass the offer to it.
@@ -185,24 +174,14 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		i.ctx.metrics.clientProxyMatchCount++
 		i.ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "matched"}).Inc()
 		i.ctx.metrics.lock.Unlock()
-		switch req.Version {
-		case messages.ClientVersion1_0:
-			resp := &messages.ClientPollResponse{Answer: answer}
-			err = sendClientResponse(resp, response)
-		default:
-			panic("unknown version")
-		}
+		resp := &messages.ClientPollResponse{Answer: answer}
+		err = sendClientResponse(resp, response)
 		// Initial tracking of elapsed time.
 		i.ctx.metrics.clientRoundtripEstimate = time.Since(startTime) / time.Millisecond
 	case <-time.After(time.Second * ClientTimeout):
 		log.Println("Client: Timed out.")
-		switch req.Version {
-		case messages.ClientVersion1_0:
-			resp := &messages.ClientPollResponse{Error: messages.StrTimedOut}
-			err = sendClientResponse(resp, response)
-		default:
-			panic("unknown version")
-		}
+		resp := &messages.ClientPollResponse{Error: messages.StrTimedOut}
+		err = sendClientResponse(resp, response)
 	}
 
 	i.ctx.snowflakeLock.Lock()

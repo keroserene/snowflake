@@ -327,9 +327,8 @@ func TestDecodeClientPollRequest(t *testing.T) {
 func TestEncodeClientPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
 		req1 := &ClientPollRequest{
-			NAT:     "unknown",
-			Offer:   "fake",
-			Version: ClientVersion1_0,
+			NAT:   "unknown",
+			Offer: "fake",
 		}
 		b, err := req1.EncodeClientPollRequest()
 		So(err, ShouldEqual, nil)

@@ -43,9 +43,8 @@ func (t errorTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // offer.
 func makeEncPollReq(offer string) []byte {
 	encPollReq, err := (&messages.ClientPollRequest{
-		Offer:   offer,
-		NAT:     nat.NATUnknown,
-		Version: messages.ClientVersion1_0,
+		Offer: offer,
+		NAT:   nat.NATUnknown,
 	}).EncodeClientPollRequest()
 	if err != nil {
 		panic(err)
