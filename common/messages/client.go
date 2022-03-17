@@ -5,6 +5,7 @@ package messages
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -104,6 +105,9 @@ func DecodeClientPollRequest(data []byte) (*ClientPollRequest, error) {
 
 	if message.Fingerprint == "" {
 		message.Fingerprint = defaultBridgeFingerprint
+	}
+	if hex.DecodedLen(len(message.Fingerprint)) != 20 {
+		return nil, fmt.Errorf("cannot decode fingerprint")
 	}
 
 	switch message.NAT {

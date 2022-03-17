@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/heap"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -130,10 +131,15 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 	}
 
 	offer := &ClientOffer{
-		natType:     req.NAT,
-		sdp:         []byte(req.Offer),
-		fingerprint: req.Fingerprint,
+		natType: req.NAT,
+		sdp:     []byte(req.Offer),
 	}
+
+	fingerprint, err := hex.DecodeString(req.Fingerprint)
+	if err != nil {
+		return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
+	}
+	copy(offer.fingerprint[:], fingerprint)
 
 	// Only hand out known restricted snowflakes to unrestricted clients
 	var snowflakeHeap *SnowflakeHeap

@@ -143,7 +143,7 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 type ClientOffer struct {
 	natType     string
 	sdp         []byte
-	fingerprint string
+	fingerprint [20]byte
 }
 
 func main() {

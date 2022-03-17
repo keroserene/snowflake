@@ -344,6 +344,12 @@ func TestEncodeClientPollRequests(t *testing.T) {
 				defaultBridgeFingerprint,
 				nil,
 			},
+			{
+				"unknown",
+				"fake",
+				"123123",
+				fmt.Errorf(""),
+			},
 		} {
 			req1 := &ClientPollRequest{
 				NAT:         test.natType,
