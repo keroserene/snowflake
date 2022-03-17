@@ -326,15 +326,44 @@ func TestDecodeClientPollRequest(t *testing.T) {
 
 func TestEncodeClientPollRequests(t *testing.T) {
 	Convey("Context", t, func() {
-		req1 := &ClientPollRequest{
-			NAT:   "unknown",
-			Offer: "fake",
+		for i, test := range []struct {
+			natType     string
+			offer       string
+			fingerprint string
+			err         error
+		}{
+			{
+				"unknown",
+				"fake",
+				"",
+				nil,
+			},
+			{
+				"unknown",
+				"fake",
+				defaultBridgeFingerprint,
+				nil,
+			},
+		} {
+			req1 := &ClientPollRequest{
+				NAT:         test.natType,
+				Offer:       test.offer,
+				Fingerprint: test.fingerprint,
+			}
+			b, err := req1.EncodeClientPollRequest()
+			So(err, ShouldEqual, nil)
+			req2, err := DecodeClientPollRequest(b)
+			So(err, ShouldHaveSameTypeAs, test.err)
+			if test.err == nil {
+				So(req2.Offer, ShouldEqual, req1.Offer)
+				So(req2.NAT, ShouldEqual, req1.NAT)
+				fingerprint := test.fingerprint
+				if i == 0 {
+					fingerprint = defaultBridgeFingerprint
+				}
+				So(req2.Fingerprint, ShouldEqual, fingerprint)
+			}
 		}
-		b, err := req1.EncodeClientPollRequest()
-		So(err, ShouldEqual, nil)
-		req2, err := DecodeClientPollRequest(b)
-		So(err, ShouldEqual, nil)
-		So(req2, ShouldResemble, req1)
 	})
 }
 
