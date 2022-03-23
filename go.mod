@@ -10,13 +10,12 @@ require (
 	github.com/pion/ice/v2 v2.0.15
 	github.com/pion/sdp/v3 v3.0.4
 	github.com/pion/stun v0.3.5
-	github.com/pion/transport v0.12.3 // indirect
 	github.com/pion/webrtc/v3 v3.0.15
 	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/refraction-networking/utls v1.0.0
 	github.com/smartystreets/goconvey v1.6.4
-	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	github.com/xtaci/kcp-go/v5 v5.6.1
 	github.com/xtaci/smux v1.5.15
 	gitlab.torproject.org/tpo/anti-censorship/geoip v0.0.0-20210928150955-7ce4b3d98d01
