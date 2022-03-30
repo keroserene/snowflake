@@ -13,7 +13,7 @@ func NewProxyEventLogger(logPeriod time.Duration, output io.Writer) event.Snowfl
 	logger := log.New(output, "", log.LstdFlags|log.LUTC)
 	el := &logEventLogger{logPeriod: logPeriod, logger: logger}
 	el.task = &task.Periodic{Interval: logPeriod, Execute: el.logTick}
-	el.task.Start()
+	el.task.WaitThenStart()
 	return el
 }
 

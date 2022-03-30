@@ -95,6 +95,12 @@ func (t *Periodic) Start() error {
 	return nil
 }
 
+func (t *Periodic) WaitThenStart() {
+	time.AfterFunc(t.Interval, func() {
+		t.Start()
+	})
+}
+
 // Close implements common.Closable.
 func (t *Periodic) Close() error {
 	t.access.Lock()
