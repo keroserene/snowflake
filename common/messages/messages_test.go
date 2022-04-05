@@ -17,90 +17,103 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 			clients   int
 			data      string
 			err       error
+
+			acceptedRelayPattern string
 		}{
 			{
 				//Version 1.0 proxy message
-				"ymbcCMto7KHNGYlp",
-				"unknown",
-				"unknown",
-				0,
-				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`,
-				nil,
+				sid:       "ymbcCMto7KHNGYlp",
+				proxyType: "unknown",
+				natType:   "unknown",
+				clients:   0,
+				data:      `{"Sid":"ymbcCMto7KHNGYlp","Version":"1.0"}`,
+				err:       nil,
 			},
 			{
 				//Version 1.1 proxy message
-				"ymbcCMto7KHNGYlp",
-				"standalone",
-				"unknown",
-				0,
-				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.1","Type":"standalone"}`,
-				nil,
+				sid:       "ymbcCMto7KHNGYlp",
+				proxyType: "standalone",
+				natType:   "unknown",
+				clients:   0,
+				data:      `{"Sid":"ymbcCMto7KHNGYlp","Version":"1.1","Type":"standalone"}`,
+				err:       nil,
 			},
 			{
 				//Version 1.2 proxy message
-				"ymbcCMto7KHNGYlp",
-				"standalone",
-				"restricted",
-				0,
-				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted"}`,
-				nil,
+				sid:       "ymbcCMto7KHNGYlp",
+				proxyType: "standalone",
+				natType:   "restricted",
+				clients:   0,
+				data:      `{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted"}`,
+				err:       nil,
 			},
 			{
 				//Version 1.2 proxy message with clients
-				"ymbcCMto7KHNGYlp",
-				"standalone",
-				"restricted",
-				24,
-				`{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted","Clients":24}`,
-				nil,
+				sid:       "ymbcCMto7KHNGYlp",
+				proxyType: "standalone",
+				natType:   "restricted",
+				clients:   24,
+				data:      `{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted","Clients":24}`,
+				err:       nil,
+			},
+			{
+				//Version 1.3 proxy message with clients and proxyURL
+				sid:                  "ymbcCMto7KHNGYlp",
+				proxyType:            "standalone",
+				natType:              "restricted",
+				clients:              24,
+				acceptedRelayPattern: "snowfalke.torproject.org",
+				data:                 `{"Sid":"ymbcCMto7KHNGYlp","Version":"1.2","Type":"standalone", "NAT":"restricted","Clients":24, "AcceptedRelayPattern":"snowfalke.torproject.org"}`,
+				err:                  nil,
 			},
 			{
 				//Version 0.X proxy message:
-				"",
-				"",
-				"",
-				0,
-				"",
-				&json.SyntaxError{},
+				sid:       "",
+				proxyType: "",
+				natType:   "",
+				clients:   0,
+				data:      "",
+				err:       &json.SyntaxError{},
 			},
 			{
-				"",
-				"",
-				"",
-				0,
-				`{"Sid":"ymbcCMto7KHNGYlp"}`,
-				fmt.Errorf(""),
+				sid:       "",
+				proxyType: "",
+				natType:   "",
+				clients:   0,
+				data:      `{"Sid":"ymbcCMto7KHNGYlp"}`,
+				err:       fmt.Errorf(""),
 			},
 			{
-				"",
-				"",
-				"",
-				0,
-				"{}",
-				fmt.Errorf(""),
+				sid:       "",
+				proxyType: "",
+				natType:   "",
+				clients:   0,
+				data:      "{}",
+				err:       fmt.Errorf(""),
 			},
 			{
-				"",
-				"",
-				"",
-				0,
-				`{"Version":"1.0"}`,
-				fmt.Errorf(""),
+				sid:       "",
+				proxyType: "",
+				natType:   "",
+				clients:   0,
+				data:      `{"Version":"1.0"}`,
+				err:       fmt.Errorf(""),
 			},
 			{
-				"",
-				"",
-				"",
-				0,
-				`{"Version":"2.0"}`,
-				fmt.Errorf(""),
+				sid:       "",
+				proxyType: "",
+				natType:   "",
+				clients:   0,
+				data:      `{"Version":"2.0"}`,
+				err:       fmt.Errorf(""),
 			},
 		} {
-			sid, proxyType, natType, clients, err := DecodeProxyPollRequest([]byte(test.data))
+			sid, proxyType, natType, clients, relayPattern, err := DecodeProxyPollRequestWithRelayPrefix([]byte(test.data))
 			So(sid, ShouldResemble, test.sid)
 			So(proxyType, ShouldResemble, test.proxyType)
 			So(natType, ShouldResemble, test.natType)
 			So(clients, ShouldEqual, test.clients)
+			So(relayPattern, ShouldResemble, test.acceptedRelayPattern)
 			So(err, ShouldHaveSameTypeAs, test.err)
 		}
 
@@ -123,34 +136,42 @@ func TestEncodeProxyPollRequests(t *testing.T) {
 func TestDecodeProxyPollResponse(t *testing.T) {
 	Convey("Context", t, func() {
 		for _, test := range []struct {
-			offer string
-			data  string
-			err   error
+			offer    string
+			data     string
+			relayURL string
+			err      error
 		}{
 			{
-				"fake offer",
-				`{"Status":"client match","Offer":"fake offer","NAT":"unknown"}`,
-				nil,
+				offer: "fake offer",
+				data:  `{"Status":"client match","Offer":"fake offer","NAT":"unknown"}`,
+				err:   nil,
 			},
 			{
-				"",
-				`{"Status":"no match"}`,
-				nil,
+				offer:    "fake offer",
+				data:     `{"Status":"client match","Offer":"fake offer","NAT":"unknown", "RelayURL":"wss://snowflake.torproject.org/proxy"}`,
+				relayURL: "wss://snowflake.torproject.org/proxy",
+				err:      nil,
 			},
 			{
-				"",
-				`{"Status":"client match"}`,
-				fmt.Errorf("no supplied offer"),
+				offer: "",
+				data:  `{"Status":"no match"}`,
+				err:   nil,
 			},
 			{
-				"",
-				`{"Test":"test"}`,
-				fmt.Errorf(""),
+				offer: "",
+				data:  `{"Status":"client match"}`,
+				err:   fmt.Errorf("no supplied offer"),
+			},
+			{
+				offer: "",
+				data:  `{"Test":"test"}`,
+				err:   fmt.Errorf(""),
 			},
 		} {
-			offer, _, err := DecodePollResponse([]byte(test.data))
+			offer, _, relayURL, err := DecodePollResponseWithRelayURL([]byte(test.data))
 			So(err, ShouldHaveSameTypeAs, test.err)
 			So(offer, ShouldResemble, test.offer)
+			So(relayURL, ShouldResemble, test.relayURL)
 		}
 
 	})

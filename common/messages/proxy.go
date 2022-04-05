@@ -5,6 +5,7 @@ package messages
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -22,6 +23,8 @@ var KnownProxyTypes = map[string]bool{
 	"badge":      true,
 	"iptproxy":   true,
 }
+
+var ErrExtraInfo = errors.New("client sent extra info")
 
 /* Version 1.2 specification:
 
@@ -93,22 +96,39 @@ type ProxyPollRequest struct {
 	Type    string
 	NAT     string
 	Clients int
+
+	AcceptedRelayPattern string
 }
 
 func EncodeProxyPollRequest(sid string, proxyType string, natType string, clients int) ([]byte, error) {
+	return EncodeProxyPollRequestWithRelayPrefix(sid, proxyType, natType, clients, "")
+}
+
+func EncodeProxyPollRequestWithRelayPrefix(sid string, proxyType string, natType string, clients int, relayPattern string) ([]byte, error) {
 	return json.Marshal(ProxyPollRequest{
-		Sid:     sid,
-		Version: version,
-		Type:    proxyType,
-		NAT:     natType,
-		Clients: clients,
+		Sid:                  sid,
+		Version:              version,
+		Type:                 proxyType,
+		NAT:                  natType,
+		Clients:              clients,
+		AcceptedRelayPattern: relayPattern,
 	})
+}
+
+func DecodeProxyPollRequest(data []byte) (sid string, proxyType string, natType string, clients int, err error) {
+	var relayPrefix string
+	sid, proxyType, natType, clients, relayPrefix, err = DecodeProxyPollRequestWithRelayPrefix(data)
+	if relayPrefix != "" {
+		return "", "", "", 0, ErrExtraInfo
+	}
+	return
 }
 
 // Decodes a poll message from a snowflake proxy and returns the
 // sid, proxy type, nat type and clients of the proxy on success
 // and an error if it failed
-func DecodeProxyPollRequest(data []byte) (sid string, proxyType string, natType string, clients int, err error) {
+func DecodeProxyPollRequestWithRelayPrefix(data []byte) (
+	sid string, proxyType string, natType string, clients int, relayPrefix string, err error) {
 	var message ProxyPollRequest
 
 	err = json.Unmarshal(data, &message)
@@ -145,21 +165,28 @@ func DecodeProxyPollRequest(data []byte) (sid string, proxyType string, natType 
 		message.Type = ProxyUnknown
 	}
 
-	return message.Sid, message.Type, message.NAT, message.Clients, nil
+	return message.Sid, message.Type, message.NAT, message.Clients, message.AcceptedRelayPattern, nil
 }
 
 type ProxyPollResponse struct {
 	Status string
 	Offer  string
 	NAT    string
+
+	RelayURL string
 }
 
 func EncodePollResponse(offer string, success bool, natType string) ([]byte, error) {
+	return EncodePollResponseWithRelayURL(offer, success, natType, "")
+}
+
+func EncodePollResponseWithRelayURL(offer string, success bool, natType, relayURL string) ([]byte, error) {
 	if success {
 		return json.Marshal(ProxyPollResponse{
-			Status: "client match",
-			Offer:  offer,
-			NAT:    natType,
+			Status:   "client match",
+			Offer:    offer,
+			NAT:      natType,
+			RelayURL: relayURL,
 		})
 
 	}
@@ -167,23 +194,30 @@ func EncodePollResponse(offer string, success bool, natType string) ([]byte, err
 		Status: "no match",
 	})
 }
+func DecodePollResponse(data []byte) (string, string, error) {
+	offer, natType, relayURL, err := DecodePollResponseWithRelayURL(data)
+	if relayURL != "" {
+		return "", "", ErrExtraInfo
+	}
+	return offer, natType, err
+}
 
 // Decodes a poll response from the broker and returns an offer and the client's NAT type
 // If there is a client match, the returned offer string will be non-empty
-func DecodePollResponse(data []byte) (string, string, error) {
+func DecodePollResponseWithRelayURL(data []byte) (string, string, string, error) {
 	var message ProxyPollResponse
 
 	err := json.Unmarshal(data, &message)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if message.Status == "" {
-		return "", "", fmt.Errorf("received invalid data")
+		return "", "", "", fmt.Errorf("received invalid data")
 	}
 
 	if message.Status == "client match" {
 		if message.Offer == "" {
-			return "", "", fmt.Errorf("no supplied offer")
+			return "", "", "", fmt.Errorf("no supplied offer")
 		}
 	} else {
 		message.Offer = ""
@@ -194,7 +228,7 @@ func DecodePollResponse(data []byte) (string, string, error) {
 		natType = "unknown"
 	}
 
-	return message.Offer, natType, nil
+	return message.Offer, natType, message.RelayURL, nil
 }
 
 type ProxyAnswerRequest struct {
