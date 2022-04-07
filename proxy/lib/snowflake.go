@@ -112,6 +112,12 @@ type SnowflakeProxy struct {
 	KeepLocalAddresses bool
 	// RelayURL is the URL of the Snowflake server that all traffic will be relayed to
 	RelayURL string
+	// RelayDomainNamePattern is the pattern specify allowed domain name for relay
+	// If the pattern starts with ^ then an exact match is required.
+	// The rest of pattern is the suffix of domain name.
+	// There is no look ahead assertion when matching domain name suffix,
+	// thus the string prepend the suffix does not need to be empty or ends with a dot.
+	RelayDomainNamePattern string
 	// NATProbeURL is the URL of the probe service we use for NAT checks
 	NATProbeURL string
 	// NATTypeMeasurementInterval is time before NAT type is retested
@@ -188,7 +194,7 @@ func (s *SignalingServer) Post(path string, payload io.Reader) ([]byte, error) {
 	return limitedRead(resp.Body, readLimit)
 }
 
-func (s *SignalingServer) pollOffer(sid string, proxyType string, shutdown chan struct{}) *webrtc.SessionDescription {
+func (s *SignalingServer) pollOffer(sid string, proxyType string, acceptedRelayPattern string, shutdown chan struct{}) (*webrtc.SessionDescription, string) {
 	brokerPath := s.url.ResolveReference(&url.URL{Path: "proxy"})
 
 	ticker := time.NewTicker(pollInterval)
@@ -198,38 +204,38 @@ func (s *SignalingServer) pollOffer(sid string, proxyType string, shutdown chan 
 	for ; true; <-ticker.C {
 		select {
 		case <-shutdown:
-			return nil
+			return nil, ""
 		default:
 			numClients := int((tokens.count() / 8) * 8) // Round down to 8
 			currentNATTypeLoaded := getCurrentNATType()
 			body, err := messages.EncodeProxyPollRequest(sid, proxyType, currentNATTypeLoaded, numClients)
 			if err != nil {
 				log.Printf("Error encoding poll message: %s", err.Error())
-				return nil
+				return nil, ""
 			}
 			resp, err := s.Post(brokerPath.String(), bytes.NewBuffer(body))
 			if err != nil {
 				log.Printf("error polling broker: %s", err.Error())
 			}
 
-			offer, _, err := messages.DecodePollResponse(resp)
+			offer, _, relayURL, err := messages.DecodePollResponseWithRelayURL(resp)
 			if err != nil {
 				log.Printf("Error reading broker response: %s", err.Error())
 				log.Printf("body: %s", resp)
-				return nil
+				return nil, ""
 			}
 			if offer != "" {
 				offer, err := util.DeserializeSessionDescription(offer)
 				if err != nil {
 					log.Printf("Error processing session description: %s", err.Error())
-					return nil
+					return nil, ""
 				}
-				return offer
+				return offer, relayURL
 
 			}
 		}
 	}
-	return nil
+	return nil, ""
 }
 
 func (s *SignalingServer) sendAnswer(sid string, pc *webrtc.PeerConnection) error {
@@ -295,11 +301,14 @@ func copyLoop(c1 io.ReadWriteCloser, c2 io.ReadWriteCloser, shutdown chan struct
 // conn.RemoteAddr() inside this function, as a workaround for a hang that
 // otherwise occurs inside of conn.pc.RemoteDescription() (called by
 // RemoteAddr). https://bugs.torproject.org/18628#comment:8
-func (sf *SnowflakeProxy) datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
+func (sf *SnowflakeProxy) datachannelHandler(conn *webRTCConn, remoteAddr net.Addr, relayURL string) {
 	defer conn.Close()
 	defer tokens.ret()
 
-	u, err := url.Parse(sf.RelayURL)
+	if relayURL == "" {
+		relayURL = sf.RelayURL
+	}
+	u, err := url.Parse(relayURL)
 	if err != nil {
 		log.Fatalf("invalid relay url: %s", err)
 	}
@@ -324,6 +333,15 @@ func (sf *SnowflakeProxy) datachannelHandler(conn *webRTCConn, remoteAddr net.Ad
 	defer wsConn.Close()
 	copyLoop(conn, wsConn, sf.shutdown)
 	log.Printf("datachannelHandler ends")
+}
+
+type dataChannelHandlerWithRelayURL struct {
+	RelayURL string
+	sf       *SnowflakeProxy
+}
+
+func (d dataChannelHandlerWithRelayURL) datachannelHandler(conn *webRTCConn, remoteAddr net.Addr) {
+	d.sf.datachannelHandler(conn, remoteAddr, d.RelayURL)
 }
 
 // Create a PeerConnection from an SDP offer. Blocks until the gathering of ICE
@@ -470,14 +488,15 @@ func (sf *SnowflakeProxy) makeNewPeerConnection(config webrtc.Configuration,
 }
 
 func (sf *SnowflakeProxy) runSession(sid string) {
-	offer := broker.pollOffer(sid, sf.ProxyType, sf.shutdown)
+	offer, relayURL := broker.pollOffer(sid, sf.ProxyType, sf.RelayDomainNamePattern, sf.shutdown)
 	if offer == nil {
 		log.Printf("bad offer from broker")
 		tokens.ret()
 		return
 	}
 	dataChan := make(chan struct{})
-	pc, err := sf.makePeerConnectionFromOffer(offer, config, dataChan, sf.datachannelHandler)
+	dataChannelAdaptor := dataChannelHandlerWithRelayURL{RelayURL: relayURL, sf: sf}
+	pc, err := sf.makePeerConnectionFromOffer(offer, config, dataChan, dataChannelAdaptor.datachannelHandler)
 	if err != nil {
 		log.Printf("error making WebRTC connection: %s", err)
 		tokens.ret()

@@ -365,7 +365,7 @@ func TestBrokerInteractions(t *testing.T) {
 				b,
 			}
 
-			sdp := broker.pollOffer(sampleOffer, DefaultProxyType, nil)
+			sdp, _ := broker.pollOffer(sampleOffer, DefaultProxyType, "", nil)
 			expectedSDP, _ := strconv.Unquote(sampleSDP)
 			So(sdp.SDP, ShouldResemble, expectedSDP)
 		})
@@ -379,7 +379,7 @@ func TestBrokerInteractions(t *testing.T) {
 				b,
 			}
 
-			sdp := broker.pollOffer(sampleOffer, DefaultProxyType, nil)
+			sdp, _ := broker.pollOffer(sampleOffer, DefaultProxyType, "", nil)
 			So(sdp, ShouldBeNil)
 		})
 		Convey("sends answer to broker", func() {
