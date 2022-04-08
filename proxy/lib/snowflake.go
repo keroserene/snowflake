@@ -30,6 +30,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/namematcher"
 	"io"
 	"io/ioutil"
 	"log"
@@ -491,6 +492,12 @@ func (sf *SnowflakeProxy) runSession(sid string) {
 	offer, relayURL := broker.pollOffer(sid, sf.ProxyType, sf.RelayDomainNamePattern, sf.shutdown)
 	if offer == nil {
 		log.Printf("bad offer from broker")
+		tokens.ret()
+		return
+	}
+	matcher := namematcher.NewNameMatcher(sf.RelayDomainNamePattern)
+	if relayURL != "" && !matcher.IsMember(relayURL) {
+		log.Printf("bad offer from broker: rejected Relay URL")
 		tokens.ret()
 		return
 	}
