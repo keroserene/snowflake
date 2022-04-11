@@ -94,7 +94,7 @@ For snowflake proxies to request a client from the Broker.
 func proxyPolls(i *IPC, w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
 	if err != nil {
-		log.Println("Invalid data.")
+		log.Println("Invalid data.", err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -204,7 +204,7 @@ which the broker will pass back to the original client.
 func proxyAnswers(i *IPC, w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, readLimit))
 	if err != nil {
-		log.Println("Invalid data.")
+		log.Println("Invalid data.", err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
