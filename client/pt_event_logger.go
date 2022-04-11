@@ -1,4 +1,4 @@
-package snowflake_client
+package main
 
 import (
 	"fmt"

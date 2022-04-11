@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -171,8 +172,8 @@ func TestSnowflakeClient(t *testing.T) {
 
 func TestWebRTCPeer(t *testing.T) {
 	Convey("WebRTCPeer", t, func(c C) {
-		eventsLogger := NewPTEventLogger()
-		p := &WebRTCPeer{closed: make(chan struct{}), eventsLogger: eventsLogger}
+		p := &WebRTCPeer{closed: make(chan struct{}),
+			eventsLogger: event.NewSnowflakeEventDispatcher()}
 		Convey("checks for staleness", func() {
 			go p.checkForStaleness(time.Second)
 			<-time.After(2 * time.Second)
