@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"container/heap"
+	"encoding/hex"
 	"io"
 	"io/ioutil"
 	"log"
@@ -35,6 +36,10 @@ func decodeAMPArmorToString(r io.Reader) (string, error) {
 }
 
 func TestBroker(t *testing.T) {
+
+	defaultBridgeValue, _ := hex.DecodeString("2B280B23E1107BB62ABFC40DDCC8824814F80A72")
+	var defaultBridge [20]byte
+	copy(defaultBridge[:], defaultBridgeValue)
 
 	Convey("Context", t, func() {
 		ctx := NewBrokerContext(NullLogger())
@@ -253,10 +258,10 @@ func TestBroker(t *testing.T) {
 				// Pass a fake client offer to this proxy
 				p := <-ctx.proxyPolls
 				So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
-				p.offerChannel <- &ClientOffer{sdp: []byte("fake offer")}
+				p.offerChannel <- &ClientOffer{sdp: []byte("fake offer"), fingerprint: defaultBridge}
 				<-done
 				So(w.Code, ShouldEqual, http.StatusOK)
-				So(w.Body.String(), ShouldEqual, `{"Status":"client match","Offer":"fake offer","NAT":""}`)
+				So(w.Body.String(), ShouldEqual, `{"Status":"client match","Offer":"fake offer","NAT":"","RelayURL":"wss://snowflake.torproject.net/"}`)
 			})
 
 			Convey("return empty 200 OK when no client offer is available.", func() {
@@ -269,7 +274,7 @@ func TestBroker(t *testing.T) {
 				// nil means timeout
 				p.offerChannel <- nil
 				<-done
-				So(w.Body.String(), ShouldEqual, `{"Status":"no match","Offer":"","NAT":""}`)
+				So(w.Body.String(), ShouldEqual, `{"Status":"no match","Offer":"","NAT":"","RelayURL":""}`)
 				So(w.Code, ShouldEqual, http.StatusOK)
 			})
 		})
@@ -412,7 +417,7 @@ func TestBroker(t *testing.T) {
 
 			<-polled
 			So(wP.Code, ShouldEqual, http.StatusOK)
-			So(wP.Body.String(), ShouldResemble, `{"Status":"client match","Offer":"fake","NAT":"unknown"}`)
+			So(wP.Body.String(), ShouldResemble, `{"Status":"client match","Offer":"fake","NAT":"unknown","RelayURL":"wss://snowflake.torproject.net/"}`)
 			So(ctx.idToSnowflake["ymbcCMto7KHNGYlp"], ShouldNotBeNil)
 			// Follow up with the answer request afterwards
 			wA := httptest.NewRecorder()

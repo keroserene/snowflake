@@ -66,7 +66,8 @@ func (i *IPC) Debug(_ interface{}, response *string) error {
 }
 
 func (i *IPC) ProxyPolls(arg messages.Arg, response *[]byte) error {
-	sid, proxyType, natType, clients, err := messages.DecodeProxyPollRequest(arg.Body)
+	sid, proxyType, natType, clients, relayPattern, err := messages.DecodeProxyPollRequestWithRelayPrefix(arg.Body)
+	_ = relayPattern
 	if err != nil {
 		return messages.ErrBadRequest
 	}

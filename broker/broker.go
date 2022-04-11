@@ -6,6 +6,7 @@ SessionDescriptions in order to negotiate a WebRTC connection.
 package main
 
 import (
+	"bytes"
 	"container/heap"
 	"crypto/tls"
 	"flag"
@@ -60,12 +61,19 @@ func NewBrokerContext(metricsLogger *log.Logger) *BrokerContext {
 		panic("Failed to create metrics")
 	}
 
+	bridgeListHolder := NewBridgeListHolder()
+
+	const DefaultBridges = `{"displayName":"default", "webSocketAddress":"wss://snowflake.torproject.net/", "fingerprint":"2B280B23E1107BB62ABFC40DDCC8824814F80A72"}
+`
+	bridgeListHolder.LoadBridgeInfo(bytes.NewReader([]byte(DefaultBridges)))
+
 	return &BrokerContext{
 		snowflakes:           snowflakes,
 		restrictedSnowflakes: rSnowflakes,
 		idToSnowflake:        make(map[string]*Snowflake),
 		proxyPolls:           make(chan *ProxyPoll),
 		metrics:              metrics,
+		bridgeList:           bridgeListHolder,
 	}
 }
 
