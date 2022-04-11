@@ -135,7 +135,7 @@ android:
 
     - cd $CI_PROJECT_DIR/client
     # gomobile builds a shared library not a CLI executable
-    - sed -i 's,^package main$,package snowflakeclient,' snowflake.go
+    - sed -i 's,^package main$,package snowflakeclient,' *.go
     - go get golang.org/x/mobile/bind
     - gomobile bind -v -target=android $REPRODUCIBLE_FLAGS .
 
