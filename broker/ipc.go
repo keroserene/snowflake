@@ -102,7 +102,13 @@ func (i *IPC) ProxyPolls(arg messages.Arg, response *[]byte) error {
 	}
 
 	i.ctx.metrics.promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "matched"}).Inc()
-	b, err = messages.EncodePollResponse(string(offer.sdp), true, offer.natType)
+	var relayURL string
+	if info, err := i.ctx.bridgeList.GetBridgeInfo(offer.fingerprint); err != nil {
+		return err
+	} else {
+		relayURL = info.WebSocketAddress
+	}
+	b, err = messages.EncodePollResponseWithRelayURL(string(offer.sdp), true, offer.natType, relayURL)
 	if err != nil {
 		return messages.ErrInternal
 	}
@@ -140,6 +146,10 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
 	}
 	copy(offer.fingerprint[:], fingerprint)
+
+	if _, err := i.ctx.GetBridgeInfo(offer.fingerprint); err != nil {
+		return err
+	}
 
 	// Only hand out known restricted snowflakes to unrestricted clients
 	var snowflakeHeap *SnowflakeHeap

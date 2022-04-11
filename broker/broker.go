@@ -36,6 +36,13 @@ type BrokerContext struct {
 	snowflakeLock sync.Mutex
 	proxyPolls    chan *ProxyPoll
 	metrics       *Metrics
+
+	bridgeList          BridgeListHolderFileBased
+	allowedRelayPattern string
+}
+
+func (ctx *BrokerContext) GetBridgeInfo(fingerprint [20]byte) (BridgeInfo, error) {
+	return ctx.bridgeList.GetBridgeInfo(fingerprint)
 }
 
 func NewBrokerContext(metricsLogger *log.Logger) *BrokerContext {
@@ -137,6 +144,14 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 	ctx.snowflakeLock.Unlock()
 	ctx.idToSnowflake[id] = snowflake
 	return snowflake
+}
+
+func (ctx *BrokerContext) InstallBridgeListProfile(reader io.Reader, relayPattern string) error {
+	if err := ctx.bridgeList.LoadBridgeInfo(reader); err != nil {
+		return err
+	}
+	ctx.allowedRelayPattern = relayPattern
+	return nil
 }
 
 // Client offer contains an SDP, bridge fingerprint and the NAT type of the client
