@@ -176,6 +176,7 @@ func main() {
 	var addr string
 	var geoipDatabase string
 	var geoip6Database string
+	var bridgeListFilePath, allowedRelayPattern string
 	var disableTLS bool
 	var certFilename, keyFilename string
 	var disableGeoip bool
@@ -190,6 +191,8 @@ func main() {
 	flag.StringVar(&addr, "addr", ":443", "address to listen on")
 	flag.StringVar(&geoipDatabase, "geoipdb", "/usr/share/tor/geoip", "path to correctly formatted geoip database mapping IPv4 address ranges to country codes")
 	flag.StringVar(&geoip6Database, "geoip6db", "/usr/share/tor/geoip6", "path to correctly formatted geoip database mapping IPv6 address ranges to country codes")
+	flag.StringVar(&bridgeListFilePath, "bridge-list-path", "", "file path for bridgeListFile")
+	flag.StringVar(&allowedRelayPattern, "allowed-relay-pattern", "", "allowed pattern for relay host name")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.BoolVar(&disableGeoip, "disable-geoip", false, "don't use geoip for stats collection")
 	flag.StringVar(&metricsFilename, "metrics-log", "", "path to metrics logging output")
@@ -221,6 +224,17 @@ func main() {
 	metricsLogger := log.New(metricsFile, "", 0)
 
 	ctx := NewBrokerContext(metricsLogger)
+
+	if bridgeListFilePath != "" {
+		bridgeListFile, err := os.Open(bridgeListFilePath)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		err = ctx.InstallBridgeListProfile(bridgeListFile, allowedRelayPattern)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
 
 	if !disableGeoip {
 		err = ctx.metrics.LoadGeoipDatabases(geoipDatabase, geoip6Database)
