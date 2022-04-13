@@ -119,6 +119,7 @@ type SnowflakeProxy struct {
 	// There is no look ahead assertion when matching domain name suffix,
 	// thus the string prepend the suffix does not need to be empty or ends with a dot.
 	RelayDomainNamePattern string
+	AllowNonTLSRelay       bool
 	// NATProbeURL is the URL of the probe service we use for NAT checks
 	NATProbeURL string
 	// NATTypeMeasurementInterval is time before NAT type is retested
@@ -496,7 +497,13 @@ func (sf *SnowflakeProxy) runSession(sid string) {
 		return
 	}
 	matcher := namematcher.NewNameMatcher(sf.RelayDomainNamePattern)
-	if relayURL != "" && !matcher.IsMember(relayURL) {
+	parsedRelayURL, err := url.Parse(relayURL)
+	if err != nil {
+		log.Printf("bad offer from broker: bad Relay URL %v", err.Error())
+		tokens.ret()
+		return
+	}
+	if relayURL != "" && (!matcher.IsMember(parsedRelayURL.Hostname()) || (!sf.AllowNonTLSRelay && parsedRelayURL.Scheme != "wss")) {
 		log.Printf("bad offer from broker: rejected Relay URL")
 		tokens.ret()
 		return
