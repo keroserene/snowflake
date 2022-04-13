@@ -97,7 +97,7 @@ type ProxyPollRequest struct {
 	NAT     string
 	Clients int
 
-	AcceptedRelayPattern string
+	AcceptedRelayPattern *string
 }
 
 func EncodeProxyPollRequest(sid string, proxyType string, natType string, clients int) ([]byte, error) {
@@ -111,13 +111,13 @@ func EncodeProxyPollRequestWithRelayPrefix(sid string, proxyType string, natType
 		Type:                 proxyType,
 		NAT:                  natType,
 		Clients:              clients,
-		AcceptedRelayPattern: relayPattern,
+		AcceptedRelayPattern: &relayPattern,
 	})
 }
 
 func DecodeProxyPollRequest(data []byte) (sid string, proxyType string, natType string, clients int, err error) {
 	var relayPrefix string
-	sid, proxyType, natType, clients, relayPrefix, err = DecodeProxyPollRequestWithRelayPrefix(data)
+	sid, proxyType, natType, clients, relayPrefix, _, err = DecodeProxyPollRequestWithRelayPrefix(data)
 	if relayPrefix != "" {
 		return "", "", "", 0, ErrExtraInfo
 	}
@@ -128,7 +128,7 @@ func DecodeProxyPollRequest(data []byte) (sid string, proxyType string, natType 
 // sid, proxy type, nat type and clients of the proxy on success
 // and an error if it failed
 func DecodeProxyPollRequestWithRelayPrefix(data []byte) (
-	sid string, proxyType string, natType string, clients int, relayPrefix string, err error) {
+	sid string, proxyType string, natType string, clients int, relayPrefix string, relayPrefixAware bool, err error) {
 	var message ProxyPollRequest
 
 	err = json.Unmarshal(data, &message)
@@ -164,8 +164,12 @@ func DecodeProxyPollRequestWithRelayPrefix(data []byte) (
 	if !KnownProxyTypes[message.Type] {
 		message.Type = ProxyUnknown
 	}
-
-	return message.Sid, message.Type, message.NAT, message.Clients, message.AcceptedRelayPattern, nil
+	var acceptedRelayPattern = ""
+	if message.AcceptedRelayPattern != nil {
+		acceptedRelayPattern = *message.AcceptedRelayPattern
+	}
+	return message.Sid, message.Type, message.NAT, message.Clients,
+		acceptedRelayPattern, message.AcceptedRelayPattern != nil, nil
 }
 
 type ProxyPollResponse struct {

@@ -108,7 +108,7 @@ func TestDecodeProxyPollRequest(t *testing.T) {
 				err:       fmt.Errorf(""),
 			},
 		} {
-			sid, proxyType, natType, clients, relayPattern, err := DecodeProxyPollRequestWithRelayPrefix([]byte(test.data))
+			sid, proxyType, natType, clients, relayPattern, _, err := DecodeProxyPollRequestWithRelayPrefix([]byte(test.data))
 			So(sid, ShouldResemble, test.sid)
 			So(proxyType, ShouldResemble, test.proxyType)
 			So(natType, ShouldResemble, test.natType)

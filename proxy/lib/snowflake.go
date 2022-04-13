@@ -210,7 +210,7 @@ func (s *SignalingServer) pollOffer(sid string, proxyType string, acceptedRelayP
 		default:
 			numClients := int((tokens.count() / 8) * 8) // Round down to 8
 			currentNATTypeLoaded := getCurrentNATType()
-			body, err := messages.EncodeProxyPollRequest(sid, proxyType, currentNATTypeLoaded, numClients)
+			body, err := messages.EncodeProxyPollRequestWithRelayPrefix(sid, proxyType, currentNATTypeLoaded, numClients, acceptedRelayPattern)
 			if err != nil {
 				log.Printf("Error encoding poll message: %s", err.Error())
 				return nil, ""
