@@ -326,7 +326,7 @@ func (sf *SnowflakeProxy) datachannelHandler(conn *webRTCConn, remoteAddr net.Ad
 
 	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Printf("error dialing relay: %s", err)
+		log.Printf("error dialing relay: %s = %s", u.String(), err)
 		return
 	}
 	wsConn := websocketconn.New(ws)
