@@ -67,10 +67,12 @@ func (i *IPC) Debug(_ interface{}, response *string) error {
 
 func (i *IPC) ProxyPolls(arg messages.Arg, response *[]byte) error {
 	sid, proxyType, natType, clients, relayPattern, relayPatternSupported, err := messages.DecodeProxyPollRequestWithRelayPrefix(arg.Body)
-	_ = relayPattern
-	_ = relayPatternSupported
 	if err != nil {
 		return messages.ErrBadRequest
+	}
+
+	if !i.ctx.CheckProxyRelayPattern(relayPattern, !relayPatternSupported) {
+		return fmt.Errorf("bad request: rejected relay pattern from proxy = %v", messages.ErrBadRequest)
 	}
 
 	// Log geoip stats
