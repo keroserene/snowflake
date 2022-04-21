@@ -331,7 +331,7 @@ func (sf *SnowflakeProxy) datachannelHandler(conn *webRTCConn, remoteAddr net.Ad
 		return
 	}
 	wsConn := websocketconn.New(ws)
-	log.Printf("connected to relay")
+	log.Printf("connected to relay: %v", relayURL)
 	defer wsConn.Close()
 	copyLoop(conn, wsConn, sf.shutdown)
 	log.Printf("datachannelHandler ends")
