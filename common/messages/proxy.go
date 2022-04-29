@@ -181,10 +181,10 @@ type ProxyPollResponse struct {
 }
 
 func EncodePollResponse(offer string, success bool, natType string) ([]byte, error) {
-	return EncodePollResponseWithRelayURL(offer, success, natType, "")
+	return EncodePollResponseWithRelayURL(offer, success, natType, "", "no match")
 }
 
-func EncodePollResponseWithRelayURL(offer string, success bool, natType, relayURL string) ([]byte, error) {
+func EncodePollResponseWithRelayURL(offer string, success bool, natType, relayURL, failReason string) ([]byte, error) {
 	if success {
 		return json.Marshal(ProxyPollResponse{
 			Status:   "client match",
@@ -195,7 +195,7 @@ func EncodePollResponseWithRelayURL(offer string, success bool, natType, relayUR
 
 	}
 	return json.Marshal(ProxyPollResponse{
-		Status: "no match",
+		Status: failReason,
 	})
 }
 func DecodePollResponse(data []byte) (string, string, error) {
@@ -219,12 +219,16 @@ func DecodePollResponseWithRelayURL(data []byte) (string, string, string, error)
 		return "", "", "", fmt.Errorf("received invalid data")
 	}
 
+	err = nil
 	if message.Status == "client match" {
 		if message.Offer == "" {
 			return "", "", "", fmt.Errorf("no supplied offer")
 		}
 	} else {
 		message.Offer = ""
+		if message.Status != "no match" {
+			err = errors.New(message.Status)
+		}
 	}
 
 	natType := message.NAT
@@ -232,7 +236,7 @@ func DecodePollResponseWithRelayURL(data []byte) (string, string, string, error)
 		natType = "unknown"
 	}
 
-	return message.Offer, natType, message.RelayURL, nil
+	return message.Offer, natType, message.RelayURL, err
 }
 
 type ProxyAnswerRequest struct {

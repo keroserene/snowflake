@@ -72,7 +72,13 @@ func (i *IPC) ProxyPolls(arg messages.Arg, response *[]byte) error {
 	}
 
 	if !i.ctx.CheckProxyRelayPattern(relayPattern, !relayPatternSupported) {
-		return fmt.Errorf("bad request: rejected relay pattern from proxy = %v", messages.ErrBadRequest)
+		log.Printf("bad request: rejected relay pattern from proxy = %v", messages.ErrBadRequest)
+		b, err := messages.EncodePollResponseWithRelayURL("", false, "", "", "incorrect relay pattern")
+		*response = b
+		if err != nil {
+			return messages.ErrInternal
+		}
+		return nil
 	}
 
 	// Log geoip stats
@@ -112,7 +118,7 @@ func (i *IPC) ProxyPolls(arg messages.Arg, response *[]byte) error {
 	} else {
 		relayURL = info.WebSocketAddress
 	}
-	b, err = messages.EncodePollResponseWithRelayURL(string(offer.sdp), true, offer.natType, relayURL)
+	b, err = messages.EncodePollResponseWithRelayURL(string(offer.sdp), true, offer.natType, relayURL, "")
 	if err != nil {
 		return messages.ErrInternal
 	}
