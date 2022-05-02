@@ -560,7 +560,7 @@ func TestMetrics(t *testing.T) {
 			So(metricsStr, ShouldContainSubstring, "\nsnowflake-ips-standalone 1\n")
 			So(metricsStr, ShouldContainSubstring, "\nsnowflake-ips-badge 1\n")
 			So(metricsStr, ShouldContainSubstring, "\nsnowflake-ips-webext 1\n")
-			So(metricsStr, ShouldEndWith, "\nsnowflake-ips-total 4\nsnowflake-idle-count 8\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 1\n")
+			So(metricsStr, ShouldEndWith, "\nsnowflake-ips-total 4\nsnowflake-idle-count 8\nsnowflake-proxy-poll-with-relay-url-count 0\nsnowflake-proxy-poll-without-relay-url-count 8\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 1\n")
 		})
 
 		//Test addition of client failures
@@ -584,7 +584,7 @@ func TestMetrics(t *testing.T) {
 			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-standalone 0\n")
 			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-badge 0\n")
 			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-webext 0\n")
-			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-total 0\nsnowflake-idle-count 0\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 0\n")
+			So(buf.String(), ShouldContainSubstring, "\nsnowflake-ips-total 0\nsnowflake-idle-count 0\nsnowflake-proxy-poll-with-relay-url-count 0\nsnowflake-proxy-poll-without-relay-url-count 0\nclient-denied-count 0\nclient-restricted-denied-count 0\nclient-unrestricted-denied-count 0\nclient-snowflake-match-count 0\nsnowflake-ips-nat-restricted 0\nsnowflake-ips-nat-unrestricted 0\nsnowflake-ips-nat-unknown 0\n")
 		})
 		//Test addition of client matches
 		Convey("for client-proxy match", func() {

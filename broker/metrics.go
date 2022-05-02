@@ -49,6 +49,9 @@ type Metrics struct {
 	clientUnrestrictedDeniedCount uint
 	clientProxyMatchCount         uint
 
+	proxyPollWithRelayURLExtension    uint
+	proxyPollWithoutRelayURLExtension uint
+
 	// synchronization for access to snowflake metrics
 	lock sync.Mutex
 
@@ -189,6 +192,8 @@ func (m *Metrics) printMetrics() {
 	}
 	m.logger.Println("snowflake-ips-total", total)
 	m.logger.Println("snowflake-idle-count", binCount(m.proxyIdleCount))
+	m.logger.Println("snowflake-proxy-poll-with-relay-url-count", binCount(m.proxyPollWithRelayURLExtension))
+	m.logger.Println("snowflake-proxy-poll-without-relay-url-count", binCount(m.proxyPollWithoutRelayURLExtension))
 	m.logger.Println("client-denied-count", binCount(m.clientDeniedCount))
 	m.logger.Println("client-restricted-denied-count", binCount(m.clientRestrictedDeniedCount))
 	m.logger.Println("client-unrestricted-denied-count", binCount(m.clientUnrestrictedDeniedCount))
@@ -227,6 +232,9 @@ type PromMetrics struct {
 	ProxyPollTotal   *RoundedCounterVec
 	ClientPollTotal  *RoundedCounterVec
 	AvailableProxies *prometheus.GaugeVec
+
+	ProxyPollWithRelayURLExtensionTotal    *RoundedCounterVec
+	ProxyPollWithoutRelayURLExtensionTotal *RoundedCounterVec
 }
 
 // Initialize metrics for prometheus exporter
@@ -262,6 +270,24 @@ func initPrometheus() *PromMetrics {
 		[]string{"nat", "status"},
 	)
 
+	promMetrics.ProxyPollWithRelayURLExtensionTotal = NewRoundedCounterVec(
+		prometheus.CounterOpts{
+			Namespace: prometheusNamespace,
+			Name:      "rounded_proxy_poll_with_relay_url_extension_total",
+			Help:      "The number of snowflake proxy polls with Relay URL Extension, rounded up to a multiple of 8",
+		},
+		[]string{"nat", "status"},
+	)
+
+	promMetrics.ProxyPollWithoutRelayURLExtensionTotal = NewRoundedCounterVec(
+		prometheus.CounterOpts{
+			Namespace: prometheusNamespace,
+			Name:      "rounded_proxy_poll_without_relay_url_extension_total",
+			Help:      "The number of snowflake proxy polls without Relay URL Extension, rounded up to a multiple of 8",
+		},
+		[]string{"nat", "status"},
+	)
+
 	promMetrics.ClientPollTotal = NewRoundedCounterVec(
 		prometheus.CounterOpts{
 			Namespace: prometheusNamespace,
@@ -275,6 +301,8 @@ func initPrometheus() *PromMetrics {
 	promMetrics.registry.MustRegister(
 		promMetrics.ClientPollTotal, promMetrics.ProxyPollTotal,
 		promMetrics.ProxyTotal, promMetrics.AvailableProxies,
+		promMetrics.ProxyPollWithRelayURLExtensionTotal,
+		promMetrics.ProxyPollWithoutRelayURLExtensionTotal,
 	)
 
 	return promMetrics
