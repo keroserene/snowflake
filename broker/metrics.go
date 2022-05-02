@@ -166,7 +166,7 @@ func NewMetrics(metricsLogger *log.Logger) (*Metrics, error) {
 	m.logger = metricsLogger
 	m.promMetrics = initPrometheus()
 
-	// Write to log file every hour with updated metrics
+	// Write to log file every day with updated metrics
 	go m.logMetrics()
 
 	return m, nil
