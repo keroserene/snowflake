@@ -194,6 +194,34 @@ func TestEncodeProxyPollResponse(t *testing.T) {
 		So(err, ShouldEqual, nil)
 	})
 }
+
+func TestEncodeProxyPollResponseWithProxyURL(t *testing.T) {
+	Convey("Context", t, func() {
+		b, err := EncodePollResponseWithRelayURL("fake offer", true, "restricted", "wss://test/", "")
+		So(err, ShouldBeNil)
+		offer, natType, err := DecodePollResponse(b)
+		So(err, ShouldNotBeNil)
+
+		offer, natType, relay, err := DecodePollResponseWithRelayURL(b)
+		So(offer, ShouldEqual, "fake offer")
+		So(natType, ShouldEqual, "restricted")
+		So(relay, ShouldEqual, "wss://test/")
+		So(err, ShouldBeNil)
+
+		b, err = EncodePollResponse("", false, "unknown")
+		So(err, ShouldBeNil)
+		offer, natType, relay, err = DecodePollResponseWithRelayURL(b)
+		So(offer, ShouldEqual, "")
+		So(natType, ShouldEqual, "unknown")
+		So(err, ShouldBeNil)
+
+		b, err = EncodePollResponseWithRelayURL("fake offer", false, "restricted", "wss://test/", "test error reason")
+		So(err, ShouldBeNil)
+		offer, natType, relay, err = DecodePollResponseWithRelayURL(b)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "test error reason")
+	})
+}
 func TestDecodeProxyAnswerRequest(t *testing.T) {
 	Convey("Context", t, func() {
 		for _, test := range []struct {
