@@ -316,6 +316,7 @@ func initPrometheus() *PromMetrics {
 		promMetrics.ProxyTotal, promMetrics.AvailableProxies,
 		promMetrics.ProxyPollWithRelayURLExtensionTotal,
 		promMetrics.ProxyPollWithoutRelayURLExtensionTotal,
+		promMetrics.ProxyPollRejectedForRelayURLExtensionTotal,
 	)
 
 	return promMetrics
