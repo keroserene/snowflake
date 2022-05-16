@@ -49,8 +49,7 @@ func isRestrictedMapping(addrStr string) (bool, error) {
 
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
-		log.Printf("Error creating STUN connection: %s", err.Error())
-		return false, err
+		return false, fmt.Errorf("Error creating STUN connection: %w", err)
 	}
 
 	defer mapTestConn.Close()
@@ -59,48 +58,34 @@ func isRestrictedMapping(addrStr string) (bool, error) {
 	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 
 	resp, err := mapTestConn.RoundTrip(message, mapTestConn.PrimaryAddr)
-	if err == ErrTimedOut {
-		log.Printf("Error: no response from server")
-		return false, err
-	}
 	if err != nil {
-		log.Printf("Error receiving response from server: %s", err.Error())
-		return false, err
+		return false, fmt.Errorf("Error completing roundtrip map test: %w", err)
 	}
 
 	// Decoding XOR-MAPPED-ADDRESS attribute from message.
 	if err = xorAddr1.GetFrom(resp); err != nil {
-		log.Printf("Error retrieving XOR-MAPPED-ADDRESS resonse: %s", err.Error())
-		return false, err
+		return false, fmt.Errorf("Error retrieving XOR-MAPPED-ADDRESS resonse: %w", err)
 	}
 
 	// Decoding OTHER-ADDRESS attribute from message.
 	var otherAddr stun.OtherAddress
 	if err = otherAddr.GetFrom(resp); err != nil {
-		log.Println("NAT discovery feature not supported by this server")
-		return false, err
+		return false, fmt.Errorf("NAT discovery feature not supported: %w", err)
 	}
 
 	if err = mapTestConn.AddOtherAddr(otherAddr.String()); err != nil {
-		log.Printf("Failed to resolve address %s\t", otherAddr.String())
-		return false, err
+		return false, fmt.Errorf("Error resolving address %s: %w", otherAddr.String(), err)
 	}
 
 	// Test II: Send binding request to other address
 	resp, err = mapTestConn.RoundTrip(message, mapTestConn.OtherAddr)
-	if err == ErrTimedOut {
-		log.Printf("Error: no response from server")
-		return false, err
-	}
 	if err != nil {
-		log.Printf("Error retrieving server response: %s", err.Error())
-		return false, err
+		return false, fmt.Errorf("Error retrieveing server response: %w", err)
 	}
 
 	// Decoding XOR-MAPPED-ADDRESS attribute from message.
 	if err = xorAddr2.GetFrom(resp); err != nil {
-		log.Printf("Error retrieving XOR-MAPPED-ADDRESS resonse: %s", err.Error())
-		return false, err
+		return false, fmt.Errorf("Error retrieving XOR-MAPPED-ADDRESS resonse: %w", err)
 	}
 
 	return xorAddr1.String() != xorAddr2.String(), nil
