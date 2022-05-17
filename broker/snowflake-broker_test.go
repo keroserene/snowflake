@@ -258,7 +258,7 @@ func TestBroker(t *testing.T) {
 				// Pass a fake client offer to this proxy
 				p := <-ctx.proxyPolls
 				So(p.id, ShouldEqual, "ymbcCMto7KHNGYlp")
-				p.offerChannel <- &ClientOffer{sdp: []byte("fake offer"), fingerprint: defaultBridge}
+				p.offerChannel <- &ClientOffer{sdp: []byte("fake offer"), fingerprint: defaultBridge[:]}
 				<-done
 				So(w.Code, ShouldEqual, http.StatusOK)
 				So(w.Body.String(), ShouldEqual, `{"Status":"client match","Offer":"fake offer","NAT":"","RelayURL":"wss://snowflake.torproject.net/"}`)

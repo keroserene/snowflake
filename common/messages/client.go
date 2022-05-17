@@ -5,9 +5,9 @@ package messages
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/bridgefingerprint"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/nat"
 )
@@ -106,7 +106,8 @@ func DecodeClientPollRequest(data []byte) (*ClientPollRequest, error) {
 	if message.Fingerprint == "" {
 		message.Fingerprint = defaultBridgeFingerprint
 	}
-	if hex.DecodedLen(len(message.Fingerprint)) != 20 {
+
+	if _, err := bridgefingerprint.FingerprintFromHexString(message.Fingerprint); err != nil {
 		return nil, fmt.Errorf("cannot decode fingerprint")
 	}
 

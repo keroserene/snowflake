@@ -10,6 +10,7 @@ import (
 	"container/heap"
 	"crypto/tls"
 	"flag"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/bridgefingerprint"
 	"io"
 	"log"
 	"net/http"
@@ -44,7 +45,7 @@ type BrokerContext struct {
 	presumedPatternForLegacyClient string
 }
 
-func (ctx *BrokerContext) GetBridgeInfo(fingerprint [20]byte) (BridgeInfo, error) {
+func (ctx *BrokerContext) GetBridgeInfo(fingerprint bridgefingerprint.Fingerprint) (BridgeInfo, error) {
 	return ctx.bridgeList.GetBridgeInfo(fingerprint)
 }
 
@@ -178,7 +179,7 @@ func (ctx *BrokerContext) CheckProxyRelayPattern(pattern string, nonSupported bo
 type ClientOffer struct {
 	natType     string
 	sdp         []byte
-	fingerprint [20]byte
+	fingerprint []byte
 }
 
 func main() {

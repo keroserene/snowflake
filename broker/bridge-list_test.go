@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/bridgefingerprint"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -34,7 +35,9 @@ func TestBridgeLoad(t *testing.T) {
 				So(n, ShouldEqual, 20)
 				So(err, ShouldBeNil)
 			}
-			bridgeInfo, err := bridgeList.GetBridgeInfo(bridgeFingerprint)
+			Fingerprint, err := bridgefingerprint.FingerprintFromBytes(bridgeFingerprint[:])
+			So(err, ShouldBeNil)
+			bridgeInfo, err := bridgeList.GetBridgeInfo(Fingerprint)
 			So(err, ShouldBeNil)
 			So(bridgeInfo.DisplayName, ShouldEqual, "default")
 			So(bridgeInfo.WebSocketAddress, ShouldEqual, "wss://snowflake.torproject.org")
@@ -50,7 +53,9 @@ func TestBridgeLoad(t *testing.T) {
 				So(n, ShouldEqual, 20)
 				So(err, ShouldBeNil)
 			}
-			bridgeInfo, err := bridgeList.GetBridgeInfo(bridgeFingerprint)
+			Fingerprint, err := bridgefingerprint.FingerprintFromBytes(bridgeFingerprint[:])
+			So(err, ShouldBeNil)
+			bridgeInfo, err := bridgeList.GetBridgeInfo(Fingerprint)
 			So(err, ShouldBeNil)
 			So(bridgeInfo.DisplayName, ShouldEqual, "imaginary-8")
 			So(bridgeInfo.WebSocketAddress, ShouldEqual, "wss://imaginary-8-snowflake.torproject.org")

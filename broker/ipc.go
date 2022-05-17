@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"encoding/hex"
 	"fmt"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/bridgefingerprint"
 	"log"
 	"net"
 	"time"
@@ -130,7 +131,11 @@ func (i *IPC) ProxyPolls(arg messages.Arg, response *[]byte) error {
 
 	i.ctx.metrics.promMetrics.ProxyPollTotal.With(prometheus.Labels{"nat": natType, "status": "matched"}).Inc()
 	var relayURL string
-	if info, err := i.ctx.bridgeList.GetBridgeInfo(offer.fingerprint); err != nil {
+	bridgeFingerprint, err := bridgefingerprint.FingerprintFromBytes(offer.fingerprint)
+	if err != nil {
+		return messages.ErrBadRequest
+	}
+	if info, err := i.ctx.bridgeList.GetBridgeInfo(bridgeFingerprint); err != nil {
 		return err
 	} else {
 		relayURL = info.WebSocketAddress
@@ -172,11 +177,17 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 	if err != nil {
 		return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
 	}
-	copy(offer.fingerprint[:], fingerprint)
 
-	if _, err := i.ctx.GetBridgeInfo(offer.fingerprint); err != nil {
+	BridgeFingerprint, err := bridgefingerprint.FingerprintFromBytes(fingerprint)
+	if err != nil {
+		return sendClientResponse(&messages.ClientPollResponse{Error: err.Error()}, response)
+	}
+
+	if _, err := i.ctx.GetBridgeInfo(BridgeFingerprint); err != nil {
 		return err
 	}
+
+	offer.fingerprint = BridgeFingerprint.ToBytes()
 
 	// Only hand out known restricted snowflakes to unrestricted clients
 	var snowflakeHeap *SnowflakeHeap
