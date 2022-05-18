@@ -24,15 +24,16 @@ var KnownProxyTypes = map[string]bool{
 	"iptproxy":   true,
 }
 
-/* Version 1.2 specification:
+/* Version 1.3 specification:
 
 == ProxyPollRequest ==
 {
   Sid: [generated session id of proxy],
-  Version: 1.2,
+  Version: 1.3,
   Type: ["badge"|"webext"|"standalone"],
   NAT: ["unknown"|"restricted"|"unrestricted"],
-  Clients: [number of current clients, rounded down to multiples of 8]
+  Clients: [number of current clients, rounded down to multiples of 8],
+  AcceptedRelayPattern: [a pattern representing accepted set of relay domains]
 }
 
 == ProxyPollResponse ==
@@ -44,7 +45,8 @@ HTTP 200 OK
     type: offer,
     sdp: [WebRTC SDP]
   },
-  NAT: ["unknown"|"restricted"|"unrestricted"]
+  NAT: ["unknown"|"restricted"|"unrestricted"],
+  RelayURL: [the WebSocket URL proxy should connect to relay Snowflake traffic]
 }
 
 2) If a client is not matched:
@@ -60,7 +62,7 @@ HTTP 400 BadRequest
 == ProxyAnswerRequest ==
 {
   Sid: [generated session id of proxy],
-  Version: 1.2,
+  Version: 1.3,
   Answer:
   {
     type: answer,

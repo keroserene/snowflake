@@ -100,6 +100,24 @@ Metrics data from the Snowflake broker can be retrieved by sending an HTTP GET r
         A count of the total number of unique IP addresses of snowflake
         proxies that have an unknown NAT type.
 
+   "snowflake-proxy-poll-with-relay-url-count" NUM NL
+        [At most once.]
+
+        A count of snowflake proxy polls with relay url extension present.
+        This means this proxy understands relay url, and is sending its
+        allowed prefix.
+   "snowflake-proxy-poll-without-relay-url-count" NUM NL
+        [At most once.]
+
+        A count of snowflake proxy polls with relay url extension absent.
+        This means this proxy is not yet updated.
+   "snowflake-proxy-rejected-for-relay-url-count" NUM NL
+        [At most once.]
+
+        A count of snowflake proxy polls with relay url extension rejected
+        based on broker's relay url extension policy.
+        This means an incompatible allowed relay pattern is included in the
+        proxy poll message.
 2. Broker messaging specification and endpoints
 
 The broker facilitates the connection of snowflake clients and snowflake proxies
@@ -177,10 +195,11 @@ POST /proxy HTTP
 
 {
   Sid: [generated session id of proxy],
-  Version: 1.1,
+  Version: 1.3,
   Type: ["badge"|"webext"|"standalone"|"mobile"],
   NAT: ["unknown"|"restricted"|"unrestricted"],
-  Clients: [number of current clients, rounded down to multiples of 8]
+  Clients: [number of current clients, rounded down to multiples of 8],
+  AcceptedRelayPattern: [a pattern representing accepted set of relay domains]
 }
 ```
 
@@ -195,7 +214,8 @@ HTTP 200 OK
   {
     type: offer,
     sdp: [WebRTC SDP]
-  }
+  },
+  RelayURL: [the WebSocket URL proxy should connect to relay Snowflake traffic]
 }
 ```
 
@@ -220,7 +240,7 @@ POST /answer HTTP
 
 {
   Sid: [generated session id of proxy],
-  Version: 1.1,
+  Version: 1.3,
   Answer:
   {
     type: answer,
