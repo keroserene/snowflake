@@ -212,6 +212,9 @@ func (m *Metrics) zeroMetrics() {
 	m.clientDeniedCount = 0
 	m.clientRestrictedDeniedCount = 0
 	m.clientUnrestrictedDeniedCount = 0
+	m.proxyPollRejectedWithRelayURLExtension = 0
+	m.proxyPollWithRelayURLExtension = 0
+	m.proxyPollWithoutRelayURLExtension = 0
 	m.clientProxyMatchCount = 0
 	m.countryStats.counts = make(map[string]int)
 	for pType := range m.countryStats.proxies {
