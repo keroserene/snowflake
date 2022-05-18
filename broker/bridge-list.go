@@ -2,11 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
-	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/bridgefingerprint"
 	"io"
 	"sync"
+
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/bridgefingerprint"
 )
 
 var ErrBridgeNotFound = errors.New("bridge not found")
@@ -50,7 +52,9 @@ func (h *bridgeListHolder) LoadBridgeInfo(reader io.Reader) error {
 	for inputScanner.Scan() {
 		inputLine := inputScanner.Bytes()
 		bridgeInfo := BridgeInfo{}
-		if err := json.Unmarshal(inputLine, &bridgeInfo); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(inputLine))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&bridgeInfo); err != nil {
 			return err
 		}
 
