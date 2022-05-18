@@ -24,8 +24,6 @@ var KnownProxyTypes = map[string]bool{
 	"iptproxy":   true,
 }
 
-var ErrExtraInfo = errors.New("client sent extra info")
-
 /* Version 1.2 specification:
 
 == ProxyPollRequest ==
