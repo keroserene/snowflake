@@ -1,3 +1,24 @@
+/* (*BridgeListHolderFileBased).LoadBridgeInfo loads a Snowflake Server bridge info description file,
+   its format is as follows:
+
+   This file should be in newline-delimited JSON format(https://jsonlines.org/).
+   For each line, the format of json data should be in the format of:
+   {"displayName":"default", "webSocketAddress":"wss://snowflake.torproject.net/", "fingerprint":"2B280B23E1107BB62ABFC40DDCC8824814F80A72"}
+
+   displayName:string is the name of this bridge. This value is not currently used programmatically.
+
+   webSocketAddress:string is the WebSocket URL of this bridge.
+   This will be the address proxy used to connect to this snowflake server.
+
+   fingerprint:string is the identifier of the bridge.
+   This will be used by a client to identify the bridge it wishes to connect to.
+
+   The existence of ANY other fields is NOT permitted.
+
+   The file will be considered invalid if there is at least one invalid json record.
+   In this case, an error will be returned, and none of the records will be loaded.
+*/
+
 package main
 
 import (
