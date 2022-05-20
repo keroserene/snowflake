@@ -38,7 +38,7 @@ type LogScrubber struct {
 func (ls *LogScrubber) Lock()   { (*ls).lock.Lock() }
 func (ls *LogScrubber) Unlock() { (*ls).lock.Unlock() }
 
-func scrub(b []byte) []byte {
+func Scrub(b []byte) []byte {
 	scrubbedBytes := b
 	for _, pattern := range scrubberPatterns {
 		// this is a workaround since go does not yet support look ahead or look
@@ -62,7 +62,7 @@ func (ls *LogScrubber) Write(b []byte) (n int, err error) {
 			return
 		}
 		fullLines := ls.buffer[:i+1]
-		_, err = ls.Output.Write(scrub(fullLines))
+		_, err = ls.Output.Write(Scrub(fullLines))
 		if err != nil {
 			return
 		}

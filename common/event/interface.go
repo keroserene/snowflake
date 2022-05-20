@@ -1,6 +1,11 @@
 package event
 
-import "github.com/pion/webrtc/v3"
+import (
+	"fmt"
+
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/safelog"
+	"github.com/pion/webrtc/v3"
+)
 
 type SnowflakeEvent interface {
 	IsSnowflakeEvent()
@@ -13,14 +18,34 @@ type EventOnOfferCreated struct {
 	Error                  error
 }
 
+func (e EventOnOfferCreated) String() string {
+	if e.Error != nil {
+		scrubbed := safelog.Scrub([]byte(e.Error.Error()))
+		return fmt.Sprintf("offer creation failure %s", scrubbed)
+	}
+	return "offer created"
+}
+
 type EventOnBrokerRendezvous struct {
 	SnowflakeEvent
 	WebRTCRemoteDescription *webrtc.SessionDescription
 	Error                   error
 }
 
+func (e EventOnBrokerRendezvous) String() string {
+	if e.Error != nil {
+		scrubbed := safelog.Scrub([]byte(e.Error.Error()))
+		return fmt.Sprintf("broker failure %s", scrubbed)
+	}
+	return "broker rendezvous peer received"
+}
+
 type EventOnSnowflakeConnected struct {
 	SnowflakeEvent
+}
+
+func (e EventOnSnowflakeConnected) String() string {
+	return "connected"
 }
 
 type EventOnSnowflakeConnectionFailed struct {
@@ -28,10 +53,19 @@ type EventOnSnowflakeConnectionFailed struct {
 	Error error
 }
 
+func (e EventOnSnowflakeConnectionFailed) String() string {
+	scrubbed := safelog.Scrub([]byte(e.Error.Error()))
+	return fmt.Sprintf("trying a new proxy: %s", scrubbed)
+}
+
 type EventOnProxyConnectionOver struct {
 	SnowflakeEvent
 	InboundTraffic  int
 	OutboundTraffic int
+}
+
+func (e EventOnProxyConnectionOver) String() string {
+	return fmt.Sprintf("Proxy connection closed (↑ %d, ↓ %d)", e.InboundTraffic, e.OutboundTraffic)
 }
 
 type SnowflakeEventReceiver interface {
