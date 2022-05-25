@@ -1,3 +1,19 @@
+Changes in version v2.2.0 - 2022-05-25
+
+- Issue 40099: Initialize SnowflakeListener.closed
+- Add connection failure events for proxy timeouts
+- Issue 40103: Fix proxy logging verb tense
+- Fix up and downstream metrics output for proxy
+- Issue 40095: uTLS for broker negotiation
+- Forward bridge fingerprint from client to broker (WIP, Issue 28651)
+- Issue 40104: Make it easier to configure proxy type
+- Remove version from ClientPollRequest
+- Issue 40124: Move tor-specific code out of library
+- Issue 40115: Scrub pt event logs
+- Issue 40127: Bump webrtc and dtls library versions
+- Bump version of webrtc and dtls to fix dtls CVEs
+- Issue 40141: Ensure library calls of events can be scrubbed
+
 Changes in version v2.1.0 - 2022-02-08
 
 - Issue 40098: Remove support for legacy one shot mode
