@@ -17,12 +17,24 @@ import (
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	sf "git.torproject.org/pluggable-transports/snowflake.git/v2/client/lib"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/safelog"
 )
 
 const (
 	DefaultSnowflakeCapacity = 1
 )
+
+type ptEventLogger struct {
+}
+
+func NewPTEventLogger() event.SnowflakeEventReceiver {
+	return &ptEventLogger{}
+}
+
+func (p ptEventLogger) OnNewSnowflakeEvent(e event.SnowflakeEvent) {
+	pt.Log(pt.LogSeverityNotice, e.String())
+}
 
 // Exchanges bytes between two ReadWriters.
 // (In this case, between a SOCKS connection and a snowflake transport conn)
