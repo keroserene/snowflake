@@ -154,8 +154,8 @@ func (ctx *BrokerContext) AddSnowflake(id string, proxyType string, natType stri
 		heap.Push(ctx.restrictedSnowflakes, snowflake)
 	}
 	ctx.metrics.promMetrics.AvailableProxies.With(prometheus.Labels{"nat": natType, "type": proxyType}).Inc()
-	ctx.snowflakeLock.Unlock()
 	ctx.idToSnowflake[id] = snowflake
+	ctx.snowflakeLock.Unlock()
 	return snowflake
 }
 

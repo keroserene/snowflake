@@ -190,19 +190,10 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 
 	offer.fingerprint = BridgeFingerprint.ToBytes()
 
-	// Only hand out known restricted snowflakes to unrestricted clients
-	var snowflakeHeap *SnowflakeHeap
-	if offer.natType == NATUnrestricted {
-		snowflakeHeap = i.ctx.restrictedSnowflakes
+	snowflake := i.matchSnowflake(offer.natType)
+	if snowflake != nil {
+		snowflake.offerChannel <- offer
 	} else {
-		snowflakeHeap = i.ctx.snowflakes
-	}
-
-	// Immediately fail if there are no snowflakes available.
-	i.ctx.snowflakeLock.Lock()
-	numSnowflakes := snowflakeHeap.Len()
-	i.ctx.snowflakeLock.Unlock()
-	if numSnowflakes <= 0 {
 		i.ctx.metrics.lock.Lock()
 		i.ctx.metrics.clientDeniedCount++
 		i.ctx.metrics.promMetrics.ClientPollTotal.With(prometheus.Labels{"nat": offer.natType, "status": "denied"}).Inc()
@@ -215,13 +206,6 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 		resp := &messages.ClientPollResponse{Error: messages.StrNoProxies}
 		return sendClientResponse(resp, response)
 	}
-
-	// Otherwise, find the most available snowflake proxy, and pass the offer to it.
-	// Delete must be deferred in order to correctly process answer request later.
-	i.ctx.snowflakeLock.Lock()
-	snowflake := heap.Pop(snowflakeHeap).(*Snowflake)
-	i.ctx.snowflakeLock.Unlock()
-	snowflake.offerChannel <- offer
 
 	// Wait for the answer to be returned on the channel or timeout.
 	select {
@@ -246,6 +230,25 @@ func (i *IPC) ClientOffers(arg messages.Arg, response *[]byte) error {
 	i.ctx.snowflakeLock.Unlock()
 
 	return err
+}
+
+func (i *IPC) matchSnowflake(natType string) *Snowflake {
+	// Only hand out known restricted snowflakes to unrestricted clients
+	var snowflakeHeap *SnowflakeHeap
+	if natType == NATUnrestricted {
+		snowflakeHeap = i.ctx.restrictedSnowflakes
+	} else {
+		snowflakeHeap = i.ctx.snowflakes
+	}
+
+	i.ctx.snowflakeLock.Lock()
+	defer i.ctx.snowflakeLock.Unlock()
+
+	if snowflakeHeap.Len() > 0 {
+		return heap.Pop(snowflakeHeap).(*Snowflake)
+	} else {
+		return nil
+	}
 }
 
 func (i *IPC) ProxyAnswers(arg messages.Arg, response *[]byte) error {
