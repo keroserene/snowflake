@@ -106,6 +106,7 @@ func (i *IPC) ProxyPolls(arg messages.Arg, response *[]byte) error {
 	} else {
 		i.ctx.metrics.lock.Lock()
 		i.ctx.metrics.UpdateCountryStats(remoteIP, proxyType, natType)
+		i.ctx.metrics.RecordIPAddress(remoteIP)
 		i.ctx.metrics.lock.Unlock()
 	}
 

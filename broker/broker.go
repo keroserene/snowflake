@@ -11,6 +11,8 @@ import (
 	"crypto/tls"
 	"flag"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/bridgefingerprint"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/ipsetsink"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/ipsetsink/sinkcluster"
 	"io"
 	"log"
 	"net/http"
@@ -194,6 +196,8 @@ func main() {
 	var certFilename, keyFilename string
 	var disableGeoip bool
 	var metricsFilename string
+	var ipCountFilename, ipCountMaskingKey string
+	var ipCountInterval time.Duration
 	var unsafeLogging bool
 
 	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
@@ -210,6 +214,9 @@ func main() {
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.BoolVar(&disableGeoip, "disable-geoip", false, "don't use geoip for stats collection")
 	flag.StringVar(&metricsFilename, "metrics-log", "", "path to metrics logging output")
+	flag.StringVar(&ipCountFilename, "ip-count-log", "", "path to ip count logging output")
+	flag.StringVar(&ipCountMaskingKey, "ip-count-mask", "", "masking key for ip count logging")
+	flag.DurationVar(&ipCountInterval, "ip-count-interval", time.Hour, "time interval between each chunk")
 	flag.BoolVar(&unsafeLogging, "unsafe-logging", false, "prevent logs from being scrubbed")
 	flag.Parse()
 
@@ -255,6 +262,16 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
+	}
+
+	if ipCountFilename != "" {
+		ipCountFile, err := os.OpenFile(ipCountFilename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		ipSetSink := ipsetsink.NewIPSetSink(ipCountMaskingKey)
+		ctx.metrics.distinctIPWriter = sinkcluster.NewClusterWriter(ipCountFile, ipCountInterval, ipSetSink)
 	}
 
 	go ctx.Broker()
