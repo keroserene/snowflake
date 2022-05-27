@@ -574,7 +574,7 @@ func (sf *SnowflakeProxy) Start() error {
 	}
 
 	if sf.NATTypeMeasurementInterval != 0 {
-		NatRetestTask.Start()
+		NatRetestTask.WaitThenStart()
 		defer NatRetestTask.Close()
 	}
 
