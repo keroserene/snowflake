@@ -12,14 +12,14 @@ import (
 
 func main() {
 	inputFile := flag.String("in", "", "")
-	start := flag.String("start", "", "")
-	end := flag.String("end", "", "")
+	start := flag.String("from", "", "")
+	end := flag.String("to", "", "")
 	flag.Parse()
-	startTime, err := time.Parse(time.UnixDate, *start)
+	startTime, err := time.Parse(time.RFC3339, *start)
 	if err != nil {
 		log.Fatal("unable to parse start time:", err)
 	}
-	endTime, err := time.Parse(time.UnixDate, *end)
+	endTime, err := time.Parse(time.RFC3339, *end)
 	if err != nil {
 		log.Fatal("unable to parse end time:", err)
 	}
