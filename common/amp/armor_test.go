@@ -1,9 +1,9 @@
 package amp
 
 import (
-	"crypto/rand"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"strings"
 	"testing"
 )

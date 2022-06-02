@@ -1,12 +1,12 @@
 package utls
 
 import (
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/big"
+	"math/rand"
 	"net/http"
 	"testing"
 	"time"
@@ -26,7 +26,15 @@ func TestRoundTripper(t *testing.T) {
 	Convey("[Test]Set up http servers", t, func(c C) {
 		c.Convey("[Test]Generate Self-Signed Cert", func(c C) {
 			// Ported from https://gist.github.com/samuel/8b500ddd3f6118d052b5e6bc16bc4c09
-			priv, err := rsa.GenerateKey(rand.Reader, 4096)
+
+			// note that we use the insecure math/rand here because some platforms
+			// fail the test suite at build time in Debian, due to entropy starvation.
+			// since that's not a problem at test time, we do *not* use a secure
+			// mechanism for key generation.
+			//
+			// DO NOT REUSE THIS CODE IN PRODUCTION, IT IS DANGEROUS
+			insecureRandReader := rand.New(rand.NewSource(1337))
+			priv, err := rsa.GenerateKey(insecureRandReader, 4096)
 			c.So(err, ShouldBeNil)
 			template := x509.Certificate{
 				SerialNumber: big.NewInt(1),
@@ -40,7 +48,7 @@ func TestRoundTripper(t *testing.T) {
 				ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 				BasicConstraintsValid: true,
 			}
-			derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, priv.Public(), priv)
+			derBytes, err := x509.CreateCertificate(insecureRandReader, &template, &template, priv.Public(), priv)
 			c.So(err, ShouldBeNil)
 			selfSignedPrivateKey = priv
 			selfSignedCert = derBytes
