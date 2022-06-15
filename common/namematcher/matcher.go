@@ -3,7 +3,12 @@ package namematcher
 import "strings"
 
 func NewNameMatcher(rule string) NameMatcher {
+	rule = strings.TrimSuffix(rule, "$")
 	return NameMatcher{suffix: strings.TrimPrefix(rule, "^"), exact: strings.HasPrefix(rule, "^")}
+}
+
+func IsValidRule(rule string) bool {
+	return strings.HasSuffix(rule, "$")
 }
 
 type NameMatcher struct {

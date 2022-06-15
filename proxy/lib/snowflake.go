@@ -30,7 +30,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/namematcher"
 	"io"
 	"io/ioutil"
 	"log"
@@ -43,6 +42,7 @@ import (
 
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/messages"
+	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/namematcher"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/task"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/util"
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/websocketconn"
@@ -580,6 +580,10 @@ func (sf *SnowflakeProxy) Start() error {
 	_, err = url.Parse(sf.RelayURL)
 	if err != nil {
 		return fmt.Errorf("invalid relay url: %s", err)
+	}
+
+	if !namematcher.IsValidRule(sf.RelayDomainNamePattern) {
+		return fmt.Errorf("invalid relay domain name pattern")
 	}
 
 	config = webrtc.Configuration{
