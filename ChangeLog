@@ -1,3 +1,10 @@
+Changes in version v2.3.0 - 2022-06-23
+- Issue 40146: Avoid performing two NAT probe tests at startup
+- Issue 40134: Log messages from client NAT check failures are confusing
+- Issue 34075: Implement metrics to measure snowflake churn
+- Issue 28651: Prepare all pieces of the snowflake pipeline for a second snowflake bridge
+- Issue 40129: Distributed Snowflake Server Support
+
 Changes in version v2.2.0 - 2022-05-25
 
 - Issue 40099: Initialize SnowflakeListener.closed
