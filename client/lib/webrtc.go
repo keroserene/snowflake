@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"git.torproject.org/pluggable-transports/snowflake.git/v2/common/event"
+	"github.com/pion/ice/v2"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -189,7 +190,10 @@ func (c *WebRTCPeer) connect(config *webrtc.Configuration, broker *BrokerChannel
 // after ICE candidate gathering is complete..
 func (c *WebRTCPeer) preparePeerConnection(config *webrtc.Configuration) error {
 	var err error
-	c.pc, err = webrtc.NewPeerConnection(*config)
+	s := webrtc.SettingEngine{}
+	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
+	api := webrtc.NewAPI(webrtc.WithSettingEngine(s))
+	c.pc, err = api.NewPeerConnection(*config)
 	if err != nil {
 		log.Printf("NewPeerConnection ERROR: %s", err)
 		return err
