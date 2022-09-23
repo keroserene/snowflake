@@ -286,7 +286,7 @@ func initPrometheus() *PromMetrics {
 			Name:      "rounded_proxy_poll_with_relay_url_extension_total",
 			Help:      "The number of snowflake proxy polls with Relay URL Extension, rounded up to a multiple of 8",
 		},
-		[]string{"nat"},
+		[]string{"nat", "type"},
 	)
 
 	promMetrics.ProxyPollWithoutRelayURLExtensionTotal = NewRoundedCounterVec(
@@ -295,7 +295,7 @@ func initPrometheus() *PromMetrics {
 			Name:      "rounded_proxy_poll_without_relay_url_extension_total",
 			Help:      "The number of snowflake proxy polls without Relay URL Extension, rounded up to a multiple of 8",
 		},
-		[]string{"nat"},
+		[]string{"nat", "type"},
 	)
 
 	promMetrics.ProxyPollRejectedForRelayURLExtensionTotal = NewRoundedCounterVec(
@@ -304,7 +304,7 @@ func initPrometheus() *PromMetrics {
 			Name:      "rounded_proxy_poll_rejected_relay_url_extension_total",
 			Help:      "The number of snowflake proxy polls rejected by Relay URL Extension, rounded up to a multiple of 8",
 		},
-		[]string{"nat"},
+		[]string{"nat", "type"},
 	)
 
 	promMetrics.ClientPollTotal = NewRoundedCounterVec(
