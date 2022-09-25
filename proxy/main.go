@@ -15,7 +15,7 @@ import (
 
 func main() {
 	capacity := flag.Uint("capacity", 0, "maximum concurrent clients")
-	stunURL := flag.String("stun", sf.DefaultSTUNURL, "broker URL")
+	stunURL := flag.String("stun", sf.DefaultSTUNURL, "STUN URL")
 	logFilename := flag.String("log", "", "log filename")
 	rawBrokerURL := flag.String("broker", sf.DefaultBrokerURL, "broker URL")
 	unsafeLogging := flag.Bool("unsafe-logging", false, "prevent logs from being scrubbed")
@@ -26,7 +26,7 @@ func main() {
 	NATTypeMeasurementInterval := flag.Duration("nat-retest-interval", time.Hour*24,
 		"the time interval in second before NAT type is retested, 0s disables retest. Valid time units are \"s\", \"m\", \"h\". ")
 	SummaryInterval := flag.Duration("summary-interval", time.Hour,
-		"the time interval to output summary, 0s disables retest. Valid time units are \"s\", \"m\", \"h\". ")
+		"the time interval to output summary, 0s disables summaries. Valid time units are \"s\", \"m\", \"h\". ")
 	verboseLogging := flag.Bool("verbose", false, "increase log verbosity")
 
 	flag.Parse()
